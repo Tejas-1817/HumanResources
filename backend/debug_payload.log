@@ -1,0 +1,2 @@
+[DEBUG] update_pipeline_status: payload={'status': 'round_1776336525352', 'note': None, 'status_date': '2026-04-25T10:00:00+05:30', 'interview_date': '2026-04-25T10:00:00+05:30', 'offer_date': None}
+[DEBUG] update_pipeline_status: payload={'status': 'shortlisted', 'note': None, 'status_date': '2026-04-25T10:00:00+05:30', 'interview_date': 'clear', 'offer_date': None}
