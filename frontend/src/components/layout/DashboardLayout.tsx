@@ -3,9 +3,13 @@ import { Outlet, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { AppSidebar } from "./AppSidebar";
 import { Topbar } from "./Topbar";
+import { Modal } from "@/components/ui/Modal";
+import UploadPage from "@/pages/Upload";
+import { AddCandidateForm, ScheduleInterviewForm, CreateJobPostForm, AddCompanyForm, SettingsForm } from "@/components/forms/QuickActionForms";
 
 export const DashboardLayout = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [activeModal, setActiveModal] = useState<string | null>(null);
   const mainRef = useRef<HTMLElement>(null);
   const location = useLocation();
 
@@ -37,7 +41,10 @@ export const DashboardLayout = () => {
           isSidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <AppSidebar onMobileClose={() => setIsSidebarOpen(false)} />
+        <AppSidebar
+          onMobileClose={() => setIsSidebarOpen(false)}
+          onQuickAction={(actionId) => setActiveModal(actionId)}
+        />
       </div>
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
@@ -53,6 +60,33 @@ export const DashboardLayout = () => {
           </motion.div>
         </main>
       </div>
+
+      {/* ─── Quick Action Modals ───────────────────────────────── */}
+      <Modal open={activeModal === "add-candidate"} onClose={() => setActiveModal(null)} title="Add Candidate">
+        <AddCandidateForm onSuccess={() => setActiveModal(null)} />
+      </Modal>
+
+      <Modal open={activeModal === "schedule-interview"} onClose={() => setActiveModal(null)} title="Schedule Interview">
+        <ScheduleInterviewForm onSuccess={() => setActiveModal(null)} />
+      </Modal>
+
+      <Modal open={activeModal === "upload-cv"} onClose={() => setActiveModal(null)} title="Upload CV / Resume">
+        <div className="max-h-[80vh] overflow-y-auto custom-scrollbar pr-2">
+          <UploadPage onSuccess={() => setActiveModal(null)} />
+        </div>
+      </Modal>
+
+      <Modal open={activeModal === "create-job-post"} onClose={() => setActiveModal(null)} title="Create Job Position">
+        <CreateJobPostForm onSuccess={() => setActiveModal(null)} />
+      </Modal>
+
+      <Modal open={activeModal === "add-company"} onClose={() => setActiveModal(null)} title="Add Company">
+        <AddCompanyForm onSuccess={() => setActiveModal(null)} />
+      </Modal>
+
+      <Modal open={activeModal === "settings"} onClose={() => setActiveModal(null)} title="Settings">
+        <SettingsForm onSuccess={() => setActiveModal(null)} />
+      </Modal>
     </div>
   );
 };

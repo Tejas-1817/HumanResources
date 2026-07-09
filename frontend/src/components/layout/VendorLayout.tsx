@@ -4,9 +4,12 @@ import { motion, AnimatePresence } from "framer-motion";
 import { VendorSidebar } from "./VendorSidebar";
 import { Topbar } from "./Topbar";
 import { useVendorAuth } from "@/context/AuthContext";
+import { Modal } from "@/components/ui/Modal";
+import { SettingsForm } from "@/components/forms/QuickActionForms";
 
 export const VendorLayout = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [activeModal, setActiveModal] = useState<string | null>(null);
   const { vendor, vendorLogout } = useVendorAuth();
   const mainRef = useRef<HTMLElement>(null);
   const location = useLocation();
@@ -39,7 +42,10 @@ export const VendorLayout = () => {
           isSidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <VendorSidebar onMobileClose={() => setIsSidebarOpen(false)} />
+        <VendorSidebar
+          onMobileClose={() => setIsSidebarOpen(false)}
+          onQuickAction={(actionId) => setActiveModal(actionId)}
+        />
       </div>
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
@@ -60,6 +66,11 @@ export const VendorLayout = () => {
           </motion.div>
         </main>
       </div>
+
+      {/* Settings Modal */}
+      <Modal open={activeModal === "settings"} onClose={() => setActiveModal(null)} title="Settings">
+        <SettingsForm onSuccess={() => setActiveModal(null)} />
+      </Modal>
     </div>
   );
 };

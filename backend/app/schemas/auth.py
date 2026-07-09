@@ -70,3 +70,10 @@ class PasswordChangeRequest(BaseModel):
     current_password: str
     new_password: str = Field(..., min_length=6, max_length=128)
 
+
+class UserUpdatePayload(BaseModel):
+    name: Optional[str] = None
+    email: Optional[str] = None
+    password: Optional[str] = None
+
+

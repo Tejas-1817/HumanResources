@@ -6,6 +6,7 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
+  Settings,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
@@ -13,7 +14,7 @@ const navItems = [
   { label: "My Schedule", icon: LayoutDashboard, path: "/interviewer" },
 ];
 
-export const InterviewerSidebar = ({ onMobileClose }: { onMobileClose?: () => void }) => {
+export const InterviewerSidebar = ({ onMobileClose, onQuickAction }: { onMobileClose?: () => void; onQuickAction?: (actionId: string) => void }) => {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
   const { interviewer } = useAuth();
@@ -67,7 +68,7 @@ export const InterviewerSidebar = ({ onMobileClose }: { onMobileClose?: () => vo
       </AnimatePresence>
 
       {/* Nav */}
-      <nav className="flex-1 py-4 px-3 space-y-1">
+      <nav className="flex-1 py-2 px-3 space-y-1">
         {navItems.map((item) => {
           const isActive = location.pathname === item.path;
           return (
@@ -75,7 +76,7 @@ export const InterviewerSidebar = ({ onMobileClose }: { onMobileClose?: () => vo
               key={item.label}
               to={item.path}
               onClick={onMobileClose}
-              className={`relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 group
+              className={`relative flex items-center gap-3 px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-150 group
                 ${isActive
                   ? "bg-white/10 text-white"
                   : "text-white/60 hover:text-white hover:bg-white/5"
@@ -104,10 +105,24 @@ export const InterviewerSidebar = ({ onMobileClose }: { onMobileClose?: () => vo
         })}
       </nav>
 
+      {/* Settings button */}
+      <button
+        onClick={() => {
+          if (onQuickAction) onQuickAction("settings");
+          if (onMobileClose) onMobileClose();
+        }}
+        className={`h-10 flex items-center gap-3 border-t border-white/5 text-sm font-medium transition-all duration-150 text-white/60 hover:text-white hover:bg-white/5 group text-left w-full ${
+          collapsed ? "justify-center px-3" : "px-6"
+        }`}
+      >
+        <Settings className="w-4 h-4 text-white/40 group-hover:text-white shrink-0" />
+        {!collapsed && <span className="whitespace-nowrap">Settings</span>}
+      </button>
+
       {/* Collapse toggle */}
       <button
         onClick={() => setCollapsed(!collapsed)}
-        className="h-12 flex items-center justify-center border-t border-white/5 text-white/40 hover:text-white hover:bg-white/5 transition-all"
+        className="h-10 flex items-center justify-center border-t border-white/5 text-white/40 hover:text-white hover:bg-white/5 transition-all"
       >
         {collapsed ? (
           <ChevronRight className="w-4 h-4" />

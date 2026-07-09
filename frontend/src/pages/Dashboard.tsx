@@ -21,20 +21,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { useState, useEffect } from "react";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  AreaChart,
-  Area,
-} from "recharts";
+
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatCard } from "@/components/ui/StatCard";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -118,28 +105,18 @@ const Dashboard = () => {
     [pipeline]
   );
   const selectedCount = data?.pipeline_summary?.selected ?? 0;
-  const rejectedCount = data?.pipeline_summary?.rejected ?? 0;
-  const onHoldCount = data?.pipeline_summary?.on_hold ?? 0;
   const interviewCount = (data?.pipeline_summary?.interview_scheduled ?? 0) + (data?.pipeline_summary?.interviewed ?? 0);
 
-  const pipelineData = useMemo(
+  const funnelData = useMemo(
     () => [
-      { stage: "Pending", count: data?.pipeline_summary?.pending ?? 0, fill: PIPELINE_COLORS.pending },
-      { stage: "Shortlisted", count: data?.pipeline_summary?.shortlisted ?? 0, fill: PIPELINE_COLORS.shortlisted },
-      { stage: "Interview", count: data?.pipeline_summary?.interview_scheduled ?? 0, fill: PIPELINE_COLORS.interview_scheduled },
-      { stage: "Interviewed", count: data?.pipeline_summary?.interviewed ?? 0, fill: PIPELINE_COLORS.interviewed },
-      { stage: "On Hold", count: data?.pipeline_summary?.on_hold ?? 0, fill: PIPELINE_COLORS.on_hold },
-      { stage: "Selected", count: data?.pipeline_summary?.selected ?? 0, fill: PIPELINE_COLORS.selected },
-      { stage: "Rejected", count: data?.pipeline_summary?.rejected ?? 0, fill: PIPELINE_COLORS.rejected },
+      { name: "Applied", value: totalPipeline },
+      { name: "Shortlisted", value: data?.pipeline_summary?.shortlisted ?? 0 },
+      { name: "Interview", value: interviewCount },
+      { name: "Selected", value: selectedCount },
     ],
-    [data]
+    [totalPipeline, data, interviewCount, selectedCount]
   );
 
-  // Pipeline pie chart data
-  const pipelinePie = useMemo(() => {
-    const d = pipelineData.filter((p) => p.count > 0);
-    return d.length > 0 ? d : [{ stage: "No data", count: 1, fill: "hsl(var(--muted))" }];
-  }, [pipelineData]);
 
   // Skills
   const palette = ["#6366f1", "#22d3ee", "#10b981", "#f59e0b", "#ef4444", "#a855f7"];
@@ -198,16 +175,7 @@ const Dashboard = () => {
     [data]
   );
 
-  // Hiring funnel for area chart
-  const funnelData = useMemo(
-    () => [
-      { name: "Applied", value: totalPipeline },
-      { name: "Shortlisted", value: data?.pipeline_summary?.shortlisted ?? 0 },
-      { name: "Interview", value: interviewCount },
-      { name: "Selected", value: selectedCount },
-    ],
-    [totalPipeline, data, interviewCount, selectedCount]
-  );
+
 
   const conversionRate = totalPipeline > 0 ? Math.round((selectedCount / totalPipeline) * 100) : 0;
 
@@ -369,18 +337,6 @@ const Dashboard = () => {
               );
             })}
           </div>
-          <div className="mt-8 p-4 rounded-xl bg-primary/5 border border-primary/10 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary glow-success">
-                <TrendingUp className="w-5 h-5 text-success" />
-              </div>
-              <div>
-                <p className="text-[10px] text-muted-foreground uppercase font-bold text-success/80">Selection Utility</p>
-                <p className="text-lg font-bold text-foreground font-sans">{conversionRate}% Rate</p>
-              </div>
-            </div>
-            <ArrowUpRight className="w-5 h-5 text-primary opacity-50" />
-          </div>
         </motion.div>
 
         {/* Company Activity & Feed */}
@@ -424,115 +380,7 @@ const Dashboard = () => {
         </motion.div>
       </div>
 
-      {/* ─── Row 3: Main Performance Analysis ────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Hiring Success Chart (AreaChart) */}
-        <motion.div variants={item} className="lg:col-span-2 glass-card p-6 relative group overflow-hidden">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 blur-3xl -mr-32 -mt-32 rounded-full pointer-events-none" />
-          <div className="flex items-center justify-between mb-8 relative z-10">
-            <div>
-              <h3 className="heading-md">Hiring Performance</h3>
-              <p className="text-xs text-muted-foreground mt-1">Conversion journey across core stages</p>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="bg-secondary/40 border border-border rounded-lg px-3 py-1.5 text-xs text-foreground font-medium flex items-center gap-2">
-                <TrendingUp className="w-3 h-3 text-success" />
-                {conversionRate}% Efficiency
-              </div>
-            </div>
-          </div>
 
-          <div className="h-[300px] w-full relative z-10">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={funnelData}>
-                <defs>
-                  <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} opacity={0.3} />
-                <XAxis
-                  dataKey="name"
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
-                  dy={10}
-                />
-                <YAxis hide />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "hsl(var(--card))",
-                    borderColor: "hsl(var(--border))",
-                    borderRadius: "12px",
-                    boxShadow: "0 10px 30px -10px rgba(0,0,0,0.5)"
-                  }}
-                  itemStyle={{ color: "hsl(var(--primary))", fontWeight: "bold" }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="value"
-                  stroke="hsl(var(--primary))"
-                  strokeWidth={4}
-                  fillOpacity={1}
-                  fill="url(#colorValue)"
-                  animationDuration={1500}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </motion.div>
-
-        {/* Pipeline Distribution (PieChart) */}
-        <motion.div variants={item} className="glass-card p-6 flex flex-col items-center justify-center relative overflow-hidden group">
-          <div className="absolute bottom-0 left-0 w-48 h-48 bg-accent/5 blur-3xl -ml-24 -mb-24 rounded-full pointer-events-none" />
-          <h3 className="heading-md mb-8 self-start relative z-10">Stage Distribution</h3>
-          <div className="w-full h-[240px] relative z-10">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={pipelinePie}
-                  dataKey="count"
-                  nameKey="stage"
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={70}
-                  outerRadius={100}
-                  paddingAngle={5}
-                  strokeWidth={0}
-                >
-                  {pipelinePie.map((entry, index) => (
-                    <Cell
-                      key={`cell-${index}`}
-                      fill={entry.fill}
-                      className="hover:opacity-80 transition-opacity cursor-pointer"
-                    />
-                  ))}
-                </Pie>
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "hsl(var(--card))",
-                    borderColor: "hsl(var(--border))",
-                    borderRadius: "12px"
-                  }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-              <span className="text-4xl font-extrabold text-foreground tracking-tighter">{totalPipeline}</span>
-              <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold font-sans">Total Pipeline</span>
-            </div>
-          </div>
-          <div className="mt-6 grid grid-cols-2 gap-x-8 gap-y-2 relative z-10">
-            {pipelineData.slice(0, 4).map((s) => (
-              <div key={s.stage} className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: s.fill }} />
-                <span className="text-[11px] text-muted-foreground font-medium">{s.stage} ({s.count})</span>
-              </div>
-            ))}
-          </div>
-        </motion.div>
-      </div>
 
       {/* ─── Row 4: Skills DNA ────────────── */}
       <motion.div variants={item} className="glass-card p-8 border-border/50 relative overflow-hidden group">

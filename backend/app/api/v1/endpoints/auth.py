@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from app.core.security import get_current_user
 from app.database.session import get_db
 from app.models.user import User
-from app.schemas.auth import AuthUserResponse, LoginRequest, RegisterRequest, TokenResponse, ForgotPasswordRequest, ResetPasswordRequest
+from app.schemas.auth import AuthUserResponse, LoginRequest, RegisterRequest, TokenResponse, ForgotPasswordRequest, ResetPasswordRequest, UserUpdatePayload
 from app.services.auth_service import AuthService
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
@@ -53,4 +53,26 @@ def reset_password(payload: ResetPasswordRequest, db: Session = Depends(get_db))
 
 @router.get("/me", response_model=AuthUserResponse, status_code=status.HTTP_200_OK)
 def me(current_user: User = Depends(get_current_user)) -> AuthUserResponse:
+    return AuthUserResponse.model_validate(current_user)
+
+
+@router.patch("/me", response_model=AuthUserResponse, status_code=status.HTTP_200_OK)
+def update_me(
+    payload: UserUpdatePayload,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+) -> AuthUserResponse:
+    if payload.name is not None:
+        current_user.name = payload.name
+    if payload.email is not None:
+        existing = db.query(User).filter(User.email == payload.email, User.id != current_user.id).first()
+        if existing:
+            from fastapi import HTTPException
+            raise HTTPException(status_code=400, detail="Email already taken")
+        current_user.email = payload.email
+    if payload.password is not None and payload.password:
+        from app.core.security import get_password_hash
+        current_user.hashed_password = get_password_hash(payload.password)
+    db.commit()
+    db.refresh(current_user)
     return AuthUserResponse.model_validate(current_user)

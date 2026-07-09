@@ -217,6 +217,11 @@ export const getMe = async (): Promise<any> => {
   return data;
 };
 
+export const updateMe = async (payload: { name?: string; email?: string; password?: string }): Promise<any> => {
+  const { data } = await client.patch("/auth/me", payload);
+  return data;
+};
+
 export const forgotPassword = async (email: string): Promise<{ message: string; reset_link?: string; email_sent?: boolean }> => {
   const { data } = await client.post<{ message: string; reset_link?: string; email_sent?: boolean }>("/auth/forgot-password", { email });
   return data;
@@ -438,6 +443,11 @@ export const getVendorMe = async (): Promise<any> => {
   return data;
 };
 
+export const updateVendorMe = async (payload: { name?: string; email?: string; company_name?: string; phone?: string; password?: string }): Promise<any> => {
+  const { data } = await client.patch("/vendor/me", payload);
+  return data;
+};
+
 export const getVendorJobs = async (): Promise<JobRole[]> => {
   const { data } = await client.get<JobRole[]>("/vendor/jobs");
   return data;
@@ -620,6 +630,11 @@ export const createInterviewSchedule = async (payload: {
 
 export const getInterviewerMe = async (): Promise<any> => {
   const { data } = await client.get("/interviewer/me");
+  return data;
+};
+
+export const updateInterviewerMe = async (payload: { name?: string; email?: string; phone?: string; password?: string }): Promise<any> => {
+  const { data } = await client.patch("/interviewer/me", payload);
   return data;
 };
 

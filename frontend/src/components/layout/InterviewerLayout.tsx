@@ -4,9 +4,12 @@ import { motion, AnimatePresence } from "framer-motion";
 import { InterviewerSidebar } from "./InterviewerSidebar";
 import { Topbar } from "./Topbar";
 import { useAuth } from "@/context/AuthContext";
+import { Modal } from "@/components/ui/Modal";
+import { SettingsForm } from "@/components/forms/QuickActionForms";
 
 export const InterviewerLayout = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [activeModal, setActiveModal] = useState<string | null>(null);
   const mainRef = useRef<HTMLElement>(null);
   const location = useLocation();
   const { interviewer, logout } = useAuth();
@@ -38,7 +41,10 @@ export const InterviewerLayout = () => {
           isSidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <InterviewerSidebar onMobileClose={() => setIsSidebarOpen(false)} />
+        <InterviewerSidebar
+          onMobileClose={() => setIsSidebarOpen(false)}
+          onQuickAction={(actionId) => setActiveModal(actionId)}
+        />
       </div>
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
@@ -59,6 +65,11 @@ export const InterviewerLayout = () => {
           </motion.div>
         </main>
       </div>
+
+      {/* Settings Modal */}
+      <Modal open={activeModal === "settings"} onClose={() => setActiveModal(null)} title="Settings">
+        <SettingsForm onSuccess={() => setActiveModal(null)} />
+      </Modal>
     </div>
   );
 };

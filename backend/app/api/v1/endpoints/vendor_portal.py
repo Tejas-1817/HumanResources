@@ -9,7 +9,7 @@ from app.models.candidate import Candidate
 from app.models.job_application import JobApplication
 from app.schemas.vendor import (
     VendorLoginRequest, VendorTokenResponse, VendorAuthResponse,
-    VendorStats, VendorPasswordChange
+    VendorStats, VendorPasswordChange, VendorUpdate
 )
 from app.schemas.job_role import JobRoleResponse
 from app.schemas.candidate import CandidateResponse
@@ -333,3 +333,13 @@ def change_password(
         payload.new_password
     )
     return {"message": "Password updated successfully"}
+
+
+@router.patch("/me", response_model=VendorAuthResponse)
+def update_me(
+    payload: VendorUpdate,
+    db: Session = Depends(get_db),
+    current_vendor: Vendor = Depends(get_current_vendor)
+):
+    updated = VendorService.update_vendor(db, current_vendor.id, **payload.model_dump(exclude_none=True))
+    return VendorAuthResponse.model_validate(updated)

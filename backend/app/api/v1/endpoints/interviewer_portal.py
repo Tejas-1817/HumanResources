@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
+from pydantic import BaseModel, Field
 
 from app.database.session import get_db
 from app.models.interviewer import Interviewer
@@ -12,9 +13,44 @@ from app.core.security import get_current_interviewer
 router = APIRouter(prefix="/interviewer", tags=["Interviewer Portal"])
 
 
+class InterviewerUpdatePayload(BaseModel):
+    name: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    password: Optional[str] = None
+
+
 @router.get("/me", response_model=InterviewerLoginResponse, status_code=status.HTTP_200_OK)
 def get_me(current_interviewer: Interviewer = Depends(get_current_interviewer)) -> InterviewerLoginResponse:
     """Get profile of current logged-in interviewer."""
+    return InterviewerLoginResponse.model_validate(current_interviewer)
+
+
+@router.patch("/me", response_model=InterviewerLoginResponse, status_code=status.HTTP_200_OK)
+def update_me(
+    payload: InterviewerUpdatePayload,
+    current_interviewer: Interviewer = Depends(get_current_interviewer),
+    db: Session = Depends(get_db)
+) -> InterviewerLoginResponse:
+    if payload.name is not None:
+        current_interviewer.name = payload.name.strip()
+    if payload.email is not None:
+        payload_email = payload.email.strip().lower()
+        existing = db.query(Interviewer).filter(
+            Interviewer.email == payload_email,
+            Interviewer.id != current_interviewer.id
+        ).first()
+        if existing:
+            from fastapi import HTTPException
+            raise HTTPException(status_code=400, detail="Email already taken")
+        current_interviewer.email = payload_email
+    if payload.phone is not None:
+        current_interviewer.phone = payload.phone.strip() if payload.phone else None
+    if payload.password is not None and payload.password:
+        from app.core.security import hash_password
+        current_interviewer.hashed_password = hash_password(payload.password)
+    db.commit()
+    db.refresh(current_interviewer)
     return InterviewerLoginResponse.model_validate(current_interviewer)
 
 

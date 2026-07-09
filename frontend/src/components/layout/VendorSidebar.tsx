@@ -22,10 +22,9 @@ const navItems = [
   { label: "On Bench Talent", icon: Sparkles, path: "/vendor/bench" },
   { label: "Pipeline", icon: Trello, path: "/vendor/pipeline" },
   { label: "My Candidates", icon: Users, path: "/vendor/candidates" },
-  { label: "Settings", icon: Settings, path: "/vendor/settings" },
 ];
 
-export const VendorSidebar = ({ onMobileClose }: { onMobileClose?: () => void }) => {
+export const VendorSidebar = ({ onMobileClose, onQuickAction }: { onMobileClose?: () => void; onQuickAction?: (actionId: string) => void }) => {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
 
@@ -57,7 +56,7 @@ export const VendorSidebar = ({ onMobileClose }: { onMobileClose?: () => void })
       </div>
 
       {/* nav */}
-      <nav className="flex-1 py-4 px-3 space-y-1">
+      <nav className="flex-1 py-2 px-3 space-y-1">
         {navItems.map((item) => {
           const isActive = location.pathname === item.path;
 
@@ -66,7 +65,7 @@ export const VendorSidebar = ({ onMobileClose }: { onMobileClose?: () => void })
               key={item.path}
               to={item.path}
               onClick={onMobileClose}
-              className={`relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 group
+              className={`relative flex items-center gap-3 px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-150 group
               ${isActive
                   ? "bg-white/10 text-white shadow-lg shadow-white/5"
                   : "text-white/60 hover:text-white hover:bg-white/5"
@@ -105,10 +104,24 @@ export const VendorSidebar = ({ onMobileClose }: { onMobileClose?: () => void })
       </nav>
 
 
+      {/* Settings button */}
+      <button
+        onClick={() => {
+          if (onQuickAction) onQuickAction("settings");
+          if (onMobileClose) onMobileClose();
+        }}
+        className={`h-10 flex items-center gap-3 border-t border-white/5 text-sm font-medium transition-all duration-150 text-white/60 hover:text-white hover:bg-white/5 group text-left w-full ${
+          collapsed ? "justify-center px-3" : "px-6"
+        }`}
+      >
+        <Settings className="w-4 h-4 text-white/40 group-hover:text-white shrink-0" />
+        {!collapsed && <span className="whitespace-nowrap">Settings</span>}
+      </button>
+
       {/* collapse toggle */}
       <button
         onClick={() => setCollapsed(!collapsed)}
-        className="h-12 flex items-center justify-center border-t border-white/5 text-white/40 hover:text-white hover:bg-white/5 transition-all"
+        className="h-10 flex items-center justify-center border-t border-white/5 text-white/40 hover:text-white hover:bg-white/5 transition-all"
       >
         {collapsed ? (
           <ChevronRight className="w-4 h-4" />
