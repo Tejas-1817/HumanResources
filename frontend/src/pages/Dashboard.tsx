@@ -25,7 +25,6 @@ import { useState, useEffect } from "react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatCard } from "@/components/ui/StatCard";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { Modal } from "@/components/ui/Modal";
 import { useQuery } from "@tanstack/react-query";
 import {
   getDashboardStats,
@@ -34,6 +33,7 @@ import {
   getPipeline,
   getCandidates,
 } from "@/api/resumeiq";
+import { InterviewCalendar } from "@/components/dashboard/InterviewCalendar";
 
 const container = {
   hidden: { opacity: 0 },
@@ -91,13 +91,7 @@ const Dashboard = () => {
     enabled: debouncedQuery.length >= 2,
   });
 
-  // ── Skill Modal ──────────────────────────────────────
-  const [selectedSkill, setSelectedSkill] = useState<string | null>(null);
-  const { data: skillCandidates, isLoading: isLoadingSkillCand } = useQuery({
-    queryKey: ["skill-candidates", selectedSkill],
-    queryFn: () => getCandidates({ search: selectedSkill!, page_size: 20 }),
-    enabled: !!selectedSkill,
-  });
+
 
   // ── Derived stats ─────────────────────────────────────
   const totalPipeline = useMemo(
@@ -118,18 +112,7 @@ const Dashboard = () => {
   );
 
 
-  // Skills
-  const palette = ["#6366f1", "#22d3ee", "#10b981", "#f59e0b", "#ef4444", "#a855f7"];
-  const skillsData = useMemo(() => {
-    const rawSkills = data?.top_skills ?? [];
-    const maxCount = Math.max(...rawSkills.map(s => s.count), 1);
-    return rawSkills.slice(0, 6).map((skill, i) => ({
-      name: skill.name,
-      count: skill.count,
-      value: (skill.count / maxCount) * 100,
-      color: palette[i % palette.length]
-    }));
-  }, [data]);
+
 
   // Companies with role / pipeline breakdown
   const companyById = useMemo(() => new Map(companies.map((c) => [c.id, c])), [companies]);
@@ -185,6 +168,7 @@ const Dashboard = () => {
         <PageHeader
           title="Recruitment Command"
           description="Real-time intelligence and pipeline health overview"
+          className="mb-1 w-full"
           actions={
             <div className="flex flex-wrap items-center gap-3">
               {/* Global Search Bar */}
@@ -382,86 +366,10 @@ const Dashboard = () => {
 
 
 
-      {/* ─── Row 4: Skills DNA ────────────── */}
-      <motion.div variants={item} className="glass-card p-8 border-border/50 relative overflow-hidden group">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-primary/5 blur-3xl -mr-48 -mt-48 rounded-full pointer-events-none" />
-        <div className="flex items-center justify-between mb-10 relative z-10">
-          <div>
-            <h3 className="heading-md">Talent DNA</h3>
-            <p className="text-xs text-muted-foreground mt-1">Most prevalent expertise currently trending in your ecosystem</p>
-          </div>
-          <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary glow-primary">
-            <Layers className="w-6 h-6" />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-8 relative z-10">
-          {skillsData.map((skill, i) => (
-            <div key={skill.name} className="flex flex-col items-center text-center group/skill cursor-pointer" onClick={() => setSelectedSkill(skill.name)}>
-              <div className="w-20 h-20 rounded-[2rem] bg-card border border-border flex items-center justify-center mb-5 relative overflow-hidden group-hover/skill:border-primary/50 transition-all duration-500 shadow-xl shadow-black/5 group-hover/skill:scale-110">
-                <div className="absolute inset-0 opacity-0 group-hover/skill:opacity-10 transition-opacity bg-primary" />
-                <span className="text-2xl font-black text-foreground" style={{ color: skill.color }}>{skill.count}</span>
-                <div className="absolute bottom-2 right-2">
-                  <TrendingUp className="w-4 h-4 opacity-10 group-hover/skill:opacity-40 transition-opacity" />
-                </div>
-              </div>
-              <p className="text-sm font-bold text-foreground mb-2 group-hover/skill:text-primary transition-colors">{skill.name}</p>
-              <div className="w-full h-1.5 bg-secondary rounded-full overflow-hidden border border-border/50">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${skill.value}%` }}
-                  transition={{ duration: 1.2, delay: i * 0.1, ease: "anticipate" }}
-                  className="h-full rounded-full"
-                  style={{ backgroundColor: skill.color }}
-                />
-              </div>
-            </div>
-          ))}
-        </div>
+      {/* ─── Row 4: Interview Calendar ─────── */}
+      <motion.div variants={item}>
+        <InterviewCalendar />
       </motion.div>
-      <Modal open={!!selectedSkill} onClose={() => setSelectedSkill(null)} title={`Talent with "${selectedSkill}"`}>
-        <div className="space-y-4">
-          {isLoadingSkillCand ? (
-            <div className="flex items-center justify-center py-10">
-              <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
-            </div>
-          ) : skillCandidates?.items.length === 0 ? (
-            <p className="text-center text-sm text-muted-foreground py-10">No candidates found for this skill.</p>
-          ) : (
-            <div className="space-y-2">
-              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2 px-1">Top Matches</p>
-              {skillCandidates?.items.map((c) => (
-                <button
-                  key={c.id}
-                  onClick={() => navigate(`/candidates/${c.id}`)}
-                  className="w-full flex items-center gap-4 p-3 rounded-xl bg-secondary/50 hover:bg-secondary border border-border/50 hover:border-primary/30 transition-all text-left group"
-                >
-                  <div className="w-10 h-10 rounded-xl bg-card border border-border flex items-center justify-center text-xs font-bold text-primary group-hover:scale-105 transition-transform">
-                    {c.name?.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2) || "??"}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-foreground group-hover:text-primary transition-colors">{c.name}</p>
-                    <p className="text-[11px] text-muted-foreground truncate">{c.email || "No email"}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-[10px] font-bold text-primary uppercase tracking-widest">{c.experience_years}y Exp</p>
-                    <ExternalLink className="w-3 h-3 text-muted-foreground ml-auto mt-1 opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
-          <button
-            onClick={() => {
-              navigate(`/candidates?search=${selectedSkill}`);
-              setSelectedSkill(null);
-            }}
-            className="w-full py-3 rounded-xl bg-primary/10 text-primary font-bold text-sm hover:bg-primary hover:text-primary-foreground transition-all mt-4 border border-primary/20"
-          >
-            View All in Directory
-          </button>
-        </div>
-      </Modal>
     </motion.div>
   );
 };
