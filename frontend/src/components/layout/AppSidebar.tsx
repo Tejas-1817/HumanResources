@@ -19,10 +19,12 @@ import {
   FileUp,
   PlusCircle,
   Settings,
+  BarChart3,
 } from "lucide-react";
 
 const navItems = [
   { label: "Dashboard", icon: LayoutDashboard, path: "/" },
+  { label: "Analytics", icon: BarChart3, path: "/analytics" },
   { label: "Internal Hiring", icon: Building, path: "/internal-hiring" },
   { label: "Total Candidates", icon: Users, path: "/candidates" },
   { label: "Open Positions", icon: Briefcase, path: "/open-positions" },

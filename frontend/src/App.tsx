@@ -22,6 +22,7 @@ import NotFound from "@/pages/NotFound";
 import InternalHiring from "@/pages/InternalHiring";
 import InterviewerDashboard from "@/pages/InterviewerDashboard";
 import Archives from "@/pages/Archives";
+import Analytics from "@/pages/Analytics";
 
 import { VendorLayout } from "@/components/layout/VendorLayout";
 import { InterviewerLayout } from "@/components/layout/InterviewerLayout";
@@ -107,6 +108,7 @@ const AppRoutes = () => {
         }
       >
         <Route path="/" element={<Dashboard />} />
+        <Route path="/analytics" element={<Analytics />} />
         <Route path="/internal-hiring" element={<InternalHiring />} />
         <Route path="/companies" element={<Companies />} />
         <Route path="/candidates/:id" element={<CandidateDetail />} />

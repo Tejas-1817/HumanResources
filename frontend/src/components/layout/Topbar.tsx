@@ -155,7 +155,11 @@ export const Topbar = ({
 
     // Default breadcrumb starting point
     const breadcrumbs = [{
-      label: isVendor ? "Vendor" : "Altzor",
+      label: isVendor 
+        ? "Vendor" 
+        : (location.pathname === "/" && currentUser?.name) 
+          ? `Welcome, ${currentUser.name}!` 
+          : "Altzor",
       path: isVendor ? "/vendor" : "/",
       isLast: isVendor ? pathnames.length === 1 : pathnames.length === 0
     }];
