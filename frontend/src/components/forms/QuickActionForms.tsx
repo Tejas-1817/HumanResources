@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Sun, Moon } from "lucide-react";
+import { Sun, Moon, Check } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import {
   createCandidate,
@@ -542,13 +542,39 @@ export const SettingsForm = ({ onSuccess }: { onSuccess: () => void }) => {
     password: "",
   });
   const [loading, setLoading] = useState(false);
-  const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains("dark"));
+  const [activeTheme, setActiveTheme] = useState(() => {
+    let saved = localStorage.getItem("theme") || "slate-light";
+    if (saved === "light") saved = "slate-light";
+    if (saved === "dark") saved = "slate-dark";
+    return saved;
+  });
 
-  const handleThemeChange = (dark: boolean) => {
-    setIsDark(dark);
-    document.documentElement.classList.toggle("dark", dark);
-    localStorage.setItem("theme", dark ? "dark" : "light");
-    toast.success(`${dark ? "Dark" : "Light"} theme applied`);
+  const baseTheme = activeTheme.split("-")[0] || "slate";
+  const themeMode = activeTheme.split("-")[1] || "light";
+
+  const handleThemeChange = (base: string, mode: string) => {
+    const themeName = `${base}-${mode}`;
+    setActiveTheme(themeName);
+    
+    const root = document.documentElement;
+    const themeClasses = [
+      "theme-slate-light", "theme-slate-dark",
+      "theme-ocean-light", "theme-ocean-dark",
+      "theme-amethyst-light", "theme-amethyst-dark",
+      "theme-forest-light", "theme-forest-dark",
+      "theme-sunset-light", "theme-sunset-dark"
+    ];
+    themeClasses.forEach(c => root.classList.remove(c));
+    
+    const isDark = mode === "dark";
+    root.classList.toggle("dark", isDark);
+    root.classList.add(`theme-${themeName}`);
+    
+    localStorage.setItem("theme", themeName);
+    
+    const friendlyBaseName = base.charAt(0).toUpperCase() + base.slice(1);
+    const friendlyModeName = mode.charAt(0).toUpperCase() + mode.slice(1);
+    toast.success(`${friendlyBaseName} (${friendlyModeName}) applied`);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -669,31 +695,82 @@ export const SettingsForm = ({ onSuccess }: { onSuccess: () => void }) => {
         </button>
       </form>
 
-      <div className="border-t border-border/60 pt-4">
-        <h4 className="text-[11px] font-black text-primary uppercase tracking-widest mb-3">Theme Settings</h4>
-        <div className="flex items-center gap-4">
-          <button
-            type="button"
-            onClick={() => handleThemeChange(false)}
-            className={`flex-1 py-3 px-4 rounded-xl border flex items-center justify-center gap-2 text-sm font-bold transition-all ${
-              !isDark
-                ? "bg-primary/10 border-primary text-primary shadow-sm"
-                : "bg-secondary/40 border-border text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <Sun className="w-4 h-4" /> Light
-          </button>
-          <button
-            type="button"
-            onClick={() => handleThemeChange(true)}
-            className={`flex-1 py-3 px-4 rounded-xl border flex items-center justify-center gap-2 text-sm font-bold transition-all ${
-              isDark
-                ? "bg-primary/10 border-primary text-primary shadow-sm"
-                : "bg-secondary/40 border-border text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <Moon className="w-4 h-4" /> Dark
-          </button>
+      <div className="border-t border-border/60 pt-4 space-y-4">
+        <div className="flex items-center justify-between">
+          <h4 className="text-[11px] font-black text-primary uppercase tracking-widest">Theme Settings</h4>
+          
+          {/* Light / Dark Mode Toggle */}
+          <div className="flex items-center bg-secondary/80 rounded-lg p-1 border border-border/50 shrink-0">
+            <button
+              type="button"
+              onClick={() => handleThemeChange(baseTheme, "light")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all ${
+                themeMode === "light"
+                  ? "bg-background text-primary shadow-sm border border-border/10 font-bold"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Sun className="w-3.5 h-3.5" /> Light
+            </button>
+            <button
+              type="button"
+              onClick={() => handleThemeChange(baseTheme, "dark")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all ${
+                themeMode === "dark"
+                  ? "bg-background text-primary shadow-sm border border-border/10 font-bold"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Moon className="w-3.5 h-3.5" /> Dark
+            </button>
+          </div>
+        </div>
+
+        {/* Theme Accent Grid */}
+        <div className="grid grid-cols-2 gap-3">
+          {[
+            { id: "slate", name: "Slate Default", desc: "Classic corporate design", color: "bg-[#6366f1]", bgLight: "bg-slate-50 border border-slate-200 text-slate-800", bgDark: "bg-[#0b0f19] border border-slate-800 text-slate-200" },
+            { id: "ocean", name: "Ocean Deep", desc: "Teal accented theme", color: "bg-[#14b8a6]", bgLight: "bg-cyan-50/50 border border-cyan-100 text-cyan-800", bgDark: "bg-[#050f14] border border-[#0c242c] text-teal-100" },
+            { id: "amethyst", name: "Royal Amethyst", desc: "Violet purple accents", color: "bg-[#a855f7]", bgLight: "bg-purple-50/50 border border-purple-100 text-purple-800", bgDark: "bg-[#0a0410] border border-[#210c30] text-purple-100" },
+            { id: "forest", name: "Forest Moss", desc: "Serene green details", color: "bg-[#10b981]", bgLight: "bg-emerald-50/50 border border-emerald-100 text-emerald-800", bgDark: "bg-[#051008] border border-[#0d2a17] text-emerald-100" },
+            { id: "sunset", name: "Sunset Glow", desc: "Warm amber & terracotta", color: "bg-[#f97316]", bgLight: "bg-orange-50/50 border border-orange-100 text-orange-800", bgDark: "bg-[#100805] border border-[#2c130c] text-amber-100" }
+          ].map((t) => {
+            const isSelected = baseTheme === t.id;
+            const previewBg = themeMode === "light" ? t.bgLight : t.bgDark;
+            return (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => handleThemeChange(t.id, themeMode)}
+                className={`group text-left p-3.5 rounded-xl border-2 transition-all flex flex-col justify-between h-[110px] relative overflow-hidden shadow-sm hover:shadow-md ${
+                  isSelected
+                    ? "border-primary bg-primary/[0.04] ring-2 ring-primary/20 scale-[1.02]"
+                    : "border-border/60 bg-secondary/20 hover:border-primary/30"
+                }`}
+              >
+                <div className="flex items-center justify-between w-full">
+                  <div className="flex items-center gap-2">
+                    <span className={`w-3 h-3 rounded-full ${t.color} shadow-sm`} />
+                    <span className="text-xs font-black tracking-tight">{t.name}</span>
+                  </div>
+                  {isSelected && (
+                    <div className="w-4 h-4 rounded-full bg-primary flex items-center justify-center text-primary-foreground">
+                      <Check className="w-2.5 h-2.5" />
+                    </div>
+                  )}
+                </div>
+                
+                {/* Mini palette preview */}
+                <div className={`mt-2 w-full h-8 rounded-lg ${previewBg} p-1.5 flex items-center gap-1.5 overflow-hidden relative`}>
+                  <div className="w-3.5 h-3.5 rounded-full bg-primary/20 shrink-0" />
+                  <div className="flex-1 space-y-1">
+                    <div className="w-8 h-1 bg-current opacity-30 rounded-full" />
+                    <div className="w-12 h-1 bg-current opacity-20 rounded-full" />
+                  </div>
+                </div>
+              </button>
+            );
+          })}
         </div>
       </div>
     </div>

@@ -709,7 +709,7 @@ const InterviewerDashboard = () => {
           {/* ═══ PIPELINE TAB ═══ */}
           {activeTab === "pipeline" && (
             <div>
-              <div className="flex items-center gap-3 mb-5 overflow-x-auto pb-2 scrollbar-none">
+              <div className="flex items-center gap-3 mb-5 overflow-x-auto pb-2 custom-scrollbar">
                 <div className="text-sm font-medium text-muted-foreground mr-2 flex items-center gap-1.5 border-r border-border pr-4 h-9 whitespace-nowrap">
                   <Filter className="w-4 h-4" /> Filter Pipeline:
                 </div>

@@ -393,7 +393,7 @@ const Pipeline = () => {
   const selectedCompany = selectedCompanyId ? companyById.get(selectedCompanyId) : null;
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="h-full flex flex-col">
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="h-[calc(100vh-110px)] md:h-[calc(100vh-130px)] flex flex-col overflow-hidden">
       <PageHeader
         title="Recruitment Pipeline"
         description="Manage candidates across different roles and companies"
@@ -608,7 +608,7 @@ const Pipeline = () => {
         })}
       </div>
 
-      <div className="flex-1 overflow-x-auto pb-6 scrollbar-hide snap-x snap-mandatory">
+      <div className="flex-1 overflow-x-auto pb-6 custom-scrollbar snap-x snap-mandatory max-h-[calc(100vh-240px)]">
         {!selectedRoleId ? (
           <div className="h-full min-h-[500px] flex flex-col items-center justify-center text-center">
             <motion.div
@@ -632,7 +632,7 @@ const Pipeline = () => {
             </motion.div>
           </div>
         ) : (
-          <div className="flex gap-4 h-full min-h-[600px] pb-4">
+          <div className="flex gap-4 h-full min-h-[300px] pb-4">
             {columns.map((col) => {
               const isDropping = dropTarget === col.id;
               return (
@@ -653,7 +653,7 @@ const Pipeline = () => {
                   </div>
 
                   <div
-                    className={`flex-1 space-y-2 min-h-[500px] p-2 rounded-xl border transition-all duration-200 ${isDropping
+                    className={`flex-1 space-y-2 min-h-[350px] max-h-[calc(100vh-270px)] overflow-y-auto custom-scrollbar p-2 rounded-xl border transition-all duration-200 ${isDropping
                       ? "bg-primary/10 border-primary/50 ring-2 ring-primary/10"
                       : "bg-[hsla(var(--box-bg),0.7)] border-border/40"
                       }`}

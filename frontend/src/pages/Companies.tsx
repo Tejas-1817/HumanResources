@@ -173,7 +173,7 @@ const Companies = () => {
   const [candFiltersOpen, setCandFiltersOpen] = useState(false);
 
   // ─── Pipeline state ───────────────────────────────────
-  const [pipelineRoleFilter, setPipelineRoleFilter] = useState<number | null>(null);
+  const [pipelineRoleFilter, setPipelineRoleFilter] = useState<number | "all" | null>(null);
   const [draggedCard, setDraggedCard] = useState<{ id: number; fromCol: string; name: string; currentInterviewDate?: string } | null>(null);
   const [draggedStageIdx, setDraggedStageIdx] = useState<number | null>(null);
   const [dropTarget, setDropTarget] = useState<string | null>(null);
@@ -232,7 +232,7 @@ const Companies = () => {
   // Auto-select first job role when Pipeline tab is entered
   useEffect(() => {
     if (activeTab === "pipeline" && selectedCompanyId && !pipelineRoleFilter && companyRoles.length > 0) {
-      setPipelineRoleFilter(companyRoles[0].id);
+      setPipelineRoleFilter("all");
     }
   }, [activeTab, selectedCompanyId, pipelineRoleFilter, companyRoles]);
   // Filtered pipeline for selected company
@@ -248,7 +248,7 @@ const Companies = () => {
     }
 
     // Use stages from filtered role, or default if none/multiple
-    const activeRole = pipelineRoleFilter ? roleById.get(pipelineRoleFilter) : null;
+    const activeRole = pipelineRoleFilter && pipelineRoleFilter !== "all" ? roleById.get(pipelineRoleFilter) : null;
     const stagesToUse = activeRole?.pipeline_stages || DEFAULT_STAGES;
 
     return stagesToUse.map((stage) => ({
@@ -279,7 +279,10 @@ const Companies = () => {
           };
         })
         .filter((c: any) => {
-          const isMatch = c.companyId === selectedCompanyId && c.roleId === pipelineRoleFilter;
+          const isMatch = pipelineRoleFilter === "all"
+            ? c.companyId === selectedCompanyId
+            : (c.companyId === selectedCompanyId && c.roleId === pipelineRoleFilter);
+          
           if (!isMatch) return false;
           
           const isFinalStage = ["selected", "rejected", "dropped"].includes(stage.id.toLowerCase());
@@ -718,8 +721,10 @@ const Companies = () => {
   // ──────────────────────────────────────────────────────────
   // RENDER
   // ──────────────────────────────────────────────────────────
+  const isPipeline = selectedCompanyId && activeTab === "pipeline";
+
   return (
-    <div>
+    <div className={isPipeline ? "h-[calc(100vh-110px)] md:h-[calc(100vh-130px)] flex flex-col overflow-hidden space-y-3" : ""}>
       <PageHeader
         title={selectedCompanyId ? "Company Hub" : "Partner Companies"}
         description={selectedCompanyId
@@ -872,7 +877,7 @@ const Companies = () => {
                 Back to All Companies
               </button>
             </div>
-            <div className="glass-card overflow-hidden">
+            <div className={`glass-card overflow-hidden ${isPipeline ? "flex-1 flex flex-col min-h-0" : ""}`}>
               {/* Detail header */}
               <div className="p-5 border-b border-border flex items-center gap-4 flex-wrap">
                 <div className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center">
@@ -937,7 +942,7 @@ const Companies = () => {
               </div>
 
               {/* Tab Content */}
-              <div className="p-5">
+              <div className={`p-5 ${isPipeline ? "flex-1 flex flex-col min-h-0 overflow-hidden" : ""}`}>
                 {/* ═══ JOB ROLES TAB ═══ */}
                 {activeTab === "roles" && (
                   <div>
@@ -1212,22 +1217,28 @@ const Companies = () => {
 
                 {/* ═══ PIPELINE TAB ═══ */}
                 {activeTab === "pipeline" && (
-                  <div>
+                  <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
                     {/* Role Filter for Pipeline */}
                     <div className="flex items-center gap-3 mb-5">
                       <div className="text-sm font-medium text-muted-foreground mr-2 flex items-center gap-1.5 border-r border-border pr-4 h-9">
                         <Filter className="w-4 h-4" /> Filter Pipeline:
                       </div>
+                      <button
+                        onClick={() => setPipelineRoleFilter("all")}
+                        className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${pipelineRoleFilter === "all" ? "bg-primary text-primary-foreground font-bold" : "bg-secondary text-muted-foreground hover:text-foreground"}`}
+                      >
+                        All
+                      </button>
                       {jobRoles.filter(r => r.company_id === selectedCompanyId!).map(role => (
                         <button
                           key={role.id}
                           onClick={() => setPipelineRoleFilter(role.id)}
-                          className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${pipelineRoleFilter === role.id ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground hover:text-foreground"}`}
+                          className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${pipelineRoleFilter === role.id ? "bg-primary text-primary-foreground font-bold" : "bg-secondary text-muted-foreground hover:text-foreground"}`}
                         >
                           {role.title}
                         </button>
                       ))}
-                      {pipelineRoleFilter && (
+                      {pipelineRoleFilter && pipelineRoleFilter !== "all" && (
                         <button
                           onClick={() => handleAddStage(pipelineRoleFilter)}
                           className="px-3 py-2 rounded-lg text-xs font-bold bg-primary/10 text-primary hover:bg-primary/20 transition-all flex items-center gap-1 ml-4 border border-primary/20"
@@ -1254,7 +1265,7 @@ const Companies = () => {
 
 
                     {/* Kanban columns */}
-                    <div className="flex gap-4 overflow-x-auto pb-6 scroll-smooth snap-x snap-mandatory no-scrollbar -mx-5 px-5 md:mx-0 md:px-0">
+                    <div className="flex gap-4 overflow-x-auto pb-6 scroll-smooth snap-x snap-mandatory custom-scrollbar max-h-[calc(100vh-290px)] -mx-5 px-5 md:mx-0 md:px-0">
                       {!pipelineRoleFilter ? (
                         <div className="flex-1 flex flex-col items-center justify-center p-10 bg-secondary/20 border border-border/50 border-dashed rounded-2xl min-h-[400px] text-center snap-start">
                           <div className="w-20 h-20 rounded-3xl bg-primary/10 flex items-center justify-center mb-6 shadow-sm ring-1 ring-primary/20">
@@ -1280,13 +1291,13 @@ const Companies = () => {
                             >
                               <div
                                 className={`flex items-center gap-2 mb-4 px-2 group py-1 transition-all ${draggedStageIdx === idx ? "opacity-30" : ""}`}
-                                draggable={!!pipelineRoleFilter}
-                                onDragStart={() => handleStageDragStart(idx)}
+                                draggable={!!pipelineRoleFilter && pipelineRoleFilter !== "all"}
+                                  onDragStart={() => handleStageDragStart(idx)}
                               >
                                 <div className={`w-2.5 h-2.5 rounded-full ${col.color} shadow-sm`} />
                                 <h3 className="text-[11px] font-black text-foreground uppercase tracking-widest">{col.title}</h3>
                                 <span className="text-[10px] text-primary ml-auto bg-primary/10 px-2.5 py-1 rounded-full font-black ring-1 ring-primary/20">{col.cards.length}</span>
-                                {pipelineRoleFilter && (
+                                {pipelineRoleFilter && pipelineRoleFilter !== "all" && (
                                   <button
                                     onClick={(e) => { e.stopPropagation(); handleRemoveStage(pipelineRoleFilter, col.id); }}
                                     className="ml-2 p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors opacity-0 group-hover:opacity-100"
@@ -1296,7 +1307,7 @@ const Companies = () => {
                                 )}
                               </div>
                               <div
-                                className={`flex-1 space-y-3 min-h-[350px] p-2.5 rounded-2xl border transition-all duration-300 ${isDropping
+                                className={`flex-1 space-y-3 min-h-[350px] max-h-[calc(100vh-320px)] overflow-y-auto custom-scrollbar p-2.5 rounded-2xl border transition-all duration-300 ${isDropping
                                   ? "bg-primary/5 border-primary/50 ring-4 ring-primary/[0.03]"
                                   : "bg-secondary/40 border-border/40"
                                   }`}
