@@ -25,6 +25,13 @@ import {
   Eye,
   ChevronDown,
   Check,
+  ArrowUp,
+  ArrowDown,
+  Star,
+  MapPin,
+  ArrowRight,
+  MoreVertical,
+  Download,
 } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -718,134 +725,397 @@ const Companies = () => {
   // ──────────────────────────────────────────────────────────
   // RENDER
   // ──────────────────────────────────────────────────────────
+
+  const [activeListTab, setActiveListTab] = useState("All Companies");
+
+  const MOCK_INDUSTRIES = ["IT Services & Consulting", "Technology & Consulting", "Software Development"];
+  const MOCK_LOCATIONS = ["Bengaluru, Karnataka", "Teaneck, New Jersey, USA", "Armonk, New York, USA", "Redmond, Washington, USA", "Mumbai, Maharashtra"];
+  const MOCK_STAGES = ["Sourcing", "Screening", "Interviewing", "On Hold"];
+  const MOCK_STATUSES = ["Active", "On Hold"];
+
+  const getMockIndustry = (id: number) => MOCK_INDUSTRIES[id % MOCK_INDUSTRIES.length];
+  const getMockLocation = (id: number) => MOCK_LOCATIONS[id % MOCK_LOCATIONS.length];
+  const getMockStage = (id: number) => MOCK_STAGES[id % MOCK_STAGES.length];
+  const getMockStatus = (id: number) => id % 4 === 3 ? "On Hold" : "Active";
+
+  const [selectedIndustry, setSelectedIndustry] = useState<string>("All");
+  const [selectedLocation, setSelectedLocation] = useState<string>("All");
+  const [selectedStatus, setSelectedStatus] = useState<string>("All");
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 5;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [companySearch, selectedIndustry, selectedLocation, selectedStatus, activeListTab]);
+
+  const filteredCompaniesList = useMemo(() => {
+    return companies.filter(c => {
+      // 1. Search Filter
+      if (companySearch && !c.name.toLowerCase().includes(companySearch.toLowerCase())) return false;
+      
+      const openRoles = openRoleCountByCompany.get(c.id) || 0;
+      const totalRoles = roleCountByCompany.get(c.id) || 0;
+      const mockStatus = getMockStatus(c.id);
+      const mockIndustry = getMockIndustry(c.id);
+      const mockLocation = getMockLocation(c.id);
+
+      // 2. Tab Filter
+      if (activeListTab === "Active Positions" && openRoles === 0) return false;
+      if (activeListTab === "On Hold" && mockStatus !== "On Hold") return false;
+      if (activeListTab === "Closed Positions" && (totalRoles === 0 || openRoles > 0)) return false;
+      if (activeListTab === "Recently Added") {
+        const daysOld = (Date.now() - new Date(c.created_at).getTime()) / (1000 * 3600 * 24);
+        if (daysOld > 14) return false;
+      }
+
+      // 3. Dropdown Filters
+      if (selectedIndustry !== "All" && mockIndustry !== selectedIndustry) return false;
+      if (selectedLocation !== "All" && mockLocation !== selectedLocation) return false;
+      if (selectedStatus !== "All" && mockStatus !== selectedStatus) return false;
+
+      return true;
+    });
+  }, [companies, companySearch, activeListTab, selectedIndustry, selectedLocation, selectedStatus, openRoleCountByCompany, roleCountByCompany]);
+
+  const activePositionsCount = filteredCompaniesList.reduce((acc, c) => acc + (openRoleCountByCompany.get(c.id) || 0), 0);
+  const totalCandidatesCount = filteredCompaniesList.reduce((acc, c) => acc + (candidateCountByCompany.get(c.id) || 0), 0);
+  const successfulHiresCount = useMemo(() => {
+    const selectedApps = pipeline["selected"] || pipeline["Selected"] || [];
+    const validCompanyIds = new Set(filteredCompaniesList.map(c => c.id));
+    return selectedApps.filter(app => {
+      const role = roleById.get(app.job_role_id);
+      return role && validCompanyIds.has(role.company_id);
+    }).length;
+  }, [pipeline, roleById, filteredCompaniesList]);
+
+  const summaryCards = [
+    { title: "Total Partner Companies", value: filteredCompaniesList.length, icon: Building2, iconColor: "text-blue-600", bg: "bg-blue-50" },
+    { title: "Active Positions", value: activePositionsCount, icon: Briefcase, iconColor: "text-purple-600", bg: "bg-purple-50" },
+    { title: "Total Candidates", value: totalCandidatesCount, icon: Users, iconColor: "text-blue-600", bg: "bg-blue-50" },
+    { title: "Successful Hires", value: successfulHiresCount, icon: Star, iconColor: "text-yellow-600", bg: "bg-yellow-50" },
+  ];
+
+  const handleClearFilters = () => {
+    setCompanySearch("");
+    setSelectedIndustry("All");
+    setSelectedLocation("All");
+    setSelectedStatus("All");
+    setActiveListTab("All Companies");
+  };
+
+  const handleExportCsv = () => {
+    const headers = ["Company", "Active Positions", "Total Candidates", "Pipeline Stage", "Status"];
+    const rows = filteredCompaniesList.map(c => {
+      const openRoles = openRoleCountByCompany.get(c.id) || 0;
+      const totalCand = candidateCountByCompany.get(c.id) || 0;
+      const mockStage = getMockStage(c.id);
+      const mockStatus = getMockStatus(c.id);
+      return [
+        `"${c.name}"`,
+        openRoles,
+        totalCand,
+        `"${mockStage}"`,
+        `"${mockStatus}"`
+      ].join(",");
+    });
+    
+    const csvContent = [headers.join(","), ...rows].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", "partner_companies.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
-    <div>
-      <PageHeader
-        title={selectedCompanyId ? "Company Hub" : "Partner Companies"}
-        description={selectedCompanyId
-          ? `Manage recruitment ops for ${selectedCompany?.name}`
-          : "Overview of all active partner organizations and their hiring status"}
-        actions={
-          <button onClick={openAddCompany} className="px-4 py-2.5 rounded-lg bg-primary text-primary-foreground font-medium text-sm hover:bg-primary/90 transition-all flex items-center gap-2">
-            <Plus className="w-4 h-4" /> Add New Company
-          </button>
-        }
-      />
-
-      {/* ─── SEARCH BAR (Only for List View) ─────────────────── */}
-      {!selectedCompanyId && (
-        <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="relative group w-full md:w-[400px]">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-muted-foreground group-focus-within:text-primary transition-colors" />
-            <input
-              type="text"
-              placeholder="Search by company name..."
-              value={companySearch}
-              onChange={(e) => setCompanySearch(e.target.value)}
-              className="w-full pl-11 pr-4 py-3 rounded-xl bg-card border border-border/50 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all shadow-sm"
-            />
-          </div>
-
-          <div className="flex items-center gap-3">
-            <div className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest bg-secondary/50 px-3 py-1.5 rounded-lg border border-border/50">
-              Total: {companies.length} Partners
+    <div className="min-h-screen bg-slate-50/50">
+      {selectedCompanyId ? (
+        <PageHeader
+          title="Company Hub"
+          description={`Manage recruitment ops for ${selectedCompany?.name}`}
+          actions={
+            <button onClick={openAddCompany} className="px-4 py-2.5 rounded-lg bg-primary text-primary-foreground font-medium text-sm hover:bg-primary/90 transition-all flex items-center gap-2">
+              <Plus className="w-4 h-4" /> Add New Company
+            </button>
+          }
+        />
+      ) : (
+        <div className="p-8">
+          {/* Header */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+            <div>
+              <h1 className="text-2xl font-bold text-slate-900">Partner Companies</h1>
+              <p className="text-sm text-slate-500 mt-1">Manage all partner companies and their open positions</p>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* ─── CATALOG VIEW (List of Companies) ─────────────────── */}
-      {!selectedCompanyId && (
-        <div className="glass-card overflow-hidden">
-          <div className="hidden md:block p-4 border-b border-border/50 bg-secondary/20">
-            <div className="grid grid-cols-12 gap-4 px-4 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-              <div className="col-span-12 md:col-span-4">Organization</div>
-              <div className="md:col-span-5 hidden md:block">Activity & Recruitment Stats</div>
-              <div className="md:col-span-3 text-right hidden md:block">Quick Actions</div>
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Search companies or roles..."
+                  value={companySearch}
+                  onChange={(e) => setCompanySearch(e.target.value)}
+                  className="pl-9 pr-4 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 w-[260px]"
+                />
+              </div>
+              <button onClick={openAddCompany} className="px-4 py-2 rounded-lg bg-blue-600 text-white font-medium text-sm hover:bg-blue-700 transition-colors flex items-center gap-2 shadow-sm">
+                <Plus className="w-4 h-4" /> Add Partner Company
+              </button>
             </div>
           </div>
 
-          <div className="divide-y divide-border/50">
-            {companies
-              .filter(c => c.name.toLowerCase().includes(companySearch.toLowerCase()))
-              .map((c) => {
-                const totalRoles = roleCountByCompany.get(c.id) || 0;
-                const openRoles = openRoleCountByCompany.get(c.id) || 0;
-                const totalCand = candidateCountByCompany.get(c.id) || 0;
+          {/* Summary Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+            {summaryCards.map((card, idx) => (
+              <div key={idx} className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-blue-300 transition-all cursor-default">
+                <div className="flex items-center gap-3">
+                  <div className={`w-11 h-11 rounded-lg flex items-center justify-center shrink-0 ${card.bg}`}>
+                    <card.icon className={`w-6 h-6 ${card.iconColor}`} />
+                  </div>
+                  <div>
+                    <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">{card.title}</div>
+                    <div className="text-xl font-bold text-slate-900">{card.value}</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
 
-                return (
-                  <motion.div
-                    key={c.id}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="flex flex-col md:grid md:grid-cols-12 gap-4 p-5 md:p-4 md:px-8 items-start md:items-center hover:bg-primary/[0.02] transition-all group cursor-pointer"
-                    onClick={() => navigate(`/companies?id=${c.id}`)}
-                  >
-                    {/* Organization Info */}
-                    <div className="w-full md:col-span-4 flex items-center gap-4">
-                      <div className="w-10 h-10 md:w-11 md:h-11 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold text-xs ring-1 ring-primary/20 group-hover:scale-110 transition-transform shadow-sm shrink-0">
-                        <Building2 className="w-5 h-5 md:w-6 md:h-6" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-bold text-foreground group-hover:text-primary transition-colors truncate">
-                          {c.name}
-                        </p>
-                      </div>
-                    </div>
+          {/* Tabs */}
+          <div className="flex items-center gap-8 border-b border-slate-200 mb-6">
+            {["All Companies", "Active Positions", "On Hold", "Closed Positions", "Recently Added"].map(tab => (
+              <button
+                key={tab}
+                onClick={() => setActiveListTab(tab)}
+                className={`pb-3 text-sm font-bold transition-colors relative ${activeListTab === tab ? "text-blue-600" : "text-slate-500 hover:text-slate-700"}`}
+              >
+                {tab === "All Companies" && <Building2 className="w-4 h-4 inline-block mr-2" />}
+                {tab === "Active Positions" && <Briefcase className="w-4 h-4 inline-block mr-2" />}
+                {tab === "On Hold" && <Clock className="w-4 h-4 inline-block mr-2" />}
+                {tab}
+                {activeListTab === tab && (
+                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 rounded-t-full" />
+                )}
+              </button>
+            ))}
+          </div>
 
-                    {/* Stats */}
-                    <div className="w-full md:col-span-5 flex items-center justify-between md:justify-start gap-4 md:gap-6 py-2 md:py-0 border-y border-border/30 md:border-none">
-                      <div className="flex flex-col">
-                        <span className="text-xs font-bold text-foreground">{totalRoles}</span>
-                        <span className="text-[10px] text-muted-foreground uppercase font-bold">Roles</span>
-                      </div>
-                      <div className="flex flex-col">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-bold text-success">{openRoles}</span>
-                          <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
-                        </div>
-                        <span className="text-[10px] text-muted-foreground uppercase font-bold">Active</span>
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="text-xs font-bold text-primary">{totalCand}</span>
-                        <span className="text-[10px] text-muted-foreground uppercase font-bold">Candidates</span>
-                      </div>
-                    </div>
+          {/* Filters Bar */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+            <div className="flex items-center gap-3 flex-wrap">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Search company name..."
+                  value={companySearch}
+                  onChange={(e) => setCompanySearch(e.target.value)}
+                  className="pl-9 pr-4 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-blue-500 w-[240px]"
+                />
+              </div>
+              <div className="relative">
+                <select
+                  value={selectedIndustry}
+                  onChange={(e) => setSelectedIndustry(e.target.value)}
+                  className="appearance-none px-4 py-2 pr-10 rounded-lg border border-slate-200 text-slate-600 text-sm font-medium bg-white hover:bg-slate-50 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 cursor-pointer"
+                >
+                  <option value="All">Industry</option>
+                  {MOCK_INDUSTRIES.map(i => <option key={i} value={i}>{i}</option>)}
+                </select>
+                <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
+              <div className="relative">
+                <select
+                  value={selectedLocation}
+                  onChange={(e) => setSelectedLocation(e.target.value)}
+                  className="appearance-none px-4 py-2 pr-10 rounded-lg border border-slate-200 text-slate-600 text-sm font-medium bg-white hover:bg-slate-50 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 cursor-pointer"
+                >
+                  <option value="All">Location</option>
+                  {MOCK_LOCATIONS.map(l => <option key={l} value={l}>{l}</option>)}
+                </select>
+                <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
+              <div className="relative">
+                <select
+                  value={selectedStatus}
+                  onChange={(e) => setSelectedStatus(e.target.value)}
+                  className="appearance-none px-4 py-2 pr-10 rounded-lg border border-slate-200 text-slate-600 text-sm font-medium bg-white hover:bg-slate-50 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 cursor-pointer"
+                >
+                  <option value="All">Status</option>
+                  {MOCK_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+                <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <button onClick={handleClearFilters} className="px-4 py-2 rounded-lg border border-slate-200 text-slate-600 text-sm font-medium flex items-center gap-2 bg-white hover:bg-slate-50 shadow-sm transition-all">
+                <Filter className="w-4 h-4" /> Clear Filters
+              </button>
+            </div>
+          </div>
 
-                    {/* Actions */}
-                    <div className="w-full md:col-span-3 flex items-center justify-between md:justify-end gap-2 mt-2 md:mt-0">
-                      <div className="flex gap-2">
-                        <button
-                          onClick={(e) => { e.stopPropagation(); openEditCompany(c); }}
-                          className="p-2 rounded-lg bg-secondary/50 text-muted-foreground hover:text-foreground hover:bg-secondary transition-all"
-                          title="Edit Company"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setDeleteId(c.id); }}
-                          className="p-2 rounded-lg bg-destructive/5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all"
-                          title="Delete Company"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                      <button
-                        className="px-4 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-bold hover:bg-primary hover:text-primary-foreground transition-all flex items-center gap-2 group/btn"
-                      >
-                        Details
-                        <ExternalLink className="w-3.5 h-3.5 group-hover/btn:translate-x-0.5 transition-transform" />
-                      </button>
-                    </div>
-                  </motion.div>
-                );
-              })}
+          {/* Table */}
+          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-200 bg-slate-50/50">
+                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Company</th>
+                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Active Positions</th>
+                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Positions Filled</th>
+                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Total Candidates</th>
+                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Pipeline Stage</th>
+                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Quick Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredCompaniesList
+                    .slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
+                    .map((c, i) => {
+                      const openRoles = openRoleCountByCompany.get(c.id) || 0;
+                      const totalRoles = roleCountByCompany.get(c.id) || 0;
+                      const totalCand = candidateCountByCompany.get(c.id) || 0;
+                      
+                      const selectedApps = pipeline["selected"] || pipeline["Selected"] || [];
+                      const companyHiresCount = selectedApps.filter(app => {
+                        const role = roleById.get(app.job_role_id);
+                        return role && role.company_id === c.id;
+                      }).length;
+                      const fillPercentage = Math.min(100, Math.max(0, totalRoles > 0 ? (companyHiresCount / totalRoles) * 100 : 0));
+                      
+                      // Use consistent mock data
+                      const mockIndustry = getMockIndustry(c.id);
+                      const mockLocation = getMockLocation(c.id);
+                      const mockStage = getMockStage(c.id);
+                      const mockStageColors: Record<string, string> = {
+                        "Sourcing": "bg-blue-50 text-blue-600 border border-blue-200",
+                        "Screening": "bg-purple-50 text-purple-600 border border-purple-200",
+                        "Interviewing": "bg-amber-50 text-amber-600 border border-amber-200",
+                        "On Hold": "bg-orange-50 text-orange-600 border border-orange-200"
+                      };
+                      const mockStatus = getMockStatus(c.id);
+                      const mockStatusColors: Record<string, string> = {
+                        "Active": "bg-green-50 text-green-600 border border-green-200",
+                        "On Hold": "bg-orange-50 text-orange-600 border border-orange-200"
+                      };
 
-            {companies.length === 0 && (
-              <div className="p-20 text-center">
-                <Building2 className="w-12 h-12 text-muted-foreground/20 mx-auto mb-4" />
-                <p className="text-sm text-muted-foreground">No companies registered yet.</p>
-                <button onClick={openAddCompany} className="mt-4 text-xs text-primary font-bold hover:underline">Register New Partner</button>
+                      return (
+                        <tr key={c.id} className="hover:bg-slate-50/80 transition-colors group">
+                          {/* Company */}
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-3 cursor-pointer" onClick={() => selectCompany(c.id)}>
+                              <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
+                                <Building2 className="w-5 h-5 text-blue-500" />
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="font-bold text-sm text-slate-900 group-hover:text-blue-600 transition-colors">{c.name}</span>
+                                  <Check className="w-3 h-3 text-white bg-blue-600 rounded-full p-0.5" />
+                                </div>
+                                <div className="flex flex-col gap-0.5 mt-0.5">
+                                  <span className="text-[11px] text-slate-500">{mockIndustry}</span>
+                                  <span className="text-[11px] text-slate-400 flex items-center gap-1">
+                                    <MapPin className="w-3 h-3" /> {mockLocation}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                          {/* Active Positions */}
+                          <td className="px-6 py-4">
+                            <div className="text-sm font-bold text-slate-900">{openRoles}</div>
+                            <button onClick={() => { selectCompany(c.id); handleTabChange("roles"); }} className="text-[11px] text-blue-600 font-bold hover:underline mt-1 flex items-center gap-1">
+                              View Positions <ArrowRight className="w-3 h-3" />
+                            </button>
+                          </td>
+                          {/* Positions Filled */}
+                          <td className="px-6 py-4 w-48">
+                            <div className="text-sm font-bold text-slate-900">{companyHiresCount} / {totalRoles}</div>
+                            <div className="w-full bg-slate-100 rounded-full h-1.5 mt-2 overflow-hidden">
+                              <div className="bg-blue-600 h-1.5 rounded-full" style={{ width: `${fillPercentage}%` }}></div>
+                            </div>
+                          </td>
+                          {/* Total Candidates */}
+                          <td className="px-6 py-4">
+                            <div className="text-sm font-bold text-slate-900">{totalCand}</div>
+                            <button onClick={() => { selectCompany(c.id); handleTabChange("candidates"); }} className="text-[11px] text-blue-600 font-bold hover:underline mt-1 flex items-center gap-1">
+                              View Candidates <ArrowRight className="w-3 h-3" />
+                            </button>
+                          </td>
+                          {/* Pipeline Stage */}
+                          <td className="px-6 py-4">
+                            <span className={`px-3 py-1.5 text-[10px] font-bold rounded-full ${mockStageColors[mockStage]}`}>
+                              {mockStage}
+                            </span>
+                          </td>
+                          {/* Status */}
+                          <td className="px-6 py-4">
+                            <span className={`px-3 py-1.5 text-[10px] font-bold rounded-full ${mockStatusColors[mockStatus]}`}>
+                              {mockStatus}
+                            </span>
+                          </td>
+                          {/* Quick Actions */}
+                          <td className="px-6 py-4 text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <button onClick={() => { setEditId(c.id); setCompanyForm({ name: c.name }); setCompanyModalOpen(true); }} className="p-1.5 rounded border border-slate-200 text-slate-400 hover:text-blue-600 hover:bg-blue-50 hover:border-blue-200 transition-all bg-white" title="Edit Company">
+                                <Edit className="w-4 h-4" />
+                              </button>
+                              <button onClick={() => setDeleteId(c.id)} className="p-1.5 rounded border border-slate-200 text-slate-400 hover:text-red-600 hover:bg-red-50 hover:border-red-200 transition-all bg-white" title="Delete Company">
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                              <button onClick={() => selectCompany(c.id)} className="px-3 py-1.5 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors text-xs font-bold flex items-center gap-1.5 ml-1">
+                                Details <ExternalLink className="w-3 h-3" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  
+                  {companies.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="px-6 py-12 text-center">
+                        <Building2 className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+                        <p className="text-sm text-slate-500">No partner companies found.</p>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+            
+            {/* Pagination */}
+            {Math.ceil(filteredCompaniesList.length / PAGE_SIZE) > 1 && (
+              <div className="p-4 border-t border-slate-200 flex items-center justify-between text-sm text-slate-500">
+                <div>Showing {(currentPage - 1) * PAGE_SIZE + 1} to {Math.min(currentPage * PAGE_SIZE, filteredCompaniesList.length)} of {filteredCompaniesList.length} companies</div>
+                <div className="flex items-center gap-1">
+                  <button 
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    className="w-8 h-8 flex items-center justify-center rounded border border-slate-200 bg-white hover:bg-slate-50 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  ><ChevronLeft className="w-4 h-4" /></button>
+                  
+                  {Array.from({ length: Math.ceil(filteredCompaniesList.length / PAGE_SIZE) }).map((_, i) => (
+                    <button 
+                      key={i}
+                      onClick={() => setCurrentPage(i + 1)}
+                      className={`w-8 h-8 flex items-center justify-center rounded shadow-sm font-bold ${currentPage === i + 1 ? 'bg-blue-600 text-white' : 'border border-slate-200 bg-white hover:bg-slate-50'}`}
+                    >
+                      {i + 1}
+                    </button>
+                  ))}
+
+                  <button 
+                    disabled={currentPage === Math.ceil(filteredCompaniesList.length / PAGE_SIZE)}
+                    onClick={() => setCurrentPage(prev => Math.min(Math.ceil(filteredCompaniesList.length / PAGE_SIZE), prev + 1))}
+                    className="w-8 h-8 flex items-center justify-center rounded border border-slate-200 bg-white hover:bg-slate-50 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  ><ChevronRight className="w-4 h-4" /></button>
+                </div>
               </div>
             )}
           </div>
@@ -865,7 +1135,7 @@ const Companies = () => {
             {/* ─── Breadcrumb Back Link ─────────────────────────────── */}
             <div className="mb-4">
               <button
-                onClick={() => navigate("/companies")}
+                onClick={() => setSelectedCompanyId(null)}
                 className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary transition-colors group"
               >
                 <ChevronLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" />

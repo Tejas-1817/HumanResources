@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     db_port: int = 3306
     db_name: str = "resumeiq"
     db_user: str = "root"
-    db_password: str = ""
+    db_password: str = "NewPassword@123"
 
     secret_key: str = "change-me"
     jwt_secret: str | None = None
