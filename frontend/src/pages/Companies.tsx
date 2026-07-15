@@ -25,7 +25,6 @@ import {
   Eye,
   ChevronDown,
   Check,
-  MapPin,
 } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -86,11 +85,11 @@ const getStatusFromAge = (c: Candidate): string => {
 const getRoleTags = (r: any) => {
   const title = r.title.toLowerCase();
   const tags: string[] = [];
-  
+
   if (title.includes("general")) {
     return ["— General positions and unassigned roles"];
   }
-  
+
   if (title.includes("python")) {
     tags.push("Python", "Django");
   } else if (title.includes("outreach")) {
@@ -110,7 +109,7 @@ const getRoleTags = (r: any) => {
   } else {
     tags.push(r.title);
   }
-  
+
   if (r.experience_required != null && r.experience_required !== "") {
     const exp = r.experience_required;
     if (typeof exp === "number") {
@@ -350,12 +349,12 @@ const Companies = () => {
   // Total positions filled and required per company
   const positionsFilledByCompany = useMemo(() => {
     const m = new Map<number, { filled: number, required: number }>();
-    
+
     for (const r of jobRoles) {
       const cid = r.company_id;
       const filledCount = (pipeline["selected"] || []).filter((app: any) => app.job_role_id === r.id).length;
       const requiredCount = r.positions_required || 0;
-      
+
       if (!m.has(cid)) {
         m.set(cid, { filled: 0, required: 0 });
       }
@@ -363,7 +362,7 @@ const Companies = () => {
       val.filled += filledCount;
       val.required += requiredCount;
     }
-    
+
     return m;
   }, [jobRoles, pipeline]);
 
@@ -373,24 +372,24 @@ const Companies = () => {
   const companyRoles = useMemo(() => {
     if (!selectedCompanyId) return [];
     const roles = jobRoles.filter((r) => r.company_id === selectedCompanyId);
-    
+
     // Map each role to include its computed status and filled count
     const rolesWithComputedStatus = roles.map(r => {
       const filledCount = (pipeline["selected"] || []).filter((app: any) => app.job_role_id === r.id).length;
-      
+
       let computedStatus = "open";
       if (r.status.toLowerCase() === "closed") {
         computedStatus = "closed";
       } else {
         const inProgressStages = ["shortlisted", "interview_scheduled", "interviewed", "on_hold"];
-        const hasActiveCandidates = inProgressStages.some(stage => 
+        const hasActiveCandidates = inProgressStages.some(stage =>
           (pipeline[stage] || []).some((app: any) => app.job_role_id === r.id)
         );
         if (hasActiveCandidates) {
           computedStatus = "in progress";
         }
       }
-      
+
       return {
         ...r,
         filledCount,
@@ -455,9 +454,9 @@ const Companies = () => {
           const isMatch = pipelineRoleFilter === "all"
             ? c.companyId === selectedCompanyId
             : (c.companyId === selectedCompanyId && c.roleId === pipelineRoleFilter);
-          
+
           if (!isMatch) return false;
-          
+
           const isFinalStage = ["selected", "rejected", "dropped"].includes(stage.id.toLowerCase());
           if (isFinalStage && c.statusDate) {
             const days = Math.max(0, Math.floor((Date.now() - new Date(c.statusDate).getTime()) / 86400000));
@@ -908,10 +907,8 @@ const Companies = () => {
   // ──────────────────────────────────────────────────────────
   // RENDER
   // ──────────────────────────────────────────────────────────
-  const isPipeline = selectedCompanyId && activeTab === "pipeline";
-
   return (
-    <div className={isPipeline ? "h-[calc(100vh-110px)] md:h-[calc(100vh-130px)] flex flex-col overflow-hidden space-y-3" : ""}>
+    <div>
       <PageHeader
         title={selectedCompanyId ? "Company Hub" : "Partner Companies"}
         description={selectedCompanyId
@@ -950,12 +947,10 @@ const Companies = () => {
       {!selectedCompanyId && (
         <div className="glass-card overflow-hidden">
           <div className="hidden md:block p-4 border-b border-border/50 bg-secondary/20">
-            <div className="grid grid-cols-12 gap-4 px-4 text-[10px] font-bold text-muted-foreground uppercase tracking-widest items-center">
-              <div className="col-span-3">Organization</div>
-              <div className="col-span-2">Active Positions</div>
-              <div className="col-span-3">Positions Filled</div>
-              <div className="col-span-2">Total Candidates</div>
-              <div className="col-span-2 text-right">Quick Actions</div>
+            <div className="grid grid-cols-12 gap-4 px-4 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+              <div className="col-span-12 md:col-span-4">Organization</div>
+              <div className="md:col-span-5 hidden md:block">Activity & Recruitment Stats</div>
+              <div className="md:col-span-3 text-right hidden md:block">Quick Actions</div>
             </div>
           </div>
 
@@ -963,10 +958,9 @@ const Companies = () => {
             {companies
               .filter(c => c.name.toLowerCase().includes(companySearch.toLowerCase()))
               .map((c) => {
+                const totalRoles = roleCountByCompany.get(c.id) || 0;
                 const openRoles = openRoleCountByCompany.get(c.id) || 0;
                 const totalCand = candidateCountByCompany.get(c.id) || 0;
-                const stats = positionsFilledByCompany.get(c.id) || { filled: 0, required: 0 };
-                const percent = stats.required > 0 ? Math.min(100, Math.round((stats.filled / stats.required) * 100)) : 0;
 
                 return (
                   <motion.div
@@ -977,7 +971,7 @@ const Companies = () => {
                     onClick={() => navigate(`/companies?id=${c.id}`)}
                   >
                     {/* Organization Info */}
-                    <div className="w-full md:col-span-3 flex items-center gap-4">
+                    <div className="w-full md:col-span-4 flex items-center gap-4">
                       <div className="w-10 h-10 md:w-11 md:h-11 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold text-xs ring-1 ring-primary/20 group-hover:scale-110 transition-transform shadow-sm shrink-0">
                         <Building2 className="w-5 h-5 md:w-6 md:h-6" />
                       </div>
@@ -985,50 +979,30 @@ const Companies = () => {
                         <p className="text-sm font-bold text-foreground group-hover:text-primary transition-colors truncate">
                           {c.name}
                         </p>
-                        {c.location && (
-                          <p className="text-[10px] text-muted-foreground mt-0.5 truncate flex items-center gap-1">
-                            <MapPin className="w-3 h-3 text-muted-foreground/60 shrink-0" />
-                            {c.location}
-                          </p>
-                        )}
                       </div>
                     </div>
 
-                    {/* Active Positions */}
-                    <div className="w-full md:col-span-2 flex flex-col justify-center items-start">
-                      <span className="text-sm font-bold text-foreground">{openRoles}</span>
-                      <button
-                        onClick={(e) => handleViewCompanyTab(e, c.id, "roles")}
-                        className="text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1 mt-1 transition-all"
-                      >
-                        View Positions &rarr;
-                      </button>
-                    </div>
-
-                    {/* Positions Filled */}
-                    <div className="w-full md:col-span-3 flex flex-col justify-center items-start pr-4">
-                      <span className="text-sm font-bold text-foreground">{stats.filled} / {stats.required}</span>
-                      <div className="w-full bg-secondary border border-border/30 rounded-full h-1.5 overflow-hidden mt-1.5 max-w-[200px]">
-                        <div 
-                          className="bg-blue-600 h-full rounded-full transition-all duration-500" 
-                          style={{ width: `${percent}%` }}
-                        />
+                    {/* Stats */}
+                    <div className="w-full md:col-span-5 flex items-center justify-between md:justify-start gap-4 md:gap-6 py-2 md:py-0 border-y border-border/30 md:border-none">
+                      <div className="flex flex-col">
+                        <span className="text-xs font-bold text-foreground">{totalRoles}</span>
+                        <span className="text-[10px] text-muted-foreground uppercase font-bold">Roles</span>
                       </div>
-                    </div>
-
-                    {/* Total Candidates */}
-                    <div className="w-full md:col-span-2 flex flex-col justify-center items-start">
-                      <span className="text-sm font-bold text-foreground">{totalCand}</span>
-                      <button
-                        onClick={(e) => handleViewCompanyTab(e, c.id, "candidates")}
-                        className="text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1 mt-1 transition-all"
-                      >
-                        View Candidates &rarr;
-                      </button>
+                      <div className="flex flex-col">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-bold text-success">{openRoles}</span>
+                          <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
+                        </div>
+                        <span className="text-[10px] text-muted-foreground uppercase font-bold">Active</span>
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-xs font-bold text-primary">{totalCand}</span>
+                        <span className="text-[10px] text-muted-foreground uppercase font-bold">Candidates</span>
+                      </div>
                     </div>
 
                     {/* Actions */}
-                    <div className="w-full md:col-span-2 flex items-center justify-between md:justify-end gap-2 mt-2 md:mt-0">
+                    <div className="w-full md:col-span-3 flex items-center justify-between md:justify-end gap-2 mt-2 md:mt-0">
                       <div className="flex gap-2">
                         <button
                           onClick={(e) => { e.stopPropagation(); openEditCompany(c); }}
@@ -1046,7 +1020,6 @@ const Companies = () => {
                         </button>
                       </div>
                       <button
-                        onClick={(e) => { e.stopPropagation(); navigate(`/companies?id=${c.id}`); }}
                         className="px-4 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-bold hover:bg-primary hover:text-primary-foreground transition-all flex items-center gap-2 group/btn"
                       >
                         Details
@@ -1081,7 +1054,7 @@ const Companies = () => {
             {/* ─── Breadcrumb Back Link ─────────────────────────────── */}
             <div className="mb-4">
               <button
-                onClick={() => navigate("/companies")}
+                onClick={() => setSelectedCompanyId(null)}
                 className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary transition-colors group"
               >
                 <ChevronLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
@@ -1172,11 +1145,10 @@ const Companies = () => {
                         <button
                           onClick={() => setIsAssignVendorOpen(true)}
                           disabled={selectedRoleIds.length === 0}
-                          className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 border border-border/60 ${
-                            selectedRoleIds.length > 0 
-                              ? "bg-violet-600 border-violet-600 text-white hover:bg-violet-700 shadow-md shadow-violet-600/15" 
+                          className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 border border-border/60 ${selectedRoleIds.length > 0
+                              ? "bg-violet-600 border-violet-600 text-white hover:bg-violet-700 shadow-md shadow-violet-600/15"
                               : "bg-transparent text-muted-foreground hover:text-foreground hover:bg-secondary/40"
-                          }`}
+                            }`}
                         >
                           <UserCheck className="w-4 h-4" /> Assign to Vendor {selectedRoleIds.length > 0 && `(${selectedRoleIds.length})`}
                           <ChevronDown className="w-3.5 h-3.5 opacity-60" />
@@ -1203,7 +1175,7 @@ const Companies = () => {
                           <thead>
                             <tr className="border-b border-border bg-secondary/30 text-xs font-bold uppercase tracking-wider text-muted-foreground">
                               <th className="p-4 w-12">
-                                <div 
+                                <div
                                   className="p-1 cursor-pointer"
                                   onClick={() => {
                                     if (selectedRoleIds.length === companyRoles.length) {
@@ -1240,10 +1212,10 @@ const Companies = () => {
                                   className={`hover:bg-primary/[0.02] transition-colors ${!roleIsOpen ? "opacity-60" : ""} ${selectedRoleIds.includes(r.id) ? "bg-primary/[0.01]" : ""}`}
                                 >
                                   <td className="p-4">
-                                    <div 
+                                    <div
                                       className="p-1 cursor-pointer"
                                       onClick={() => {
-                                        setSelectedRoleIds(prev => 
+                                        setSelectedRoleIds(prev =>
                                           prev.includes(r.id) ? prev.filter(id => id !== r.id) : [...prev, r.id]
                                         );
                                       }}
@@ -1522,7 +1494,7 @@ const Companies = () => {
                               <div
                                 className={`flex items-center gap-2 mb-4 px-2 group py-1 transition-all ${draggedStageIdx === idx ? "opacity-30" : ""}`}
                                 draggable={!!pipelineRoleFilter && pipelineRoleFilter !== "all"}
-                                  onDragStart={() => handleStageDragStart(idx)}
+                                onDragStart={() => handleStageDragStart(idx)}
                               >
                                 <div className={`w-2.5 h-2.5 rounded-full ${col.color} shadow-sm`} />
                                 <h3 className="text-[11px] font-black text-foreground uppercase tracking-widest">{col.title}</h3>
