@@ -14,6 +14,13 @@ import {
   ChevronDown,
   X,
   Trash2,
+  CheckCircle2,
+  XCircle,
+  Download,
+  MoreVertical,
+  Eye,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -44,7 +51,12 @@ const Archives = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "selected" | "rejected" | "dropped">("all");
   const [sortBy, setSortBy] = useState<"date" | "name" | "company">("date");
+  const [timeFilter, setTimeFilter] = useState("all");
+  const [companyFilter, setCompanyFilter] = useState("all");
+  const [roleFilter, setRoleFilter] = useState("all");
   const [isSortOpen, setIsSortOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 5;
   const sortRef = useRef<HTMLDivElement>(null);
 
   // Selection states
@@ -65,7 +77,8 @@ const Archives = () => {
   // Clear selections when filters or searches change
   useEffect(() => {
     setSelectedIds([]);
-  }, [searchQuery, statusFilter]);
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter, timeFilter, companyFilter, roleFilter]);
 
   // ── Data queries ──────────────────────────────────────
   const { data: companies = [] } = useQuery({
@@ -85,7 +98,7 @@ const Archives = () => {
 
   const roleById = useMemo(() => new Map(jobRoles.map((r) => [r.id, r])), [jobRoles]);
 
-  const archivedCandidates = useMemo(() => {
+  const allArchivedCandidates = useMemo(() => {
     const list: any[] = [];
     const stages = ["selected", "rejected", "dropped"];
 
@@ -109,11 +122,36 @@ const Archives = () => {
         });
       });
     });
+    return list;
+  }, [pipeline, roleById]);
 
-    // Filtering logic
-    let filtered = list;
+  const stats = useMemo(() => {
+    const total = allArchivedCandidates.length;
+    const selected = allArchivedCandidates.filter(c => c.status === "selected").length;
+    const rejected = allArchivedCandidates.filter(c => c.status === "rejected").length;
+    const dropped = allArchivedCandidates.filter(c => c.status === "dropped").length;
+    return {
+      total,
+      selected,
+      rejected,
+      dropped,
+      selectedPct: total ? ((selected / total) * 100).toFixed(1) : "0",
+      rejectedPct: total ? ((rejected / total) * 100).toFixed(1) : "0",
+      droppedPct: total ? ((dropped / total) * 100).toFixed(1) : "0",
+    };
+  }, [allArchivedCandidates]);
+
+  const archivedCandidates = useMemo(() => {
+    let filtered = allArchivedCandidates;
+    
     if (statusFilter !== "all") {
       filtered = filtered.filter(c => c.status.toLowerCase() === statusFilter);
+    }
+    if (companyFilter !== "all") {
+      filtered = filtered.filter(c => c.companyName === companyFilter);
+    }
+    if (roleFilter !== "all") {
+      filtered = filtered.filter(c => c.roleTitle === roleFilter);
     }
 
     if (searchQuery.trim()) {
@@ -133,7 +171,7 @@ const Archives = () => {
     });
 
     return filtered;
-  }, [pipeline, roleById, searchQuery, statusFilter, sortBy]);
+  }, [allArchivedCandidates, searchQuery, statusFilter, companyFilter, roleFilter, sortBy]);
 
   // Selection handlers
   const handleToggleSelect = (id: number) => {
@@ -188,95 +226,155 @@ const Archives = () => {
 
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+      <div className="flex flex-col gap-6">
         <PageHeader
           title="Archives"
           description="View complete historical records of candidates with selection, rejection, or drop status"
-          actions={
-            <div className="flex items-center gap-3">
-              <div className="relative" ref={sortRef}>
-                <button
-                  onClick={() => setIsSortOpen(!isSortOpen)}
-                  className="flex items-center gap-2 pl-3 pr-2.5 py-2 rounded-xl bg-secondary/50 border border-border/50 hover:border-primary/30 hover:bg-secondary/80 transition-all shadow-sm group"
-                >
-                  <ListFilter className="w-3.5 h-3.5 text-muted-foreground group-hover:text-primary transition-colors" />
-                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest whitespace-nowrap border-r border-border/50 pr-2 mr-1">Sort By</span>
-                  <span className="text-xs font-bold text-foreground capitalize mr-1">
-                    {sortBy === "date" ? "Action Date" : sortBy}
-                  </span>
-                  <ChevronDown className={`w-3.5 h-3.5 text-muted-foreground transition-transform duration-300 ${isSortOpen ? 'rotate-180' : ''}`} />
-                </button>
-
-                <AnimatePresence>
-                  {isSortOpen && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 8, scale: 0.95 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 8, scale: 0.95 }}
-                      transition={{ duration: 0.2, ease: "easeOut" }}
-                      className="absolute right-0 mt-2 w-48 bg-card border border-border rounded-xl shadow-2xl z-50 overflow-hidden py-1.5 backdrop-blur-md bg-card/95"
-                    >
-                      {[
-                        { id: "date", label: "Action Date" },
-                        { id: "name", label: "Candidate Name" },
-                        { id: "company", label: "Company Name" }
-                      ].map((option) => (
-                        <button
-                          key={option.id}
-                          onClick={() => {
-                            setSortBy(option.id as any);
-                            setIsSortOpen(false);
-                          }}
-                          className={`w-full text-left px-4 py-2 text-xs font-bold transition-colors flex items-center justify-between ${sortBy === option.id
-                            ? "bg-primary/10 text-primary"
-                            : "text-muted-foreground hover:bg-secondary hover:text-foreground"
-                            }`}
-                        >
-                          {option.label}
-                          {sortBy === option.id && <div className="w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_8px_rgba(var(--primary),0.5)]" />}
-                        </button>
-                      ))}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-
-              <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-primary/10 border border-primary/20">
-                <span className="text-xs font-bold text-primary">{archivedCandidates.length}</span>
-                <span className="text-[10px] font-bold text-primary/60 uppercase tracking-widest">Total</span>
-              </div>
-
-              <div className="relative group w-full md:w-64">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                <input
-                  type="text"
-                  placeholder="Search archives..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 rounded-xl bg-card border border-border text-sm focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all shadow-sm"
-                />
-              </div>
-            </div>
-          }
         />
-      </div>
 
-      {/* Filter Tabs */}
-      <div className="flex gap-2 border-b border-border/50 pb-px">
-        {([
-          { key: "all" as const, label: "All Candidates" },
-          { key: "selected" as const, label: "Selected" },
-          { key: "rejected" as const, label: "Rejected" },
-          { key: "dropped" as const, label: "Dropped" },
-        ]).map((t) => (
-          <button
-            key={t.key}
-            onClick={() => setStatusFilter(t.key)}
-            className={`px-4 py-2.5 text-xs font-bold uppercase tracking-wider border-b-2 transition-all -mb-px ${statusFilter === t.key ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}
-          >
-            {t.label}
-          </button>
-        ))}
+        {/* Summary Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm flex items-center gap-5">
+            <div className="w-14 h-14 rounded-xl bg-purple-50 flex items-center justify-center shrink-0">
+              <Archive className="w-7 h-7 text-purple-600" />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Total Archived</p>
+              <div className="flex items-end gap-2 mt-1">
+                <span className="text-2xl font-black text-slate-900">{stats.total.toLocaleString()}</span>
+              </div>
+              <p className="text-[11px] text-slate-400 font-medium mt-0.5">All time</p>
+            </div>
+          </div>
+          
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm flex items-center gap-5">
+            <div className="w-14 h-14 rounded-xl border-2 border-green-100 flex items-center justify-center shrink-0">
+              <CheckCircle2 className="w-7 h-7 text-green-500" />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Selected</p>
+              <div className="flex items-end gap-2 mt-1">
+                <span className="text-2xl font-black text-slate-900">{stats.selected.toLocaleString()}</span>
+              </div>
+              <p className="text-[11px] text-green-600 font-bold mt-0.5">{stats.selectedPct}% of total</p>
+            </div>
+          </div>
+
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm flex items-center gap-5">
+            <div className="w-14 h-14 rounded-xl border-2 border-red-100 flex items-center justify-center shrink-0 bg-red-50/50">
+              <XCircle className="w-7 h-7 text-red-500" />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Rejected</p>
+              <div className="flex items-end gap-2 mt-1">
+                <span className="text-2xl font-black text-slate-900">{stats.rejected.toLocaleString()}</span>
+              </div>
+              <p className="text-[11px] text-red-600 font-bold mt-0.5">{stats.rejectedPct}% of total</p>
+            </div>
+          </div>
+
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm flex items-center gap-5">
+            <div className="w-14 h-14 rounded-xl border-2 border-orange-100 flex items-center justify-center shrink-0 bg-orange-50/50">
+              <Clock className="w-7 h-7 text-orange-500" />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Dropped</p>
+              <div className="flex items-end gap-2 mt-1">
+                <span className="text-2xl font-black text-slate-900">{stats.dropped.toLocaleString()}</span>
+              </div>
+              <p className="text-[11px] text-orange-600 font-bold mt-0.5">{stats.droppedPct}% of total</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Filter Bar */}
+        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 border-b border-border/50 pb-4">
+          {/* Left: Tabs */}
+          <div className="flex gap-6">
+            {([
+              { key: "all" as const, label: "All Candidates" },
+              { key: "selected" as const, label: "Selected" },
+              { key: "rejected" as const, label: "Rejected" },
+              { key: "dropped" as const, label: "Dropped" },
+            ]).map((t) => (
+              <button
+                key={t.key}
+                onClick={() => setStatusFilter(t.key)}
+                className={`pb-2 text-sm font-bold transition-colors relative ${statusFilter === t.key ? "text-blue-600" : "text-slate-500 hover:text-slate-700"}`}
+              >
+                {t.label}
+                {statusFilter === t.key && (
+                  <div className="absolute -bottom-4 left-0 right-0 h-0.5 bg-blue-600 rounded-t-full" />
+                )}
+              </button>
+            ))}
+          </div>
+
+          {/* Right: Dropdowns, Search, Export */}
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Time Filter */}
+            <div className="relative">
+              <select
+                value={timeFilter}
+                onChange={(e) => setTimeFilter(e.target.value)}
+                className="appearance-none pl-9 pr-8 py-2 rounded-lg border border-slate-200 text-slate-600 text-sm font-bold bg-white hover:bg-slate-50 transition-colors shadow-sm focus:outline-none"
+              >
+                <option value="all">All Time</option>
+                <option value="this_month">This Month</option>
+                <option value="this_year">This Year</option>
+              </select>
+              <Calendar className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            </div>
+
+            {/* Companies Filter */}
+            <div className="relative">
+              <select
+                value={companyFilter}
+                onChange={(e) => setCompanyFilter(e.target.value)}
+                className="appearance-none pl-4 pr-8 py-2 rounded-lg border border-slate-200 text-slate-600 text-sm font-bold bg-white hover:bg-slate-50 transition-colors shadow-sm focus:outline-none max-w-[150px] truncate"
+              >
+                <option value="all">All Companies</option>
+                {Array.from(new Set(allArchivedCandidates.map(c => c.companyName))).map(comp => (
+                  <option key={comp} value={comp}>{comp}</option>
+                ))}
+              </select>
+              <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            </div>
+
+            {/* Roles Filter */}
+            <div className="relative">
+              <select
+                value={roleFilter}
+                onChange={(e) => setRoleFilter(e.target.value)}
+                className="appearance-none pl-4 pr-8 py-2 rounded-lg border border-slate-200 text-slate-600 text-sm font-bold bg-white hover:bg-slate-50 transition-colors shadow-sm focus:outline-none max-w-[150px] truncate"
+              >
+                <option value="all">All Roles</option>
+                {Array.from(new Set(allArchivedCandidates.map(c => c.roleTitle))).map(role => (
+                  <option key={role} value={role}>{role}</option>
+                ))}
+              </select>
+              <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            </div>
+
+            {/* Search */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search archives..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9 pr-4 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-blue-500 w-[200px]"
+              />
+            </div>
+
+            {/* Export Button */}
+            <button className="px-4 py-2 rounded-lg border border-purple-200 text-purple-600 text-sm font-bold flex items-center gap-2 bg-purple-50/50 hover:bg-purple-100 transition-all shadow-sm">
+              <Download className="w-4 h-4" /> Export
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Bulk Action Bar Banner */}
@@ -404,28 +502,28 @@ const Archives = () => {
         </div>
 
         {/* Desktop View (Table) */}
-        <div className="hidden md:block glass-card overflow-hidden">
-          <div className="p-3 border-b border-border/50 bg-secondary/20">
-            <div className="grid grid-cols-12 gap-3 px-6 text-[10px] font-bold text-muted-foreground uppercase tracking-widest items-center">
-              <div className="col-span-3 flex items-center gap-3">
+        <div className="hidden md:block bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden mb-6">
+          <div className="p-4 border-b border-slate-100 bg-slate-50/50">
+            <div className="grid grid-cols-12 gap-3 px-2 text-[10px] font-extrabold text-slate-500 uppercase tracking-widest items-center">
+              <div className="col-span-3 flex items-center gap-4">
                 <input
                   type="checkbox"
                   checked={archivedCandidates.length > 0 && selectedIds.length === archivedCandidates.length}
                   onChange={handleToggleSelectAll}
-                  className="rounded border-muted-foreground/30 text-primary focus:ring-primary/50 w-4 h-4 cursor-pointer"
+                  className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
                 />
-                <span>Candidate</span>
+                <span>CANDIDATE</span>
               </div>
-              <div className="col-span-2">Company</div>
-              <div className="col-span-2">Technology/Role</div>
-              <div className="col-span-1 text-center">Status</div>
-              <div className="col-span-2 text-center">Action Date</div>
-              <div className="col-span-1.5">Decision Note</div>
-              <div className="col-span-0.5 text-right"></div>
+              <div className="col-span-2">COMPANY</div>
+              <div className="col-span-2">ROLE</div>
+              <div className="col-span-1 text-center">STATUS</div>
+              <div className="col-span-1.5">ACTION DATE</div>
+              <div className="col-span-1.5">DECISION NOTE</div>
+              <div className="col-span-1 text-right">ACTIONS</div>
             </div>
           </div>
 
-          <div className="divide-y divide-border/50">
+          <div className="divide-y divide-slate-100">
             {archivedCandidates.length === 0 ? (
               <div className="p-12 text-center">
                 <div className="w-16 h-16 rounded-2xl bg-secondary flex items-center justify-center text-muted-foreground/30 mx-auto mb-4">
@@ -437,48 +535,47 @@ const Archives = () => {
                 </p>
               </div>
             ) : (
-              archivedCandidates.map((cand) => (
+              archivedCandidates.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE).map((cand) => (
                 <motion.div
                   key={cand.id}
                   variants={item}
                   onClick={() => navigate(`/candidates/${cand.candidate_id}`)}
-                  className="grid grid-cols-12 gap-3 py-3.5 px-6 items-center hover:bg-secondary/30 transition-colors group cursor-pointer"
+                  className="grid grid-cols-12 gap-3 py-4 px-6 items-center hover:bg-slate-50 transition-colors group cursor-pointer"
                 >
                   {/* Checkbox & Candidate Info */}
-                  <div className="col-span-3 flex items-center gap-3">
+                  <div className="col-span-3 flex items-center gap-4">
                     <input
                       type="checkbox"
                       checked={selectedIds.includes(cand.id)}
                       onClick={(e) => e.stopPropagation()}
-                      onChange={(e) => handleToggleSelect(cand.id)
-                      }
-                      className="rounded border-muted-foreground/30 text-primary focus:ring-primary/50 w-4 h-4 cursor-pointer"
+                      onChange={(e) => handleToggleSelect(cand.id)}
+                      className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
                     />
-                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold text-xs shadow-sm ring-1 ring-primary/20">
+                    <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-purple-700 font-bold text-sm shrink-0">
                       {cand.name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)}
                     </div>
                     <div className="min-w-0">
-                      <p className="text-sm font-bold text-foreground group-hover:text-primary transition-colors truncate">
+                      <p className="text-sm font-bold text-slate-900 truncate">
                         {cand.name}
                       </p>
-                      <p className="text-[11px] text-muted-foreground truncate">{cand.email}</p>
+                      <p className="text-[12px] text-slate-500 truncate">{cand.email}</p>
                     </div>
                   </div>
 
                   {/* Company */}
                   <div className="col-span-2 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <Building2 className="w-3.5 h-3.5 text-primary opacity-60 shrink-0" />
-                      <span className="text-xs font-bold text-foreground truncate">{cand.companyName}</span>
+                    <div className="flex items-start gap-2">
+                      <Building2 className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-bold text-slate-700 truncate">{cand.companyName}</p>
+                        <p className="text-[12px] text-slate-500 truncate">General</p>
+                      </div>
                     </div>
                   </div>
 
-                  {/* Technology / Role */}
+                  {/* Role */}
                   <div className="col-span-2 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <Briefcase className="w-3.5 h-3.5 text-primary opacity-60 shrink-0" />
-                      <span className="text-xs font-bold text-foreground truncate">{cand.roleTitle}</span>
-                    </div>
+                    <p className="text-sm font-medium text-slate-700 truncate">{cand.roleTitle}</p>
                   </div>
 
                   {/* Status Badge */}
@@ -487,36 +584,42 @@ const Archives = () => {
                   </div>
 
                   {/* Action Date */}
-                  <div className="col-span-2 text-center">
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-secondary/60 text-foreground text-[10px] font-bold border border-border">
-                      <Calendar className="w-3 h-3 text-muted-foreground" />
-                      {cand.date ? new Date(cand.date).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) : "—"}
+                  <div className="col-span-1.5 flex flex-col">
+                    <span className="text-sm font-bold text-slate-700">
+                      {cand.date ? new Date(cand.date).toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' }) : "—"}
+                    </span>
+                    <span className="text-[12px] text-slate-500">
+                      {cand.date ? new Date(cand.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "—"}
                     </span>
                   </div>
 
                   {/* Remarks */}
                   <div className="col-span-1.5 min-w-0">
                     {cand.remarks ? (
-                      <p className="text-[11px] text-muted-foreground italic truncate" title={cand.remarks}>
-                        "{cand.remarks}"
+                      <p className="text-xs text-slate-600 line-clamp-2" title={cand.remarks}>
+                        {cand.remarks}
                       </p>
                     ) : (
-                      <span className="text-muted-foreground/30 text-xs">—</span>
+                      <span className="text-slate-400 text-xs">—</span>
                     )}
                   </div>
 
-                  {/* Single Delete Column Button */}
-                  <div className="col-span-0.5 text-right">
+                  {/* Actions */}
+                  <div className="col-span-1 flex items-center justify-end gap-2">
                     <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleSingleDelete(cand.id, cand.name);
-                      }}
-                      disabled={isDeleting}
-                      className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all opacity-0 group-hover:opacity-100 disabled:opacity-50"
+                      onClick={(e) => { e.stopPropagation(); }}
+                      className="p-1.5 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 transition-colors"
+                      title="View Details"
+                    >
+                      <Eye className="w-4 h-4" />
+                    </button>
+                    
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleSingleDelete(cand.id, cand.name); }}
+                      className="p-1.5 rounded-lg border border-slate-200 text-slate-500 hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors"
                       title="Delete from Archives"
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
+                      <MoreVertical className="w-4 h-4" />
                     </button>
                   </div>
                 </motion.div>
@@ -524,6 +627,46 @@ const Archives = () => {
             )}
           </div>
         </div>
+
+        {/* Pagination Footer */}
+        {archivedCandidates.length > 0 && (
+          <div className="flex items-center justify-between py-4">
+            <p className="text-sm font-medium text-slate-500">
+              Showing {Math.min((currentPage - 1) * PAGE_SIZE + 1, archivedCandidates.length)} to {Math.min(currentPage * PAGE_SIZE, archivedCandidates.length)} of {archivedCandidates.length} archives
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed text-slate-600 shadow-sm"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              
+              {Array.from({ length: Math.ceil(archivedCandidates.length / PAGE_SIZE) }).map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setCurrentPage(i + 1)}
+                  className={`w-8 h-8 flex items-center justify-center rounded-lg font-bold text-sm shadow-sm transition-colors ${
+                    currentPage === i + 1 
+                      ? 'bg-blue-600 text-white border border-blue-600' 
+                      : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  {i + 1}
+                </button>
+              ))}
+
+              <button
+                disabled={currentPage === Math.ceil(archivedCandidates.length / PAGE_SIZE)}
+                onClick={() => setCurrentPage(prev => Math.min(Math.ceil(archivedCandidates.length / PAGE_SIZE), prev + 1))}
+                className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed text-slate-600 shadow-sm"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </motion.div>
   );
