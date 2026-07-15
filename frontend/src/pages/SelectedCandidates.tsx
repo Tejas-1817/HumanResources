@@ -11,17 +11,22 @@ import {
   ExternalLink,
   Clock,
   Eye,
+  EyeOff,
   ListFilter,
   ChevronDown,
+  Trash2,
 } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { useQuery } from "@tanstack/react-query";
+import { Modal } from "@/components/ui/Modal";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getCompanies,
   getJobRoles,
   getPipeline,
+  updatePipelineStatus,
   Application,
 } from "@/api/resumeiq";
+import { toast } from "sonner";
 
 const container = {
   hidden: { opacity: 0 },
@@ -34,10 +39,31 @@ const item = {
 
 const SelectedCandidates = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<"name" | "company" | "technology">("name");
   const [isSortOpen, setIsSortOpen] = useState(false);
+  const [revealedCosts, setRevealedCosts] = useState<Record<number, boolean>>({});
+  const [dropApp, setDropApp] = useState<{ id: number; candidateName: string } | null>(null);
+  const [dropping, setDropping] = useState(false);
   const sortRef = useRef<HTMLDivElement>(null);
+
+  const handleConfirmDrop = async () => {
+    if (!dropApp) return;
+    setDropping(true);
+    try {
+      await updatePipelineStatus(dropApp.id, "dropped");
+      toast.success(`${dropApp.candidateName} has been dropped from position`);
+      await queryClient.invalidateQueries({ queryKey: ["pipeline"] });
+      await queryClient.invalidateQueries({ queryKey: ["job-roles"] });
+      setDropApp(null);
+    } catch (err: any) {
+      console.error(err);
+      toast.error("Failed to drop candidate");
+    } finally {
+      setDropping(false);
+    }
+  };
 
   // Close sorting dropdown on click outside
   useEffect(() => {
@@ -206,7 +232,19 @@ const SelectedCandidates = () => {
                       </div>
                     </div>
                   </div>
-                  <ExternalLink className="w-4 h-4 text-muted-foreground opacity-40" />
+                  <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDropApp({ id: cand.id, candidateName: cand.name });
+                      }}
+                      className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors z-10"
+                      title="Drop Candidate"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                    <ExternalLink className="w-4 h-4 text-muted-foreground opacity-40 shrink-0" />
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 pt-2.5 border-t border-border/50 mb-2.5">
@@ -248,9 +286,32 @@ const SelectedCandidates = () => {
                   </div>
                   <div className="space-y-1">
                     <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Cost</p>
-                    <p className="text-xs font-bold text-success">
-                      {cand.cost}
-                    </p>
+                    {cand.cost === "N/A" ? (
+                      <p className="text-xs font-semibold text-muted-foreground">N/A</p>
+                    ) : (
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className="text-xs font-bold text-success">
+                          {revealedCosts[cand.id] ? cand.cost : "••••••"}
+                        </span>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setRevealedCosts(prev => ({
+                              ...prev,
+                              [cand.id]: !prev[cand.id]
+                            }));
+                          }}
+                          className="p-1 rounded bg-secondary/50 text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                          title={revealedCosts[cand.id] ? "Hide Cost" : "Show Cost"}
+                        >
+                          {revealedCosts[cand.id] ? (
+                            <EyeOff className="w-3 h-3" />
+                          ) : (
+                            <Eye className="w-3 h-3" />
+                          )}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               </motion.div>
@@ -267,8 +328,9 @@ const SelectedCandidates = () => {
               <div className="col-span-2">Technology</div>
               <div className="col-span-1 text-center">Duration</div>
               <div className="col-span-1 text-center">Cost</div>
-              <div className="col-span-2 text-center">Source</div>
+              <div className="col-span-1 text-center">Source</div>
               <div className="col-span-2 text-center">Hired Date</div>
+              <div className="col-span-1 text-center">Action</div>
             </div>
           </div>
 
@@ -333,13 +395,36 @@ const SelectedCandidates = () => {
 
                   {/* Cost */}
                   <div className="col-span-1 text-center">
-                    <span className="text-sm font-bold text-success truncate block">
-                      {cand.cost}
-                    </span>
+                    {cand.cost === "N/A" ? (
+                      <span className="text-xs font-semibold text-muted-foreground">N/A</span>
+                    ) : (
+                      <div className="inline-flex items-center gap-1.5 justify-center">
+                        <span className="text-sm font-bold text-success">
+                          {revealedCosts[cand.id] ? cand.cost : "••••••"}
+                        </span>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setRevealedCosts(prev => ({
+                              ...prev,
+                              [cand.id]: !prev[cand.id]
+                            }));
+                          }}
+                          className="p-1 rounded bg-secondary/50 text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                          title={revealedCosts[cand.id] ? "Hide Cost" : "Show Cost"}
+                        >
+                          {revealedCosts[cand.id] ? (
+                            <EyeOff className="w-3.5 h-3.5" />
+                          ) : (
+                            <Eye className="w-3.5 h-3.5" />
+                          )}
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   {/* Source */}
-                  <div className="col-span-2 text-center">
+                  <div className="col-span-1 text-center">
                     <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-secondary/50 border border-border text-[10px] font-bold text-muted-foreground max-w-full truncate">
                       <Building2 className="w-3 h-3 shrink-0" />
                       <span className="truncate">{cand.source}</span>
@@ -353,12 +438,56 @@ const SelectedCandidates = () => {
                       {cand.date ? new Date(cand.date).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) : "—"}
                     </span>
                   </div>
+
+                  {/* Action */}
+                  <div className="col-span-1 text-center" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDropApp({ id: cand.id, candidateName: cand.name });
+                      }}
+                      className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                      title="Drop Candidate"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </motion.div>
               ))
             )}
           </div>
         </div>
       </div>
+
+      {/* Drop Confirmation Modal */}
+      <Modal
+        open={!!dropApp}
+        onClose={() => setDropApp(null)}
+        title="Confirm Drop Candidate"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Are you sure you want to drop <strong className="text-foreground">{dropApp?.candidateName}</strong>? 
+            This candidate will be flagged as dropped and will be moved to the dropped column/stage across the pipeline.
+          </p>
+          <div className="flex justify-end gap-3 pt-4 border-t border-border/50">
+            <button
+              onClick={() => setDropApp(null)}
+              className="px-4 py-2 text-xs font-bold text-muted-foreground hover:text-foreground transition-colors"
+              disabled={dropping}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleConfirmDrop}
+              className="px-4 py-2 bg-destructive hover:bg-destructive/90 text-white rounded-lg text-xs font-bold transition-all shadow-md shadow-destructive/15 flex items-center gap-1.5"
+              disabled={dropping}
+            >
+              {dropping ? "Dropping..." : "Yes, Drop Candidate"}
+            </button>
+          </div>
+        </div>
+      </Modal>
     </motion.div>
   );
 };

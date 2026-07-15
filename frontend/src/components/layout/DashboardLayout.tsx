@@ -13,6 +13,25 @@ export const DashboardLayout = () => {
   const mainRef = useRef<HTMLElement>(null);
   const location = useLocation();
 
+  // Listen to quick actions triggered by dispatching "open-quick-action" custom events
+  useEffect(() => {
+    const handleOpenQuickAction = (e: Event) => {
+      const customEvent = e as CustomEvent<string>;
+      if (customEvent.detail) {
+        setActiveModal(customEvent.detail);
+      }
+    };
+    const handleToggleSidebar = () => {
+      setIsSidebarOpen(prev => !prev);
+    };
+    window.addEventListener("open-quick-action", handleOpenQuickAction);
+    window.addEventListener("toggle-sidebar", handleToggleSidebar);
+    return () => {
+      window.removeEventListener("open-quick-action", handleOpenQuickAction);
+      window.removeEventListener("toggle-sidebar", handleToggleSidebar);
+    };
+  }, []);
+
   // Close sidebar and scroll to top on navigation
   useEffect(() => {
     setIsSidebarOpen(false);
@@ -48,7 +67,9 @@ export const DashboardLayout = () => {
       </div>
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <Topbar onMenuClick={() => setIsSidebarOpen(prev => !prev)} />
+        {location.pathname !== "/" && (
+          <Topbar onMenuClick={() => setIsSidebarOpen(prev => !prev)} />
+        )}
         <main ref={mainRef} className="flex-1 overflow-y-auto">
           <motion.div
             initial={{ opacity: 0, y: 8 }}

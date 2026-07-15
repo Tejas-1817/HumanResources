@@ -32,6 +32,7 @@ class JobRoleService:
             estimated_budget=payload.estimated_budget,
             currency=payload.currency,
             positions_required=payload.positions_required,
+            department=payload.department,
             location=payload.location,
             work_mode=payload.work_mode,
             experience_required=payload.experience_required,
@@ -114,6 +115,8 @@ class JobRoleService:
             role.currency = payload.currency
         if payload.positions_required is not None:
             role.positions_required = payload.positions_required
+        if payload.department is not None:
+            role.department = payload.department
         if payload.location is not None:
             role.location = payload.location
         if payload.work_mode is not None:

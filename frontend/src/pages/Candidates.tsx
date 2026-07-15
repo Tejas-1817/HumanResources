@@ -103,6 +103,16 @@ const Candidates = () => {
     return map;
   }, [pipelineData]);
 
+  const getMarkSentStatus = (candidateId: number) => {
+    const app = appsByCandidate.get(candidateId);
+    if (!app) return "N/A";
+    const role = roleById.get(app.job_role_id);
+    if (!role) return "N/A";
+    const company = companyById.get(role.company_id);
+    if (company?.is_internal) return "N/A";
+    return app.resume_sent ? "Sent" : "Not Sent";
+  };
+
   const handleDeleteCandidate = async (e: React.MouseEvent, id: number, name: string) => {
     e.stopPropagation();
     if (!window.confirm(`Are you sure you want to delete ${name || "this candidate"}? This will also remove all their applications.`)) {
@@ -123,8 +133,8 @@ const Candidates = () => {
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
       <PageHeader
-        title={vendorIdFromUrl ? `${unassignedOnly ? 'On Bench' : 'Talent Pool'}: ${vendorsData?.find(v => v.id === vendorIdFromUrl)?.name || "Partner"}` : "Candidate Directory"}
-        description={vendorIdFromUrl ? `Viewing ${unassignedOnly ? 'available ' : ''}candidates provided by ${vendorsData?.find(v => v.id === vendorIdFromUrl)?.name || "this partner"}` : "Comprehensive list of all talent in the system"}
+        title={vendorIdFromUrl ? (() => { const v = vendorsData?.find(v => v.id === vendorIdFromUrl); return `${unassignedOnly ? 'On Bench' : 'Talent Pool'}: ${v ? (v.company_name || v.name) : "Partner"}`; })() : "Candidate Directory"}
+        description={vendorIdFromUrl ? (() => { const v = vendorsData?.find(v => v.id === vendorIdFromUrl); return `Viewing ${unassignedOnly ? 'available ' : ''}candidates provided by ${v ? (v.company_name || v.name) : "this partner"}`; })() : "Comprehensive list of all talent in the system"}
         actions={
           <button
             onClick={() => setUploadModalOpen(true)}
@@ -304,12 +314,20 @@ const Candidates = () => {
                     )}
                   </div>
                 {!unassignedOnly && (
-                  <div className="space-y-1">
-                    <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Source</p>
-                    <p className="text-xs font-semibold text-foreground truncate">
-                      {c.source_label}
-                    </p>
-                  </div>
+                  <>
+                    <div className="space-y-1">
+                      <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Source</p>
+                      <p className="text-xs font-semibold text-foreground truncate">
+                        {c.source_label}
+                      </p>
+                    </div>
+                    <div className="col-span-3 pt-2 border-t border-border/50 mt-1 flex items-center justify-between">
+                      <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Mark Sent</span>
+                      <span className={`text-[10px] font-bold uppercase tracking-wider ${getMarkSentStatus(c.id) === "Sent" ? "text-success" : "text-muted-foreground"}`}>
+                        {getMarkSentStatus(c.id)}
+                      </span>
+                    </div>
+                  </>
                 )}
                 </div>
 
@@ -342,6 +360,7 @@ const Candidates = () => {
                     <>
                       <th className="py-3 px-4 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Source</th>
                       <th className="py-3 px-4 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Applied To</th>
+                      <th className="py-3 px-4 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Mark Sent</th>
                     </>
                   )}
                   <th className="py-3 px-4 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Actions</th>
@@ -350,7 +369,7 @@ const Candidates = () => {
               <tbody className="divide-y divide-border/50">
                 {isLoading ? (
                   <tr>
-                    <td colSpan={7} className="py-20 text-center animate-pulse">
+                    <td colSpan={unassignedOnly ? 5 : 8} className="py-20 text-center animate-pulse">
                       <div className="flex flex-col items-center gap-3">
                         <User className="w-8 h-8 text-primary/20" />
                         <p className="text-sm text-muted-foreground font-medium">Retrieving talent data...</p>
@@ -359,7 +378,7 @@ const Candidates = () => {
                   </tr>
                 ) : candidates.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="py-20 text-center">
+                    <td colSpan={unassignedOnly ? 5 : 8} className="py-20 text-center">
                       <p className="text-sm text-muted-foreground italic">No candidates found matching your criteria.</p>
                     </td>
                   </tr>
@@ -438,6 +457,11 @@ const Candidates = () => {
                                 Available
                               </span>
                             )}
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className={`text-[10px] font-bold uppercase tracking-wider ${getMarkSentStatus(c.id) === "Sent" ? "text-success" : "text-muted-foreground"}`}>
+                              {getMarkSentStatus(c.id)}
+                            </span>
                           </td>
                         </>
                       )}

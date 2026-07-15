@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 
+from sqlalchemy import or_
 from sqlalchemy.orm import Session, joinedload
 
 from app.core.exceptions import AppException, NotFoundException
@@ -177,14 +178,16 @@ class ApplicationService:
             application.is_replacement = payload.is_replacement
             print(f"[APPLICATION_STATUS_UPDATE] Replacement flag set: {payload.is_replacement}")
         elif next_status == "selected" and current_status != "selected":
-            # Count candidates who were selected but then lost (dropped, rejected, etc.)
             other_selected_filled_then_lost = (
                 db.query(ActivityLog.application_id)
                 .join(JobApplication, ActivityLog.application_id == JobApplication.id)
                 .filter(
                     JobApplication.job_role_id == application.job_role_id,
                     JobApplication.id != application.id,
-                    ActivityLog.new_status == "selected",
+                    or_(
+                        ActivityLog.new_status == "selected",
+                        ActivityLog.old_status == "selected"
+                    ),
                     JobApplication.status != "selected" 
                 )
                 .distinct()

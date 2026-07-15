@@ -20,6 +20,7 @@ class CompanyService:
 
         company = Company(
             name=payload.name.strip(),
+            location=payload.location.strip() if payload.location else None,
         )
         db.add(company)
         db.commit()
@@ -58,7 +59,8 @@ class CompanyService:
                 raise DuplicateException(message="Company with this name already exists")
             company.name = next_name
 
-
+        if payload.location is not None:
+            company.location = payload.location.strip() if payload.location else None
 
         db.commit()
         db.refresh(company)

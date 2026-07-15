@@ -85,6 +85,16 @@ def init_db() -> None:
     from app.models.notification import Notification  # noqa: F401
 
     Base.metadata.create_all(bind=engine)
+    
+    # Ensure companies table has location column (for MySQL/SQLite migration)
+    with engine.connect() as conn:
+        try:
+            conn.execute(text("ALTER TABLE companies ADD COLUMN location VARCHAR(255)"))
+            conn.commit()
+            print("[migration] Added location column to companies table")
+        except Exception:
+            pass  # Already exists or connection issue
+            
     seed_admin()
     seed_company()
 

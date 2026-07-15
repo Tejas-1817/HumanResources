@@ -25,6 +25,7 @@ import {
   KeyRound,
   Copy,
   Link2,
+  Eye,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import UploadPage from "./Upload";
@@ -92,6 +93,219 @@ const getStatusFromAge = (c: Candidate): string => {
 };
 
 // ──────────────────────────────────────────────────────────
+// Helper Functions
+// ──────────────────────────────────────────────────────────
+const getRoleTags = (r: any) => {
+  const title = r.title.toLowerCase();
+  const tags: string[] = [];
+  
+  if (title.includes("general")) {
+    return ["— General positions and unassigned roles"];
+  }
+  
+  if (title.includes("python")) {
+    tags.push("Python", "Django");
+  } else if (title.includes("outreach")) {
+    tags.push("Sales", "CRM");
+  } else if (title.includes("devops")) {
+    tags.push("AWS", "Docker");
+  } else if (title.includes("tester")) {
+    tags.push("QA", "Testing");
+  } else if (title.includes("accountant")) {
+    tags.push("Finance", "Tally");
+  } else if (title.includes("hr") || title.includes("human resources")) {
+    tags.push("HR", "People Mgmt.");
+  } else if (title.includes("ui") || title.includes("ux") || title.includes("design")) {
+    tags.push("Figma", "Adobe XD");
+  } else if (title.includes("data") || title.includes("analyst")) {
+    tags.push("SQL", "Excel");
+  } else {
+    tags.push(r.title);
+  }
+  
+  if (r.experience_required != null && r.experience_required !== "") {
+    const exp = r.experience_required;
+    if (typeof exp === "number") {
+      tags.push(`${exp}+ Yrs`);
+    } else {
+      tags.push(String(exp).includes("Yrs") ? exp : `${exp} Yrs`);
+    }
+  } else {
+    // Fallbacks matching the design mock image
+    if (title.includes("outreach")) tags.push("1-2 Yrs");
+    else if (title.includes("python") || title.includes("devops")) tags.push("3+ Yrs");
+    else if (title.includes("ui") || title.includes("ux") || title.includes("design")) tags.push("2-4 Yrs");
+    else tags.push("2-3 Yrs");
+  }
+  return tags;
+};
+
+const getRoleIconDetails = (title: string) => {
+  const t = title.toLowerCase();
+  if (t.includes("python") || t.includes("developer") || t.includes("engineer") || t.includes("devops")) {
+    if (t.includes("python")) {
+      return {
+        icon: Briefcase,
+        bg: "bg-blue-50 dark:bg-blue-950/30",
+        text: "text-blue-600 dark:text-blue-400",
+        border: "border border-blue-100 dark:border-blue-900/50"
+      };
+    }
+    if (t.includes("devops")) {
+      return {
+        icon: Briefcase,
+        bg: "bg-amber-50 dark:bg-amber-950/30",
+        text: "text-amber-600 dark:text-amber-400",
+        border: "border border-amber-100 dark:border-amber-900/50"
+      };
+    }
+    return {
+      icon: Briefcase,
+      bg: "bg-blue-50 dark:bg-blue-950/30",
+      text: "text-blue-600 dark:text-blue-400",
+      border: "border border-blue-100 dark:border-blue-900/50"
+    };
+  }
+  if (t.includes("outreach") || t.includes("sales") || t.includes("marketing")) {
+    return {
+      icon: Briefcase,
+      bg: "bg-purple-50 dark:bg-purple-950/30",
+      text: "text-purple-600 dark:text-purple-400",
+      border: "border border-purple-100 dark:border-purple-900/50"
+    };
+  }
+  if (t.includes("general")) {
+    return {
+      icon: GitBranch,
+      bg: "bg-emerald-50 dark:bg-emerald-950/30",
+      text: "text-emerald-600 dark:text-emerald-400",
+      border: "border border-emerald-100 dark:border-emerald-900/50"
+    };
+  }
+  if (t.includes("hr") || t.includes("human resources") || t.includes("recruiter")) {
+    return {
+      icon: Clock,
+      bg: "bg-amber-50 dark:bg-amber-950/30",
+      text: "text-amber-600 dark:text-amber-400",
+      border: "border border-amber-100 dark:border-amber-900/50"
+    };
+  }
+  if (t.includes("accountant") || t.includes("finance") || t.includes("billing")) {
+    return {
+      icon: Users,
+      bg: "bg-rose-50 dark:bg-rose-950/30",
+      text: "text-rose-600 dark:text-rose-400",
+      border: "border border-rose-100 dark:border-rose-900/50"
+    };
+  }
+  if (t.includes("ui") || t.includes("ux") || t.includes("design") || t.includes("frontend")) {
+    return {
+      icon: GitBranch,
+      bg: "bg-cyan-50 dark:bg-cyan-950/30",
+      text: "text-cyan-600 dark:text-cyan-400",
+      border: "border border-cyan-100 dark:border-cyan-900/50"
+    };
+  }
+  if (t.includes("data") || t.includes("analyst") || t.includes("analytics")) {
+    return {
+      icon: Briefcase,
+      bg: "bg-indigo-50 dark:bg-indigo-950/30",
+      text: "text-indigo-600 dark:text-indigo-400",
+      border: "border border-indigo-100 dark:border-indigo-900/50"
+    };
+  }
+  return {
+    icon: Briefcase,
+    bg: "bg-gray-50 dark:bg-gray-950/30",
+    text: "text-gray-600 dark:text-gray-400",
+    border: "border border-gray-100 dark:border-gray-900/50"
+  };
+};
+
+// ──────────────────────────────────────────────────────────
+// Helper Components for Inline Editing
+// ──────────────────────────────────────────────────────────
+const EditableDateInput = ({
+  value,
+  onSave,
+}: {
+  value: string;
+  onSave: (val: string) => Promise<void>;
+}) => {
+  const [localValue, setLocalValue] = useState(value);
+
+  useEffect(() => {
+    setLocalValue(value);
+  }, [value]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setLocalValue(e.target.value);
+  };
+
+  const handleBlur = async () => {
+    if (!localValue || localValue === value) return;
+    await onSave(localValue);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.currentTarget.blur();
+    }
+  };
+
+  return (
+    <input
+      type="date"
+      value={localValue}
+      onChange={handleChange}
+      onBlur={handleBlur}
+      onKeyDown={handleKeyDown}
+      className="bg-secondary/50 border border-border/50 text-foreground text-xs rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-primary/50"
+    />
+  );
+};
+
+const EditableTimeInput = ({
+  value,
+  onSave,
+}: {
+  value: string;
+  onSave: (val: string) => Promise<void>;
+}) => {
+  const [localValue, setLocalValue] = useState(value);
+
+  useEffect(() => {
+    setLocalValue(value);
+  }, [value]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setLocalValue(e.target.value);
+  };
+
+  const handleBlur = async () => {
+    if (!localValue || localValue === value) return;
+    await onSave(localValue);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.currentTarget.blur();
+    }
+  };
+
+  return (
+    <input
+      type="time"
+      value={localValue}
+      onChange={handleChange}
+      onBlur={handleBlur}
+      onKeyDown={handleKeyDown}
+      className="bg-secondary/50 border border-border/50 text-foreground text-xs rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-primary/50"
+    />
+  );
+};
+
+// ──────────────────────────────────────────────────────────
 // Main Component
 // ──────────────────────────────────────────────────────────
 export default function InternalHiring() {
@@ -139,6 +353,7 @@ export default function InternalHiring() {
     currency: "INR",
     positions_required: "" as number | string,
     pipeline_stages: [...DEFAULT_STAGES],
+    department: "",
     location: "",
     work_mode: "onsite",
     experience_required: "" as number | string,
@@ -389,9 +604,34 @@ export default function InternalHiring() {
   const companyRoles = useMemo(() => {
     if (!selectedCompanyId) return [];
     const roles = jobRoles.filter((r) => r.company_id === selectedCompanyId);
-    if (roleFilter === "All") return roles;
-    return roles.filter((r) => r.status.toLowerCase() === roleFilter.toLowerCase());
-  }, [jobRoles, selectedCompanyId, roleFilter]);
+    
+    // Map each role to include its computed status and filled count
+    const rolesWithComputedStatus = roles.map(r => {
+      const filledCount = (pipeline["selected"] || []).filter((app: any) => app.job_role_id === r.id).length;
+      
+      let computedStatus = "open";
+      if (r.status.toLowerCase() === "closed") {
+        computedStatus = "closed";
+      } else {
+        const inProgressStages = ["shortlisted", "interview_scheduled", "interviewed", "on_hold"];
+        const hasActiveCandidates = inProgressStages.some(stage => 
+          (pipeline[stage] || []).some((app: any) => app.job_role_id === r.id)
+        );
+        if (hasActiveCandidates) {
+          computedStatus = "in progress";
+        }
+      }
+      
+      return {
+        ...r,
+        filledCount,
+        computedStatus
+      };
+    });
+
+    if (roleFilter === "All") return rolesWithComputedStatus;
+    return rolesWithComputedStatus.filter((r) => r.computedStatus.toLowerCase() === roleFilter.toLowerCase());
+  }, [jobRoles, selectedCompanyId, roleFilter, pipeline]);
 
   // Auto-select first job role when Pipeline tab is entered
   useEffect(() => {
@@ -524,6 +764,7 @@ export default function InternalHiring() {
       currency: roleForm.currency,
       positions_required: isNaN(parseInt(roleForm.positions_required.toString())) ? 0 : parseInt(roleForm.positions_required.toString()),
       pipeline_stages: roleForm.pipeline_stages,
+      department: roleForm.department.trim() || null,
       location: roleForm.location.trim() || null,
       work_mode: roleForm.work_mode || null,
       experience_required: roleForm.experience_required !== "" ? parseFloat(roleForm.experience_required.toString()) : null,
@@ -532,9 +773,8 @@ export default function InternalHiring() {
     });
     await queryClient.invalidateQueries({ queryKey: ["job-roles"] });
     setRoleModalOpen(false);
-    setRoleForm({ title: "", description: "", deadline: "", estimated_budget: "", currency: "INR", positions_required: "", pipeline_stages: [...DEFAULT_STAGES], location: "", work_mode: "onsite", experience_required: "", project_time_period: "" });
+    setRoleForm({ title: "", description: "", deadline: "", estimated_budget: "", currency: "INR", positions_required: "", pipeline_stages: [...DEFAULT_STAGES], department: "", location: "", work_mode: "onsite", experience_required: "", project_time_period: "" });
     toast.success("Job role created");
-    window.location.reload();
   };
 
   const handleUpdateRole = async () => {
@@ -551,6 +791,7 @@ export default function InternalHiring() {
         estimated_budget: roleForm.estimated_budget ? parseFloat(roleForm.estimated_budget as string) : undefined,
         currency: roleForm.currency,
         positions_required: isNaN(parseInt(roleForm.positions_required.toString())) ? 0 : parseInt(roleForm.positions_required.toString()),
+        department: roleForm.department.trim() || null,
         location: roleForm.location.trim() || null,
         work_mode: roleForm.work_mode || null,
         experience_required: roleForm.experience_required !== "" ? parseFloat(roleForm.experience_required.toString()) : null,
@@ -561,7 +802,6 @@ export default function InternalHiring() {
       setRoleModalOpen(false);
       setEditRoleId(null);
       toast.success("Job role updated");
-      window.location.reload();
     } catch {
       toast.error("Failed to update job role");
     } finally {
@@ -572,7 +812,7 @@ export default function InternalHiring() {
   const openAddRole = () => {
     setEditRoleId(null);
     setSelectedVendorIds([]);
-    setRoleForm({ title: "", description: "", deadline: "", estimated_budget: "", currency: "INR", positions_required: "", pipeline_stages: [...DEFAULT_STAGES], location: "", work_mode: "onsite", experience_required: "", project_time_period: "" });
+    setRoleForm({ title: "", description: "", deadline: "", estimated_budget: "", currency: "INR", positions_required: "", pipeline_stages: [...DEFAULT_STAGES], department: "", location: "", work_mode: "onsite", experience_required: "", project_time_period: "" });
     setRoleModalOpen(true);
   };
 
@@ -586,6 +826,7 @@ export default function InternalHiring() {
       currency: r.currency || "INR",
       positions_required: r.positions_required !== undefined && r.positions_required !== null ? r.positions_required : 0,
       pipeline_stages: r.pipeline_stages || [...DEFAULT_STAGES],
+      department: r.department || "",
       location: r.location || "",
       work_mode: r.work_mode || "onsite",
       experience_required: r.experience_required !== null && r.experience_required !== undefined ? r.experience_required : "",
@@ -1018,7 +1259,7 @@ export default function InternalHiring() {
         {/* Tabs */}
         <div className="flex items-center border-b border-border px-5 pt-1">
           {([
-            { key: "roles" as const, label: "Job Roles", icon: Briefcase, count: companyRoles.length },
+            { key: "roles" as const, label: "Job Roles", icon: Briefcase, count: null },
             { key: "candidates" as const, label: "Candidates", icon: Users, count: candTotal },
             { key: "pipeline" as const, label: "In Progress", icon: GitBranch, count: pipelineTotalCount },
             { key: "interviewers" as const, label: "Interviewer", icon: UserCheck, count: interviewers.length },
@@ -1031,9 +1272,11 @@ export default function InternalHiring() {
             >
               <t.icon className="w-4 h-4" />
               {t.label}
-              <span className={`text-xs px-2 py-0.5 rounded-full ${activeTab === t.key ? "bg-primary/10 text-primary" : "bg-secondary text-muted-foreground"}`}>
-                {t.count}
-              </span>
+              {t.count !== null && (
+                <span className={`text-xs px-2 py-0.5 rounded-full ${activeTab === t.key ? "bg-primary/10 text-primary" : "bg-secondary text-muted-foreground"}`}>
+                  {t.count}
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -1044,11 +1287,11 @@ export default function InternalHiring() {
           {activeTab === "roles" && (
             <div>
               <div className="flex items-center gap-2 mb-4">
-                {["All", "Open", "Closed"].map((f) => (
+                {["All", "Open", "In Progress", "Closed"].map((f) => (
                   <button
                     key={f}
                     onClick={() => setRoleFilter(f as any)}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${roleFilter === f ? "bg-primary/10 text-primary" : "bg-secondary text-muted-foreground hover:text-foreground"}`}
+                    className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${roleFilter === f ? "bg-primary/10 text-primary" : "bg-secondary text-muted-foreground hover:text-foreground"}`}
                   >
                     {f}
                   </button>
@@ -1057,146 +1300,164 @@ export default function InternalHiring() {
                   <button
                     onClick={() => setIsAssignVendorOpen(true)}
                     disabled={selectedRoleIds.length === 0}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 shadow-sm ${
+                    className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 border border-border/60 ${
                       selectedRoleIds.length > 0 
-                        ? "bg-violet-600 text-white hover:bg-violet-700" 
-                        : "bg-secondary text-muted-foreground/50 cursor-not-allowed border border-border/50"
+                        ? "bg-violet-600 border-violet-600 text-white hover:bg-violet-700 shadow-md shadow-violet-600/15" 
+                        : "bg-transparent text-muted-foreground hover:text-foreground hover:bg-secondary/40"
                     }`}
                   >
-                    <Users className="w-4 h-4" /> Assign to Vendor {selectedRoleIds.length > 0 && `(${selectedRoleIds.length})`}
+                    <UserCheck className="w-4 h-4" /> Assign to Vendor {selectedRoleIds.length > 0 && `(${selectedRoleIds.length})`}
+                    <ChevronDown className="w-3.5 h-3.5 opacity-60" />
                   </button>
                   <button
                     onClick={openAddRole}
-                    className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-all flex items-center gap-2"
+                    className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition-all flex items-center gap-2 shadow-md shadow-blue-600/10"
                   >
                     <Plus className="w-4 h-4" /> Add Position
                   </button>
                 </div>
               </div>
-              <div className="flex flex-col gap-3">
-                {companyRoles.map((r) => {
-                  const roleIsOpen = r.status.toLowerCase() === "open";
-                  const filledCount = (pipeline["selected"] || []).filter((app: any) => app.job_role_id === r.id).length;
-                  const isFullyStaffed = filledCount >= r.positions_required;
-
-                  return (
-                    <motion.div
-                      key={r.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className={`group relative glass-card p-4 md:p-5 border border-border/50 hover:border-primary/30 transition-all cursor-pointer flex flex-col md:flex-row md:items-center justify-between gap-4 ${!roleIsOpen ? "opacity-60" : ""} ${selectedRoleIds.includes(r.id) ? "border-primary/50 bg-primary/[0.03]" : ""}`}
-                      onClick={() => navigate(`/job-roles/${r.id}`)}
-                    >
-                      <div className="flex items-center gap-4 flex-1 min-w-0">
-                        <div 
-                          className="relative z-10 p-1"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedRoleIds(prev => 
-                              prev.includes(r.id) ? prev.filter(id => id !== r.id) : [...prev, r.id]
-                            );
-                          }}
-                        >
-                          <div className={`w-5 h-5 rounded border-2 transition-colors flex items-center justify-center ${selectedRoleIds.includes(r.id) ? "bg-primary border-primary text-white" : "border-muted-foreground/30 hover:border-primary/50"}`}>
-                            {selectedRoleIds.includes(r.id) && <Check className="w-3.5 h-3.5 text-white" />}
+              {companyRoles.length === 0 ? (
+                <div className="text-center py-16 text-muted-foreground glass-card border-dashed">
+                  <Briefcase className="w-10 h-10 mx-auto mb-4 opacity-20" />
+                  <p className="text-sm font-medium">No job roles yet for {selectedCompany?.name || "the company"}</p>
+                  <button onClick={openAddRole} className="mt-4 text-xs text-primary font-bold hover:underline underline-offset-4">
+                    + Initialize Active Recruitment
+                  </button>
+                </div>
+              ) : (
+                <div className="overflow-x-auto rounded-xl border border-border bg-secondary/10">
+                  <table className="w-full border-collapse text-left">
+                    <thead>
+                      <tr className="border-b border-border bg-secondary/30 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                        <th className="p-4 w-12">
+                          <div 
+                            className="p-1 cursor-pointer"
+                            onClick={() => {
+                              if (selectedRoleIds.length === companyRoles.length) {
+                                setSelectedRoleIds([]);
+                              } else {
+                                setSelectedRoleIds(companyRoles.map(r => r.id));
+                              }
+                            }}
+                          >
+                            <div className={`w-4 h-4 rounded border transition-colors flex items-center justify-center ${selectedRoleIds.length === companyRoles.length && companyRoles.length > 0 ? "bg-primary border-primary text-white" : "border-muted-foreground/30"}`}>
+                              {selectedRoleIds.length === companyRoles.length && companyRoles.length > 0 && <Check className="w-3 h-3 text-white" />}
+                            </div>
                           </div>
-                        </div>
-                        <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shrink-0 ring-1 ring-primary/20 shadow-sm">
-                          <Briefcase className="w-6 h-6" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4">
-                            <h4 className="text-base font-bold text-foreground leading-tight truncate">{r.title}</h4>
-                            <div className="flex items-center gap-2">
-                              <StatusBadge status={r.status} className="scale-90 origin-left" />
-                              {r.deadline && (
-                                <div className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-secondary border border-border/50 text-[9px] font-bold text-muted-foreground whitespace-nowrap">
-                                  <Clock className="w-2.5 h-2.5 text-primary/70" /> {new Date(r.deadline).toLocaleDateString()}
+                        </th>
+                        <th className="p-4">Job Role</th>
+                        <th className="p-4">Department</th>
+                        <th className="p-4 text-center">Openings</th>
+                        <th className="p-4">Status</th>
+                        <th className="p-4 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border/50 text-sm">
+                      {companyRoles.map((r) => {
+                        const roleIsOpen = r.status.toLowerCase() === "open";
+                        const tags = getRoleTags(r);
+                        const iconDetails = getRoleIconDetails(r.title);
+                        const IconComponent = iconDetails.icon;
+                        const openingsCount = Math.max(0, (r.positions_required || 1) - r.filledCount);
+                        const isGeneral = r.title.toLowerCase().includes("general");
+
+                        return (
+                          <tr
+                            key={r.id}
+                            className={`hover:bg-primary/[0.02] transition-colors ${!roleIsOpen ? "opacity-60" : ""} ${selectedRoleIds.includes(r.id) ? "bg-primary/[0.01]" : ""}`}
+                          >
+                            <td className="p-4">
+                              <div 
+                                className="p-1 cursor-pointer"
+                                onClick={() => {
+                                  setSelectedRoleIds(prev => 
+                                    prev.includes(r.id) ? prev.filter(id => id !== r.id) : [...prev, r.id]
+                                  );
+                                }}
+                              >
+                                <div className={`w-4 h-4 rounded border transition-colors flex items-center justify-center ${selectedRoleIds.includes(r.id) ? "bg-primary border-primary text-white" : "border-muted-foreground/30 hover:border-primary/50"}`}>
+                                  {selectedRoleIds.includes(r.id) && <Check className="w-3 h-3 text-white" />}
                                 </div>
-                              )}
-                            </div>
-                          </div>
-                          <div className="flex flex-wrap items-center gap-2 mt-2">
-                            <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-lg border text-[9px] font-black uppercase tracking-wider ${isFullyStaffed ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-500" : "bg-secondary border-border/50 text-muted-foreground"}`}>
-                              Filled: {filledCount} / {r.positions_required}
-                            </div>
-
-                            {r.location && (
-                              <div className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-secondary/50 border border-border/50 text-[9px] font-bold text-muted-foreground">
-                                📍 {r.location}
                               </div>
-                            )}
-
-                            {r.work_mode && (
-                              <div className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-secondary/50 border border-border/50 text-[9px] font-bold text-muted-foreground capitalize">
-                                {r.work_mode === "remote" ? "🌐" : r.work_mode === "hybrid" ? "🔀" : "🏢"} {r.work_mode}
+                            </td>
+                            <td className="p-4">
+                              <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate(`/job-roles/${r.id}`)}>
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    <h4 className="font-bold text-foreground hover:text-primary transition-colors truncate max-w-[220px]">{r.title}</h4>
+                                    <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 uppercase tracking-wider">
+                                      Open
+                                    </span>
+                                  </div>
+                                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                                    Filled: {r.filledCount} / {r.positions_required}
+                                  </p>
+                                  {isGeneral ? (
+                                    <span className="text-[11px] text-muted-foreground/80 mt-1 block font-medium">
+                                      {tags[0]}
+                                    </span>
+                                  ) : (
+                                    <div className="flex flex-wrap gap-1 mt-1">
+                                      {tags.map((tag, idx) => (
+                                        <span key={idx} className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-secondary text-muted-foreground border border-border/50 uppercase tracking-wider">
+                                          {tag}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
                               </div>
-                            )}
-
-                            {r.experience_required != null && (
-                              <div className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-secondary/50 border border-border/50 text-[9px] font-bold text-muted-foreground text-nowrap">
-                                🎯 {r.experience_required} yrs
+                            </td>
+                            <td className="p-4">
+                              <span className="font-semibold text-muted-foreground dark:text-muted-foreground/80 text-xs">
+                                {r.department || "Operations"}
+                              </span>
+                            </td>
+                            <td className="p-4 text-center font-bold text-foreground">
+                              {openingsCount}
+                            </td>
+                            <td className="p-4">
+                              <StatusBadge status={r.computedStatus} className="scale-90 origin-left" />
+                            </td>
+                            <td className="p-4 text-right">
+                              <div className="flex items-center justify-end gap-1.5">
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); navigate(`/job-roles/${r.id}`); }}
+                                  className="p-1.5 rounded-lg border border-border/50 bg-card hover:bg-secondary/40 text-blue-500 hover:text-blue-600 transition-colors shadow-sm"
+                                  title="View Details"
+                                >
+                                  <Eye className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); openEditRole(r); }}
+                                  className="p-1.5 rounded-lg border border-border/50 bg-card hover:bg-secondary/40 text-muted-foreground hover:text-foreground transition-colors shadow-sm"
+                                  title="Edit Role"
+                                >
+                                  <Edit className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); setRoleDeleteId(r.id); }}
+                                  className="p-1.5 rounded-lg border border-border/50 bg-card hover:bg-secondary/40 text-muted-foreground hover:text-destructive transition-colors shadow-sm"
+                                  title="Delete Role"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); navigate(`/job-roles/${r.id}`); }}
+                                  className="px-3.5 py-1.5 text-[11px] font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center gap-1 shadow-sm ml-2"
+                                >
+                                  View Details <ChevronRight className="w-3 h-3" />
+                                </button>
                               </div>
-                            )}
-
-                            {r.project_time_period && (
-                              <div className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-secondary/50 border border-border/50 text-[9px] font-bold text-muted-foreground">
-                                🕒 {r.project_time_period}
-                              </div>
-                            )}
-
-                            {isFullyStaffed && (
-                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                            )}
-                            <p className="text-[10px] text-muted-foreground truncate opacity-60 italic hidden lg:block max-w-[200px]">— {r.description.slice(0, 60)}...</p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 pt-4 md:pt-0 border-t md:border-t-0 border-border/30 md:ml-4 shrink-0 justify-between md:justify-end">
-                        <div className="flex items-center gap-1 mr-2">
-                          <button
-                            onClick={(e) => { e.stopPropagation(); setConfirmRoleId(r.id); setConfirmAction(roleIsOpen ? "close" : "reopen"); }}
-                            className={`p-2 rounded-xl transition-all ${roleIsOpen ? "bg-destructive/5 text-destructive hover:bg-destructive/10 border border-destructive/20" : "bg-success/5 text-success hover:bg-success/10 border border-success/20"}`}
-                            title={roleIsOpen ? "Close Role" : "Reopen Role"}
-                          >
-                            {roleIsOpen ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}
-                          </button>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); openEditRole(r); }}
-                            className="p-2 rounded-xl text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all border border-transparent hover:border-primary/20"
-                            title="Edit Role"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); setRoleDeleteId(r.id); }}
-                            className="p-2 rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all border border-transparent hover:border-destructive/20"
-                            title="Delete Role"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                        <button
-                          onClick={() => navigate(`/job-roles/${r.id}`)}
-                          className="px-5 py-2 rounded-xl text-xs font-bold bg-primary text-primary-foreground hover:bg-primary/90 transition-all shadow-md shadow-primary/10"
-                        >
-                          View Details →
-                        </button>
-                      </div>
-                    </motion.div>
-                  );
-                })}
-                {companyRoles.length === 0 && (
-                  <div className="text-center py-16 text-muted-foreground glass-card border-dashed">
-                    <Briefcase className="w-10 h-10 mx-auto mb-4 opacity-20" />
-                    <p className="text-sm font-medium">No job roles yet for {selectedCompany.name}</p>
-                    <button onClick={openAddRole} className="mt-4 text-xs text-primary font-bold hover:underline underline-offset-4">
-                      + Initialize Active Recruitment
-                    </button>
-                  </div>
-                )}
-              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           )}
 
@@ -1773,7 +2034,6 @@ export default function InternalHiring() {
                                 await updateInterviewSchedule(item.id, { interviewer_id: newId });
                                 await queryClient.invalidateQueries({ queryKey: ["interview-schedules"] });
                                 toast.success("Interviewer updated successfully");
-                                window.location.reload();
                               } catch {
                                 toast.error("Failed to update interviewer");
                               }
@@ -1788,41 +2048,31 @@ export default function InternalHiring() {
                           </select>
                         </td>
                         <td className="p-4">
-                          <input
-                            type="date"
+                          <EditableDateInput
                             value={item.date}
-                            onChange={async (e) => {
-                              const newDate = e.target.value;
-                              if (!newDate) return;
+                            onSave={async (newDate) => {
                               try {
                                 await updateInterviewSchedule(item.id, { date: newDate });
                                 await queryClient.invalidateQueries({ queryKey: ["interview-schedules"] });
                                 toast.success("Date updated successfully");
-                                window.location.reload();
                               } catch {
                                 toast.error("Failed to update date");
                               }
                             }}
-                            className="bg-secondary/50 border border-border/50 text-foreground text-xs rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-primary/50"
                           />
                         </td>
                         <td className="p-4">
-                          <input
-                            type="time"
+                          <EditableTimeInput
                             value={item.time}
-                            onChange={async (e) => {
-                              const newTime = e.target.value;
-                              if (!newTime) return;
+                            onSave={async (newTime) => {
                               try {
                                 await updateInterviewSchedule(item.id, { time: newTime });
                                 await queryClient.invalidateQueries({ queryKey: ["interview-schedules"] });
                                 toast.success("Time updated successfully");
-                                window.location.reload();
                               } catch {
                                 toast.error("Failed to update time");
                               }
                             }}
-                            className="bg-secondary/50 border border-border/50 text-foreground text-xs rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-primary/50"
                           />
                         </td>
                         <td className="p-4">
@@ -1834,7 +2084,6 @@ export default function InternalHiring() {
                                 await updateInterviewSchedule(item.id, { venue: newVenue });
                                 await queryClient.invalidateQueries({ queryKey: ["interview-schedules"] });
                                 toast.success("Venue updated successfully");
-                                window.location.reload();
                               } catch {
                                 toast.error("Failed to update venue");
                               }
@@ -2058,7 +2307,7 @@ export default function InternalHiring() {
                   <span className="truncate">
                     {selectedVendorIds.length === 0 
                       ? "Select Vendors..." 
-                      : selectedVendorIds.map(id => vendors.find(v => v.id === id)?.name).filter(Boolean).join(", ")
+                      : selectedVendorIds.map(id => { const v = vendors.find(v => v.id === id); return v ? (v.company_name || v.name) : ""; }).filter(Boolean).join(", ")
                     }
                   </span>
                   <ChevronDown className="w-3 h-3 text-muted-foreground shrink-0 ml-2" />
@@ -2143,15 +2392,27 @@ export default function InternalHiring() {
               </select>
             </div>
           </div>
-          <div>
-            <label className="label-text mb-2 block text-xs font-bold uppercase tracking-wider">Project Time Period</label>
-            <input
-              type="text"
-              value={roleForm.project_time_period}
-              onChange={(e) => setRoleForm({ ...roleForm, project_time_period: e.target.value })}
-              className="w-full px-4 py-3 rounded-lg bg-secondary border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-              placeholder="e.g. 6 Months (Extendable)"
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="label-text mb-2 block text-xs font-bold uppercase tracking-wider">Department</label>
+              <input
+                type="text"
+                value={roleForm.department}
+                onChange={(e) => setRoleForm({ ...roleForm, department: e.target.value })}
+                className="w-full px-4 py-3 rounded-lg bg-secondary border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+                placeholder="e.g. Engineering, Sales"
+              />
+            </div>
+            <div>
+              <label className="label-text mb-2 block text-xs font-bold uppercase tracking-wider">Project Time Period</label>
+              <input
+                type="text"
+                value={roleForm.project_time_period}
+                onChange={(e) => setRoleForm({ ...roleForm, project_time_period: e.target.value })}
+                className="w-full px-4 py-3 rounded-lg bg-secondary border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+                placeholder="e.g. 6 Months (Extendable)"
+              />
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>

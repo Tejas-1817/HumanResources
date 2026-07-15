@@ -49,14 +49,14 @@ const item = {
 };
 
 const CHART_COLORS = {
-  primary: "#6366f1",
-  accent: "#22d3ee",
-  success: "#10b981",
-  warning: "#f59e0b",
-  destructive: "#ef4444",
-  purple: "#a855f7",
-  indigoLight: "#818cf8",
-  gray: "#94a3b8"
+  primary: "#7c83fd",        // Richer Periwinkle Blue
+  success: "#84cc16",        // Richer Lime Green / Chartreuse
+  purple: "#b088f9",         // Richer Lavender/Purple
+  warning: "#eab308",        // Richer Amber/Yellow
+  accent: "#06b6d4",         // Richer Cyan
+  destructive: "#f43f5e",    // Richer Rose/Coral
+  gray: "#94a3b8",           // Slate-400 Gray
+  indigoLight: "#818cf8"     // Indigo-400
 };
 
 const tooltipStyle = {
@@ -67,6 +67,10 @@ const tooltipStyle = {
   fontSize: 12,
   boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.5)",
   padding: "10px 14px",
+};
+
+const renderLegendText = (value: string) => {
+  return <span className="text-slate-700 dark:text-slate-300 font-semibold ml-1.5">{value}</span>;
 };
 
 const Analytics = () => {
@@ -281,6 +285,47 @@ const Analytics = () => {
     });
   }, [pipeline]);
 
+  // ── Chart 7: Vacancies by Department ──────────────────
+  const departmentData = useMemo(() => {
+    const deptMap = new Map<string, number>();
+    
+    // Aggregate openings (positions_required) for active (open) roles
+    jobRoles.forEach((role) => {
+      if (role.status?.toLowerCase() === "open") {
+        const dept = role.department || "Operations";
+        deptMap.set(dept, (deptMap.get(dept) || 0) + role.positions_required);
+      }
+    });
+
+    if (deptMap.size === 0) {
+      return [
+        { name: "Engineering", value: 5, color: CHART_COLORS.primary },
+        { name: "Sales & Marketing", value: 3, color: CHART_COLORS.success },
+        { name: "Operations", value: 2, color: CHART_COLORS.warning },
+        { name: "Human Resources", value: 2, color: CHART_COLORS.purple },
+      ];
+    }
+
+    const palette = [
+      CHART_COLORS.primary,
+      CHART_COLORS.success,
+      CHART_COLORS.warning,
+      CHART_COLORS.purple,
+      CHART_COLORS.accent,
+      CHART_COLORS.destructive,
+    ];
+
+    return Array.from(deptMap.entries()).map(([name, value], i) => ({
+      name,
+      value,
+      color: palette[i % palette.length]
+    })).sort((a, b) => b.value - a.value);
+  }, [jobRoles]);
+
+  const totalVacancies = useMemo(() => {
+    return departmentData.reduce((sum, item) => sum + item.value, 0);
+  }, [departmentData]);
+
   const showLoading = isLoadingStats || isLoadingPipeline;
 
   if (showLoading) {
@@ -369,8 +414,8 @@ const Analytics = () => {
                 margin={{ top: 20, right: 10, left: -10, bottom: 5 }}
               >
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
-                <XAxis dataKey="name" tick={{ fill: "#94a3b8", fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: "#94a3b8", fontSize: 11 }} axisLine={false} tickLine={false} />
+                <XAxis dataKey="name" tick={{ fill: "#475569", fontSize: 11 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fill: "#475569", fontSize: 11 }} axisLine={false} tickLine={false} />
                 <Tooltip contentStyle={tooltipStyle} cursor={{ fill: "rgba(255,255,255,0.03)" }} />
                 <Bar 
                   dataKey="value" 
@@ -466,8 +511,8 @@ const Analytics = () => {
                 margin={{ top: 20, right: 10, left: -10, bottom: 5 }}
               >
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
-                <XAxis dataKey="name" tick={{ fill: "#94a3b8", fontSize: 10 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: "#94a3b8", fontSize: 11 }} axisLine={false} tickLine={false} />
+                <XAxis dataKey="name" tick={{ fill: "#475569", fontSize: 10 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fill: "#475569", fontSize: 11 }} axisLine={false} tickLine={false} />
                 <Tooltip contentStyle={tooltipStyle} cursor={{ fill: "rgba(255,255,255,0.03)" }} />
                 <Bar dataKey="value" fill={CHART_COLORS.warning} radius={[8, 8, 0, 0]} maxBarSize={45} />
               </ReChartsBarChart>
@@ -513,8 +558,8 @@ const Analytics = () => {
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
-                <XAxis dataKey="name" tick={{ fill: "#94a3b8", fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: "#94a3b8", fontSize: 11 }} axisLine={false} tickLine={false} />
+                <XAxis dataKey="name" tick={{ fill: "#475569", fontSize: 11 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fill: "#475569", fontSize: 11 }} axisLine={false} tickLine={false} />
                 <Tooltip contentStyle={tooltipStyle} />
                 <Area 
                   type="monotone" 
@@ -549,8 +594,8 @@ const Analytics = () => {
                 margin={{ top: 0, right: 10, left: 10, bottom: 5 }}
               >
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="rgba(255,255,255,0.05)" />
-                <XAxis type="number" tick={{ fill: "#94a3b8", fontSize: 10 }} axisLine={false} tickLine={false} />
-                <YAxis dataKey="name" type="category" tick={{ fill: "#f8fafc", fontSize: 11, fontWeight: 600 }} axisLine={false} tickLine={false} width={80} />
+                <XAxis type="number" tick={{ fill: "#475569", fontSize: 10 }} axisLine={false} tickLine={false} />
+                <YAxis dataKey="name" type="category" tick={{ fill: "#475569", fontSize: 11, fontWeight: 600 }} axisLine={false} tickLine={false} width={80} />
                 <Tooltip contentStyle={tooltipStyle} cursor={{ fill: "rgba(255,255,255,0.03)" }} />
                 <Bar dataKey="count" fill={CHART_COLORS.primary} radius={[0, 6, 6, 0]} maxBarSize={16} />
               </ReChartsBarChart>
@@ -559,40 +604,96 @@ const Analytics = () => {
         </motion.div>
       </div>
 
-      {/* ─── Row 4: Client Company Breakdown ────────────── */}
-      <div className="grid grid-cols-1 gap-6">
+      {/* ─── Row 4: Client Company & Department Breakdowns ─── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Chart 6: Client Company stacked pipeline */}
-        <motion.div variants={item} className="glass-card p-6 border border-border/50">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="heading-md flex items-center gap-2">
-              <Briefcase className="w-5 h-5 text-purple" />
-              Client Company Pipelines
-            </h3>
-            <span className="text-[10px] font-extrabold text-purple bg-purple/10 border border-purple/20 px-2 py-0.5 rounded-full uppercase tracking-wider">
-              Corporate Overview
-            </span>
+        <motion.div variants={item} className="glass-card p-6 border border-border/50 flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="heading-md flex items-center gap-2">
+                <Briefcase className="w-5 h-5 text-primary" />
+                Client Company Pipelines
+              </h3>
+              <span className="text-[10px] font-extrabold text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                Corporate Overview
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground mb-6">
+              Detailed candidate distribution stages across the top client companies in the workspace.
+            </p>
           </div>
-          <p className="text-xs text-muted-foreground mb-6">
-            Detailed candidate distribution stages across the top client companies in the workspace.
-          </p>
 
-          <div className="h-[320px] w-full">
+          <div className="h-[280px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <ReChartsBarChart
                 data={companyPipelineData}
                 margin={{ top: 20, right: 10, left: -10, bottom: 5 }}
               >
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
-                <XAxis dataKey="name" tick={{ fill: "#f8fafc", fontSize: 11, fontWeight: 500 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: "#94a3b8", fontSize: 11 }} axisLine={false} tickLine={false} />
+                <XAxis dataKey="name" tick={{ fill: "#475569", fontSize: 11, fontWeight: 500 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fill: "#475569", fontSize: 11 }} axisLine={false} tickLine={false} />
                 <Tooltip contentStyle={tooltipStyle} />
-                <Legend iconType="circle" wrapperStyle={{ fontSize: 12, paddingTop: 10 }} />
-                <Bar dataKey="screening" name="Screening" stackId="a" fill={CHART_COLORS.gray} />
-                <Bar dataKey="interviewing" name="Interviewing" stackId="a" fill={CHART_COLORS.warning} />
-                <Bar dataKey="selected" name="Hired" stackId="a" fill={CHART_COLORS.success} />
-                <Bar dataKey="rejected" name="Rejected" stackId="a" fill={CHART_COLORS.destructive} />
+                <Legend iconType="circle" formatter={renderLegendText} wrapperStyle={{ fontSize: 12, paddingTop: 10 }} />
+                <Bar dataKey="screening" name="Screening" stackId="a" fill={CHART_COLORS.gray} maxBarSize={45} />
+                <Bar dataKey="interviewing" name="Interviewing" stackId="a" fill={CHART_COLORS.warning} maxBarSize={45} />
+                <Bar dataKey="selected" name="Hired" stackId="a" fill={CHART_COLORS.success} maxBarSize={45} />
+                <Bar dataKey="rejected" name="Rejected" stackId="a" fill={CHART_COLORS.destructive} maxBarSize={45} />
               </ReChartsBarChart>
             </ResponsiveContainer>
+          </div>
+        </motion.div>
+
+        {/* Chart 7: Vacancies by Department */}
+        <motion.div variants={item} className="glass-card p-6 border border-border/50 flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="heading-md flex items-center gap-2">
+                <PieChart className="w-5 h-5 text-purple" />
+                Openings by Department
+              </h3>
+              <span className="text-[10px] font-extrabold text-purple bg-purple/10 border border-purple/20 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                Departmental Focus
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground mb-6">
+              Distribution of open position vacancies across internal business departments.
+            </p>
+          </div>
+
+          <div className="h-[280px] w-full relative flex items-center justify-center">
+            <ResponsiveContainer width="100%" height="100%">
+              <ReChartsPieChart>
+                <Pie
+                  data={departmentData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={65}
+                  outerRadius={90}
+                  paddingAngle={5}
+                  dataKey="value"
+                >
+                  {departmentData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip contentStyle={tooltipStyle} />
+              </ReChartsPieChart>
+            </ResponsiveContainer>
+            {/* Display Center Label */}
+            <div className="absolute flex flex-col items-center justify-center">
+              <span className="text-3xl font-extrabold text-foreground">{totalVacancies}</span>
+              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-0.5">Vacancies</span>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-x-4 gap-y-2 justify-center border-t border-border/50 pt-4 mt-2">
+            {departmentData.map((entry) => (
+              <div key={entry.name} className="flex items-center gap-1.5 text-xs">
+                <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: entry.color }} />
+                <span className="font-medium text-foreground truncate max-w-[120px]">{entry.name}</span>
+                <span className="text-muted-foreground">({entry.value})</span>
+              </div>
+            ))}
           </div>
         </motion.div>
       </div>

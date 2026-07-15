@@ -28,6 +28,7 @@ class JobRole(Base):
     estimated_budget: Mapped[float | None] = mapped_column(Float, nullable=True)
     currency: Mapped[str] = mapped_column(String(10), nullable=False, server_default=text("'INR'"))
     positions_required: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("1"))
+    department: Mapped[str | None] = mapped_column(String(255), nullable=True)
     location: Mapped[str | None] = mapped_column(String(255), nullable=True)
     work_mode: Mapped[str | None] = mapped_column(String(50), nullable=True)  # remote, hybrid, onsite
     experience_required: Mapped[float | None] = mapped_column(Float, nullable=True)  # years

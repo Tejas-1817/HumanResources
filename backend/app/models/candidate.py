@@ -53,13 +53,13 @@ class Candidate(Base):
     @property
     def source_vendor(self) -> str | None:
         if self.uploader_vendor:
-            return self.uploader_vendor.name
+            return self.uploader_vendor.company_name or self.uploader_vendor.name
         return None
 
     @property
     def source_label(self) -> str | None:
         if self.uploader_vendor:
-            return self.uploader_vendor.name
+            return self.uploader_vendor.company_name or self.uploader_vendor.name
             
         # Prefer candidate-level source (always set during upload)
         source_str = (self.source or "direct").title()

@@ -472,6 +472,7 @@ export const CreateJobPostForm = ({ onSuccess }: { onSuccess: () => void }) => {
 export const AddCompanyForm = ({ onSuccess }: { onSuccess: () => void }) => {
   const queryClient = useQueryClient();
   const [name, setName] = useState("");
+  const [location, setLocation] = useState("");
   const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -485,6 +486,7 @@ export const AddCompanyForm = ({ onSuccess }: { onSuccess: () => void }) => {
     try {
       await createCompany({
         name: name.trim(),
+        location: location.trim() || undefined,
         description: description.trim() || undefined,
       });
       toast.success("Company added successfully");
@@ -508,6 +510,16 @@ export const AddCompanyForm = ({ onSuccess }: { onSuccess: () => void }) => {
           onChange={(e) => setName(e.target.value)}
           className="w-full px-4 py-3 rounded-lg bg-secondary border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
           placeholder="e.g. Acme Corporation"
+        />
+      </div>
+      <div>
+        <label className="label-text mb-2 block font-medium">Location</label>
+        <input
+          type="text"
+          value={location}
+          onChange={(e) => setLocation(e.target.value)}
+          className="w-full px-4 py-3 rounded-lg bg-secondary border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+          placeholder="e.g. Bangalore, India"
         />
       </div>
       <div>

@@ -25,6 +25,7 @@ import {
   Eye,
   ChevronDown,
   Check,
+  MapPin,
 } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -80,6 +81,133 @@ const getStatusFromAge = (c: Candidate): string => {
   if (days <= 1) return "New";
   if (days <= 7) return "Screening";
   return "Review";
+};
+
+const getRoleTags = (r: any) => {
+  const title = r.title.toLowerCase();
+  const tags: string[] = [];
+  
+  if (title.includes("general")) {
+    return ["— General positions and unassigned roles"];
+  }
+  
+  if (title.includes("python")) {
+    tags.push("Python", "Django");
+  } else if (title.includes("outreach")) {
+    tags.push("Sales", "CRM");
+  } else if (title.includes("devops")) {
+    tags.push("AWS", "Docker");
+  } else if (title.includes("tester")) {
+    tags.push("QA", "Testing");
+  } else if (title.includes("accountant")) {
+    tags.push("Finance", "Tally");
+  } else if (title.includes("hr") || title.includes("human resources")) {
+    tags.push("HR", "People Mgmt.");
+  } else if (title.includes("ui") || title.includes("ux") || title.includes("design")) {
+    tags.push("Figma", "Adobe XD");
+  } else if (title.includes("data") || title.includes("analyst")) {
+    tags.push("SQL", "Excel");
+  } else {
+    tags.push(r.title);
+  }
+  
+  if (r.experience_required != null && r.experience_required !== "") {
+    const exp = r.experience_required;
+    if (typeof exp === "number") {
+      tags.push(`${exp}+ Yrs`);
+    } else {
+      tags.push(String(exp).includes("Yrs") ? exp : `${exp} Yrs`);
+    }
+  } else {
+    // Fallbacks matching the design mock image
+    if (title.includes("outreach")) tags.push("1-2 Yrs");
+    else if (title.includes("python") || title.includes("devops")) tags.push("3+ Yrs");
+    else if (title.includes("ui") || title.includes("ux") || title.includes("design")) tags.push("2-4 Yrs");
+    else tags.push("2-3 Yrs");
+  }
+  return tags;
+};
+
+const getRoleIconDetails = (title: string) => {
+  const t = title.toLowerCase();
+  if (t.includes("python") || t.includes("developer") || t.includes("engineer") || t.includes("devops")) {
+    if (t.includes("python")) {
+      return {
+        icon: Briefcase,
+        bg: "bg-blue-50 dark:bg-blue-950/30",
+        text: "text-blue-600 dark:text-blue-400",
+        border: "border border-blue-100 dark:border-blue-900/50"
+      };
+    }
+    if (t.includes("devops")) {
+      return {
+        icon: Briefcase,
+        bg: "bg-amber-50 dark:bg-amber-950/30",
+        text: "text-amber-600 dark:text-amber-400",
+        border: "border border-amber-100 dark:border-amber-900/50"
+      };
+    }
+    return {
+      icon: Briefcase,
+      bg: "bg-blue-50 dark:bg-blue-950/30",
+      text: "text-blue-600 dark:text-blue-400",
+      border: "border border-blue-100 dark:border-blue-900/50"
+    };
+  }
+  if (t.includes("outreach") || t.includes("sales") || t.includes("marketing")) {
+    return {
+      icon: Briefcase,
+      bg: "bg-purple-50 dark:bg-purple-950/30",
+      text: "text-purple-600 dark:text-purple-400",
+      border: "border border-purple-100 dark:border-purple-900/50"
+    };
+  }
+  if (t.includes("general")) {
+    return {
+      icon: GitBranch,
+      bg: "bg-emerald-50 dark:bg-emerald-950/30",
+      text: "text-emerald-600 dark:text-emerald-400",
+      border: "border border-emerald-100 dark:border-emerald-900/50"
+    };
+  }
+  if (t.includes("hr") || t.includes("human resources") || t.includes("recruiter")) {
+    return {
+      icon: Clock,
+      bg: "bg-amber-50 dark:bg-amber-950/30",
+      text: "text-amber-600 dark:text-amber-400",
+      border: "border border-amber-100 dark:border-amber-900/50"
+    };
+  }
+  if (t.includes("accountant") || t.includes("finance") || t.includes("billing")) {
+    return {
+      icon: Users,
+      bg: "bg-rose-50 dark:bg-rose-950/30",
+      text: "text-rose-600 dark:text-rose-400",
+      border: "border border-rose-100 dark:border-rose-900/50"
+    };
+  }
+  if (t.includes("ui") || t.includes("ux") || t.includes("design") || t.includes("frontend")) {
+    return {
+      icon: GitBranch,
+      bg: "bg-cyan-50 dark:bg-cyan-950/30",
+      text: "text-cyan-600 dark:text-cyan-400",
+      border: "border border-cyan-100 dark:border-cyan-900/50"
+    };
+  }
+  if (t.includes("data") || t.includes("analyst") || t.includes("analytics")) {
+    return {
+      icon: Briefcase,
+      bg: "bg-indigo-50 dark:bg-indigo-950/30",
+      text: "text-indigo-600 dark:text-indigo-400",
+      border: "border border-indigo-100 dark:border-indigo-900/50"
+    };
+  }
+  return {
+    icon: Briefcase,
+    bg: "bg-gray-50 dark:bg-gray-950/30",
+    text: "text-gray-600 dark:text-gray-400",
+    border: "border border-gray-100 dark:border-gray-900/50"
+  };
 };
 
 // ──────────────────────────────────────────────────────────
@@ -149,7 +277,7 @@ const Companies = () => {
   const [companyModalOpen, setCompanyModalOpen] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
-  const [companyForm, setCompanyForm] = useState({ name: "" });
+  const [companyForm, setCompanyForm] = useState({ name: "", location: "" });
 
   // ─── Job Roles state ──────────────────────────────────
   const [roleModalOpen, setRoleModalOpen] = useState(false);
@@ -219,15 +347,60 @@ const Companies = () => {
     return new Map([...m].map(([k, v]) => [k, v.size]));
   }, [pipeline, roleById]);
 
+  // Total positions filled and required per company
+  const positionsFilledByCompany = useMemo(() => {
+    const m = new Map<number, { filled: number, required: number }>();
+    
+    for (const r of jobRoles) {
+      const cid = r.company_id;
+      const filledCount = (pipeline["selected"] || []).filter((app: any) => app.job_role_id === r.id).length;
+      const requiredCount = r.positions_required || 0;
+      
+      if (!m.has(cid)) {
+        m.set(cid, { filled: 0, required: 0 });
+      }
+      const val = m.get(cid)!;
+      val.filled += filledCount;
+      val.required += requiredCount;
+    }
+    
+    return m;
+  }, [jobRoles, pipeline]);
+
 
 
   // Filtered roles for selected company
   const companyRoles = useMemo(() => {
     if (!selectedCompanyId) return [];
     const roles = jobRoles.filter((r) => r.company_id === selectedCompanyId);
-    if (roleFilter === "All") return roles;
-    return roles.filter((r) => r.status.toLowerCase() === roleFilter.toLowerCase());
-  }, [jobRoles, selectedCompanyId, roleFilter]);
+    
+    // Map each role to include its computed status and filled count
+    const rolesWithComputedStatus = roles.map(r => {
+      const filledCount = (pipeline["selected"] || []).filter((app: any) => app.job_role_id === r.id).length;
+      
+      let computedStatus = "open";
+      if (r.status.toLowerCase() === "closed") {
+        computedStatus = "closed";
+      } else {
+        const inProgressStages = ["shortlisted", "interview_scheduled", "interviewed", "on_hold"];
+        const hasActiveCandidates = inProgressStages.some(stage => 
+          (pipeline[stage] || []).some((app: any) => app.job_role_id === r.id)
+        );
+        if (hasActiveCandidates) {
+          computedStatus = "in progress";
+        }
+      }
+      
+      return {
+        ...r,
+        filledCount,
+        computedStatus
+      };
+    });
+
+    if (roleFilter === "All") return rolesWithComputedStatus;
+    return rolesWithComputedStatus.filter((r) => r.computedStatus.toLowerCase() === roleFilter.toLowerCase());
+  }, [jobRoles, selectedCompanyId, roleFilter, pipeline]);
 
   // Auto-select first job role when Pipeline tab is entered
   useEffect(() => {
@@ -344,16 +517,16 @@ const Companies = () => {
   // ──────────────────────────────────────────────────────────
   // Company CRUD handlers
   // ──────────────────────────────────────────────────────────
-  const openAddCompany = () => { setEditId(null); setCompanyForm({ name: "" }); setCompanyModalOpen(true); };
-  const openEditCompany = (c: Company) => { setEditId(c.id); setCompanyForm({ name: c.name }); setCompanyModalOpen(true); };
+  const openAddCompany = () => { setEditId(null); setCompanyForm({ name: "", location: "" }); setCompanyModalOpen(true); };
+  const openEditCompany = (c: Company) => { setEditId(c.id); setCompanyForm({ name: c.name, location: c.location || "" }); setCompanyModalOpen(true); };
   const handleSaveCompany = async () => {
     if (!companyForm.name.trim()) { toast.error("Company name is required"); return; }
     try {
       if (editId) {
-        await updateCompany(editId, { name: companyForm.name.trim() });
+        await updateCompany(editId, { name: companyForm.name.trim(), location: companyForm.location.trim() || null });
         toast.success("Company updated");
       } else {
-        await createCompany({ name: companyForm.name.trim() });
+        await createCompany({ name: companyForm.name.trim(), location: companyForm.location.trim() || null });
         toast.success("Company added");
       }
       await queryClient.invalidateQueries({ queryKey: ["companies"] });
@@ -718,6 +891,20 @@ const Companies = () => {
     setRoleFilter("All");
   };
 
+  const handleViewCompanyTab = (e: React.MouseEvent, companyId: number, tab: "roles" | "candidates") => {
+    e.stopPropagation();
+    sessionStorage.setItem("companies_active_tab", tab);
+    setActiveTab(tab);
+    // Reset candidate page & states if transitioning to candidates
+    if (tab === "candidates") {
+      setCandSearch("");
+      setCandPage(1);
+      setCandExpFilter(0);
+      setCandSkillFilter("");
+    }
+    navigate(`/companies?id=${companyId}`);
+  };
+
   // ──────────────────────────────────────────────────────────
   // RENDER
   // ──────────────────────────────────────────────────────────
@@ -763,10 +950,12 @@ const Companies = () => {
       {!selectedCompanyId && (
         <div className="glass-card overflow-hidden">
           <div className="hidden md:block p-4 border-b border-border/50 bg-secondary/20">
-            <div className="grid grid-cols-12 gap-4 px-4 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-              <div className="col-span-12 md:col-span-4">Organization</div>
-              <div className="md:col-span-5 hidden md:block">Activity & Recruitment Stats</div>
-              <div className="md:col-span-3 text-right hidden md:block">Quick Actions</div>
+            <div className="grid grid-cols-12 gap-4 px-4 text-[10px] font-bold text-muted-foreground uppercase tracking-widest items-center">
+              <div className="col-span-3">Organization</div>
+              <div className="col-span-2">Active Positions</div>
+              <div className="col-span-3">Positions Filled</div>
+              <div className="col-span-2">Total Candidates</div>
+              <div className="col-span-2 text-right">Quick Actions</div>
             </div>
           </div>
 
@@ -774,9 +963,10 @@ const Companies = () => {
             {companies
               .filter(c => c.name.toLowerCase().includes(companySearch.toLowerCase()))
               .map((c) => {
-                const totalRoles = roleCountByCompany.get(c.id) || 0;
                 const openRoles = openRoleCountByCompany.get(c.id) || 0;
                 const totalCand = candidateCountByCompany.get(c.id) || 0;
+                const stats = positionsFilledByCompany.get(c.id) || { filled: 0, required: 0 };
+                const percent = stats.required > 0 ? Math.min(100, Math.round((stats.filled / stats.required) * 100)) : 0;
 
                 return (
                   <motion.div
@@ -787,7 +977,7 @@ const Companies = () => {
                     onClick={() => navigate(`/companies?id=${c.id}`)}
                   >
                     {/* Organization Info */}
-                    <div className="w-full md:col-span-4 flex items-center gap-4">
+                    <div className="w-full md:col-span-3 flex items-center gap-4">
                       <div className="w-10 h-10 md:w-11 md:h-11 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold text-xs ring-1 ring-primary/20 group-hover:scale-110 transition-transform shadow-sm shrink-0">
                         <Building2 className="w-5 h-5 md:w-6 md:h-6" />
                       </div>
@@ -795,30 +985,50 @@ const Companies = () => {
                         <p className="text-sm font-bold text-foreground group-hover:text-primary transition-colors truncate">
                           {c.name}
                         </p>
+                        {c.location && (
+                          <p className="text-[10px] text-muted-foreground mt-0.5 truncate flex items-center gap-1">
+                            <MapPin className="w-3 h-3 text-muted-foreground/60 shrink-0" />
+                            {c.location}
+                          </p>
+                        )}
                       </div>
                     </div>
 
-                    {/* Stats */}
-                    <div className="w-full md:col-span-5 flex items-center justify-between md:justify-start gap-4 md:gap-6 py-2 md:py-0 border-y border-border/30 md:border-none">
-                      <div className="flex flex-col">
-                        <span className="text-xs font-bold text-foreground">{totalRoles}</span>
-                        <span className="text-[10px] text-muted-foreground uppercase font-bold">Roles</span>
+                    {/* Active Positions */}
+                    <div className="w-full md:col-span-2 flex flex-col justify-center items-start">
+                      <span className="text-sm font-bold text-foreground">{openRoles}</span>
+                      <button
+                        onClick={(e) => handleViewCompanyTab(e, c.id, "roles")}
+                        className="text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1 mt-1 transition-all"
+                      >
+                        View Positions &rarr;
+                      </button>
+                    </div>
+
+                    {/* Positions Filled */}
+                    <div className="w-full md:col-span-3 flex flex-col justify-center items-start pr-4">
+                      <span className="text-sm font-bold text-foreground">{stats.filled} / {stats.required}</span>
+                      <div className="w-full bg-secondary border border-border/30 rounded-full h-1.5 overflow-hidden mt-1.5 max-w-[200px]">
+                        <div 
+                          className="bg-blue-600 h-full rounded-full transition-all duration-500" 
+                          style={{ width: `${percent}%` }}
+                        />
                       </div>
-                      <div className="flex flex-col">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-bold text-success">{openRoles}</span>
-                          <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
-                        </div>
-                        <span className="text-[10px] text-muted-foreground uppercase font-bold">Active</span>
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="text-xs font-bold text-primary">{totalCand}</span>
-                        <span className="text-[10px] text-muted-foreground uppercase font-bold">Candidates</span>
-                      </div>
+                    </div>
+
+                    {/* Total Candidates */}
+                    <div className="w-full md:col-span-2 flex flex-col justify-center items-start">
+                      <span className="text-sm font-bold text-foreground">{totalCand}</span>
+                      <button
+                        onClick={(e) => handleViewCompanyTab(e, c.id, "candidates")}
+                        className="text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1 mt-1 transition-all"
+                      >
+                        View Candidates &rarr;
+                      </button>
                     </div>
 
                     {/* Actions */}
-                    <div className="w-full md:col-span-3 flex items-center justify-between md:justify-end gap-2 mt-2 md:mt-0">
+                    <div className="w-full md:col-span-2 flex items-center justify-between md:justify-end gap-2 mt-2 md:mt-0">
                       <div className="flex gap-2">
                         <button
                           onClick={(e) => { e.stopPropagation(); openEditCompany(c); }}
@@ -836,6 +1046,7 @@ const Companies = () => {
                         </button>
                       </div>
                       <button
+                        onClick={(e) => { e.stopPropagation(); navigate(`/companies?id=${c.id}`); }}
                         className="px-4 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-bold hover:bg-primary hover:text-primary-foreground transition-all flex items-center gap-2 group/btn"
                       >
                         Details
@@ -922,7 +1133,7 @@ const Companies = () => {
               {/* Tabs */}
               <div className="flex items-center border-b border-border px-5 pt-1">
                 {([
-                  { key: "roles" as const, label: "Job Roles", icon: Briefcase, count: companyRoles.length },
+                  { key: "roles" as const, label: "Job Roles", icon: Briefcase, count: null },
                   { key: "candidates" as const, label: "Candidates", icon: Users, count: candTotal },
                   { key: "pipeline" as const, label: "In Progress", icon: GitBranch, count: pipelineTotalCount },
                 ]).map((t) => (
@@ -933,12 +1144,13 @@ const Companies = () => {
                   >
                     <t.icon className="w-4 h-4" />
                     {t.label}
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${activeTab === t.key ? "bg-primary/10 text-primary" : "bg-secondary text-muted-foreground"}`}>
-                      {t.count}
-                    </span>
+                    {t.count !== null && (
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${activeTab === t.key ? "bg-primary/10 text-primary" : "bg-secondary text-muted-foreground"}`}>
+                        {t.count}
+                      </span>
+                    )}
                   </button>
                 ))}
-
               </div>
 
               {/* Tab Content */}
@@ -947,11 +1159,11 @@ const Companies = () => {
                 {activeTab === "roles" && (
                   <div>
                     <div className="flex items-center gap-2 mb-4">
-                      {["All", "Open", "Closed"].map((f) => (
+                      {["All", "Open", "In Progress", "Closed"].map((f) => (
                         <button
                           key={f}
                           onClick={() => setRoleFilter(f as any)}
-                          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${roleFilter === f ? "bg-primary/10 text-primary" : "bg-secondary text-muted-foreground hover:text-foreground"}`}
+                          className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${roleFilter === f ? "bg-primary/10 text-primary" : "bg-secondary text-muted-foreground hover:text-foreground"}`}
                         >
                           {f}
                         </button>
@@ -960,146 +1172,164 @@ const Companies = () => {
                         <button
                           onClick={() => setIsAssignVendorOpen(true)}
                           disabled={selectedRoleIds.length === 0}
-                          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 shadow-sm ${
+                          className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 border border-border/60 ${
                             selectedRoleIds.length > 0 
-                              ? "bg-violet-600 text-white hover:bg-violet-700" 
-                              : "bg-secondary text-muted-foreground/50 cursor-not-allowed border border-border/50"
+                              ? "bg-violet-600 border-violet-600 text-white hover:bg-violet-700 shadow-md shadow-violet-600/15" 
+                              : "bg-transparent text-muted-foreground hover:text-foreground hover:bg-secondary/40"
                           }`}
                         >
-                          <Users className="w-4 h-4" /> Assign to Vendor {selectedRoleIds.length > 0 && `(${selectedRoleIds.length})`}
+                          <UserCheck className="w-4 h-4" /> Assign to Vendor {selectedRoleIds.length > 0 && `(${selectedRoleIds.length})`}
+                          <ChevronDown className="w-3.5 h-3.5 opacity-60" />
                         </button>
                         <button
                           onClick={() => { setRoleForm({ title: "", description: "", deadline: "", estimated_budget: "", currency: "INR", positions_required: 1, pipeline_stages: [...DEFAULT_STAGES], location: "", work_mode: "onsite", experience_required: "", project_time_period: "" }); setRoleModalOpen(true); }}
-                          className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-all flex items-center gap-2"
+                          className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition-all flex items-center gap-2 shadow-md shadow-blue-600/10"
                         >
                           <Plus className="w-4 h-4" /> Add Position
                         </button>
                       </div>
                     </div>
-                    <div className="flex flex-col gap-3">
-                      {companyRoles.map((r) => {
-                        const roleIsOpen = r.status.toLowerCase() === "open";
-                        const filledCount = (pipeline["selected"] || []).filter((app: any) => app.job_role_id === r.id).length;
-                        const isFullyStaffed = filledCount >= r.positions_required;
-
-                        return (
-                          <motion.div
-                            key={r.id}
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className={`group relative glass-card p-4 md:p-5 border border-border/50 hover:border-primary/30 transition-all cursor-pointer flex flex-col md:flex-row md:items-center justify-between gap-4 ${!roleIsOpen ? "opacity-60" : ""} ${selectedRoleIds.includes(r.id) ? "border-primary/50 bg-primary/[0.03]" : ""}`}
-                            onClick={() => navigate(`/job-roles/${r.id}`)}
-                          >
-                            <div className="flex items-center gap-4 flex-1 min-w-0">
-                              <div 
-                                className="relative z-10 p-1"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setSelectedRoleIds(prev => 
-                                    prev.includes(r.id) ? prev.filter(id => id !== r.id) : [...prev, r.id]
-                                  );
-                                }}
-                              >
-                                <div className={`w-5 h-5 rounded border-2 transition-colors flex items-center justify-center ${selectedRoleIds.includes(r.id) ? "bg-primary border-primary" : "border-muted-foreground/30 hover:border-primary/50"}`}>
-                                  {selectedRoleIds.includes(r.id) && <Check className="w-3.5 h-3.5 text-white" />}
+                    {companyRoles.length === 0 ? (
+                      <div className="text-center py-16 text-muted-foreground glass-card border-dashed">
+                        <Briefcase className="w-10 h-10 mx-auto mb-4 opacity-20" />
+                        <p className="text-sm font-medium">No job roles yet for {selectedCompany?.name || "the company"}</p>
+                        <button onClick={() => { setRoleForm({ title: "", description: "", deadline: "", estimated_budget: "", currency: "INR", positions_required: 1, pipeline_stages: [...DEFAULT_STAGES], location: "", work_mode: "onsite", experience_required: "", project_time_period: "" }); setRoleModalOpen(true); }} className="mt-4 text-xs text-primary font-bold hover:underline underline-offset-4">
+                          + Initialize Active Recruitment
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto rounded-xl border border-border bg-secondary/10">
+                        <table className="w-full border-collapse text-left">
+                          <thead>
+                            <tr className="border-b border-border bg-secondary/30 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                              <th className="p-4 w-12">
+                                <div 
+                                  className="p-1 cursor-pointer"
+                                  onClick={() => {
+                                    if (selectedRoleIds.length === companyRoles.length) {
+                                      setSelectedRoleIds([]);
+                                    } else {
+                                      setSelectedRoleIds(companyRoles.map(r => r.id));
+                                    }
+                                  }}
+                                >
+                                  <div className={`w-4 h-4 rounded border transition-colors flex items-center justify-center ${selectedRoleIds.length === companyRoles.length && companyRoles.length > 0 ? "bg-primary border-primary text-white" : "border-muted-foreground/30"}`}>
+                                    {selectedRoleIds.length === companyRoles.length && companyRoles.length > 0 && <Check className="w-3 h-3 text-white" />}
+                                  </div>
                                 </div>
-                              </div>
-                              <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shrink-0 ring-1 ring-primary/20 shadow-sm">
-                                <Briefcase className="w-6 h-6" />
-                              </div>
-                              <div className="min-w-0 flex-1">
-                                <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4">
-                                  <h4 className="text-base font-bold text-foreground leading-tight truncate">{r.title}</h4>
-                                  <div className="flex items-center gap-2">
-                                    <StatusBadge status={r.status} className="scale-90 origin-left" />
-                                    {r.deadline && (
-                                      <div className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-secondary border border-border/50 text-[9px] font-bold text-muted-foreground whitespace-nowrap">
-                                        <Clock className="w-2.5 h-2.5 text-primary/70" /> {new Date(r.deadline).toLocaleDateString()}
+                              </th>
+                              <th className="p-4">Job Role</th>
+                              <th className="p-4">Department</th>
+                              <th className="p-4 text-center">Openings</th>
+                              <th className="p-4">Status</th>
+                              <th className="p-4 text-right">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-border/50 text-sm">
+                            {companyRoles.map((r) => {
+                              const roleIsOpen = r.status.toLowerCase() === "open";
+                              const tags = getRoleTags(r);
+                              const iconDetails = getRoleIconDetails(r.title);
+                              const IconComponent = iconDetails.icon;
+                              const openingsCount = Math.max(0, (r.positions_required || 1) - r.filledCount);
+                              const isGeneral = r.title.toLowerCase().includes("general");
+
+                              return (
+                                <tr
+                                  key={r.id}
+                                  className={`hover:bg-primary/[0.02] transition-colors ${!roleIsOpen ? "opacity-60" : ""} ${selectedRoleIds.includes(r.id) ? "bg-primary/[0.01]" : ""}`}
+                                >
+                                  <td className="p-4">
+                                    <div 
+                                      className="p-1 cursor-pointer"
+                                      onClick={() => {
+                                        setSelectedRoleIds(prev => 
+                                          prev.includes(r.id) ? prev.filter(id => id !== r.id) : [...prev, r.id]
+                                        );
+                                      }}
+                                    >
+                                      <div className={`w-4 h-4 rounded border transition-colors flex items-center justify-center ${selectedRoleIds.includes(r.id) ? "bg-primary border-primary text-white" : "border-muted-foreground/30 hover:border-primary/50"}`}>
+                                        {selectedRoleIds.includes(r.id) && <Check className="w-3 h-3 text-white" />}
                                       </div>
-                                    )}
-                                  </div>
-                                </div>
-                                <div className="flex flex-wrap items-center gap-2 mt-2">
-                                  <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-lg border text-[9px] font-black uppercase tracking-wider ${isFullyStaffed ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-500" : "bg-secondary border-border/50 text-muted-foreground"}`}>
-                                    Filled: {filledCount} / {r.positions_required}
-                                  </div>
-
-                                  {r.location && (
-                                    <div className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-secondary/50 border border-border/50 text-[9px] font-bold text-muted-foreground">
-                                      📍 {r.location}
                                     </div>
-                                  )}
-
-                                  {r.work_mode && (
-                                    <div className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-secondary/50 border border-border/50 text-[9px] font-bold text-muted-foreground capitalize">
-                                      {r.work_mode === "remote" ? "🌐" : r.work_mode === "hybrid" ? "🔀" : "🏢"} {r.work_mode}
+                                  </td>
+                                  <td className="p-4">
+                                    <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate(`/job-roles/${r.id}`)}>
+                                      <div className="min-w-0">
+                                        <div className="flex items-center gap-2">
+                                          <h4 className="font-bold text-foreground hover:text-primary transition-colors truncate max-w-[220px]">{r.title}</h4>
+                                          <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 uppercase tracking-wider">
+                                            Open
+                                          </span>
+                                        </div>
+                                        <p className="text-[11px] text-muted-foreground mt-0.5">
+                                          Filled: {r.filledCount} / {r.positions_required}
+                                        </p>
+                                        {isGeneral ? (
+                                          <span className="text-[11px] text-muted-foreground/80 mt-1 block font-medium">
+                                            {tags[0]}
+                                          </span>
+                                        ) : (
+                                          <div className="flex flex-wrap gap-1 mt-1">
+                                            {tags.map((tag, idx) => (
+                                              <span key={idx} className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-secondary text-muted-foreground border border-border/50 uppercase tracking-wider">
+                                                {tag}
+                                              </span>
+                                            ))}
+                                          </div>
+                                        )}
+                                      </div>
                                     </div>
-                                  )}
-
-                                  {r.experience_required != null && (
-                                    <div className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-secondary/50 border border-border/50 text-[9px] font-bold text-muted-foreground text-nowrap">
-                                      🎯 {r.experience_required} yrs
+                                  </td>
+                                  <td className="p-4">
+                                    <span className="font-semibold text-muted-foreground dark:text-muted-foreground/80 text-xs">
+                                      {r.department || "Operations"}
+                                    </span>
+                                  </td>
+                                  <td className="p-4 text-center font-bold text-foreground">
+                                    {openingsCount}
+                                  </td>
+                                  <td className="p-4">
+                                    <StatusBadge status={r.computedStatus} className="scale-90 origin-left" />
+                                  </td>
+                                  <td className="p-4 text-right">
+                                    <div className="flex items-center justify-end gap-1.5">
+                                      <button
+                                        onClick={(e) => { e.stopPropagation(); navigate(`/job-roles/${r.id}`); }}
+                                        className="p-1.5 rounded-lg border border-border/50 bg-card hover:bg-secondary/40 text-blue-500 hover:text-blue-600 transition-colors shadow-sm"
+                                        title="View Details"
+                                      >
+                                        <Eye className="w-3.5 h-3.5" />
+                                      </button>
+                                      <button
+                                        onClick={(e) => { e.stopPropagation(); openEditRole(r); }}
+                                        className="p-1.5 rounded-lg border border-border/50 bg-card hover:bg-secondary/40 text-muted-foreground hover:text-foreground transition-colors shadow-sm"
+                                        title="Edit Role"
+                                      >
+                                        <Edit className="w-3.5 h-3.5" />
+                                      </button>
+                                      <button
+                                        onClick={(e) => { e.stopPropagation(); setRoleDeleteId(r.id); }}
+                                        className="p-1.5 rounded-lg border border-border/50 bg-card hover:bg-secondary/40 text-muted-foreground hover:text-destructive transition-colors shadow-sm"
+                                        title="Delete Role"
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                      </button>
+                                      <button
+                                        onClick={(e) => { e.stopPropagation(); navigate(`/job-roles/${r.id}`); }}
+                                        className="px-3.5 py-1.5 text-[11px] font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center gap-1 shadow-sm ml-2"
+                                      >
+                                        View Details <ChevronRight className="w-3 h-3" />
+                                      </button>
                                     </div>
-                                  )}
-
-                                  {r.project_time_period && (
-                                    <div className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-secondary/50 border border-border/50 text-[9px] font-bold text-muted-foreground">
-                                      🕒 {r.project_time_period}
-                                    </div>
-                                  )}
-
-                                  {isFullyStaffed && (
-                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                                  )}
-                                  <p className="text-[10px] text-muted-foreground truncate opacity-60 italic hidden lg:block max-w-[200px]">— {r.description.slice(0, 60)}...</p>
-                                </div>
-                              </div>
-                            </div>
-
-                            <div className="flex items-center gap-2 pt-4 md:pt-0 border-t md:border-t-0 border-border/30 md:ml-4 shrink-0 justify-between md:justify-end">
-                              <div className="flex items-center gap-1 mr-2">
-                                <button
-                                  onClick={(e) => { e.stopPropagation(); setConfirmRoleId(r.id); setConfirmAction(roleIsOpen ? "close" : "reopen"); }}
-                                  className={`p-2 rounded-xl transition-all ${roleIsOpen ? "bg-destructive/5 text-destructive hover:bg-destructive/10 border border-destructive/20" : "bg-success/5 text-success hover:bg-success/10 border border-success/20"}`}
-                                  title={roleIsOpen ? "Close Role" : "Reopen Role"}
-                                >
-                                  {roleIsOpen ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}
-                                </button>
-                                <button
-                                  onClick={(e) => { e.stopPropagation(); openEditRole(r); }}
-                                  className="p-2 rounded-xl text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all border border-transparent hover:border-primary/20"
-                                  title="Edit Role"
-                                >
-                                  <Edit className="w-4 h-4" />
-                                </button>
-                                <button
-                                  onClick={(e) => { e.stopPropagation(); setRoleDeleteId(r.id); }}
-                                  className="p-2 rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all border border-transparent hover:border-destructive/20"
-                                  title="Delete Role"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              </div>
-                              <button
-                                onClick={() => navigate(`/job-roles/${r.id}`)}
-                                className="px-5 py-2 rounded-xl text-xs font-bold bg-primary text-primary-foreground hover:bg-primary/90 transition-all shadow-md shadow-primary/10"
-                              >
-                                View Details →
-                              </button>
-                            </div>
-                          </motion.div>
-                        );
-                      })}
-                      {companyRoles.length === 0 && (
-                        <div className="text-center py-16 text-muted-foreground glass-card border-dashed">
-                          <Briefcase className="w-10 h-10 mx-auto mb-4 opacity-20" />
-                          <p className="text-sm font-medium">No job roles yet for {selectedCompany.name}</p>
-                          <button onClick={() => { setRoleForm({ title: "", description: "", deadline: "", estimated_budget: "", currency: "INR", positions_required: 1, pipeline_stages: [...DEFAULT_STAGES], location: "", work_mode: "onsite", experience_required: "", project_time_period: "" }); setRoleModalOpen(true); }} className="mt-4 text-xs text-primary font-bold hover:underline underline-offset-4">
-                            + Initialize Active Recruitment
-                          </button>
-                        </div>
-                      )}
-                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -1447,6 +1677,10 @@ const Companies = () => {
             <label className="label-text mb-2 block">Company Name</label>
             <input value={companyForm.name} onChange={(e) => setCompanyForm({ ...companyForm, name: e.target.value })} className="w-full px-4 py-3 rounded-lg bg-secondary border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50" placeholder="e.g. Acme Corp" />
           </div>
+          <div>
+            <label className="label-text mb-2 block">Location</label>
+            <input value={companyForm.location} onChange={(e) => setCompanyForm({ ...companyForm, location: e.target.value })} className="w-full px-4 py-3 rounded-lg bg-secondary border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50" placeholder="e.g. Bangalore, India" />
+          </div>
 
           <button onClick={handleSaveCompany} className="w-full py-3 rounded-lg bg-primary text-primary-foreground font-medium text-sm hover:bg-primary/90 transition-all font-bold">
             {editId ? "Update Company" : "Add Company"}
@@ -1530,7 +1764,7 @@ const Companies = () => {
                         const v = vendors.find(vend => vend.id === id);
                         return (
                           <span key={id} className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-bold border border-primary/20">
-                            {v?.name || id}
+                            {v ? (v.company_name || v.name) : id}
                             <X
                               className="w-2.5 h-2.5 hover:text-destructive cursor-pointer"
                               onClick={(e) => {
