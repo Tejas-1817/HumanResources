@@ -108,20 +108,28 @@ const OpenPositions = () => {
   const [activeTabFilter, setActiveTabFilter] = useState<"all" | "active" | "on_hold" | "closed" | "recent">("all");
 
   const statsSummary = useMemo(() => {
-    const totalPartners = companies.filter(c => !c.is_internal).length;
-    const activePositions = jobRoles.filter(r => r.status === "open").reduce((sum, r) => sum + (r.positions_required || 1), 0);
+    const partnerCompanyIds = companies.map(c => c.id);
+    const totalPartners = companies.length;
     
-    // Count total unique candidates in pipeline
+    const activePositions = jobRoles.filter(
+      r => r.status !== "closed" && partnerCompanyIds.includes(r.company_id)
+    ).length;
+    
     const uniqueCands = new Set<number>();
     Object.values(pipeline).forEach((apps: any) => {
       apps.forEach((app: any) => {
-        uniqueCands.add(app.candidate_id);
+        const role = jobRoles.find(r => r.id === app.job_role_id);
+        if (role && partnerCompanyIds.includes(role.company_id)) {
+          uniqueCands.add(app.candidate_id);
+        }
       });
     });
     const totalCandidates = uniqueCands.size;
     
-    // Count successful hires (selected candidates)
-    const successfulHires = (pipeline["selected"] || []).length;
+    const successfulHires = (pipeline["selected"] || []).filter((app: any) => {
+      const role = jobRoles.find(r => r.id === app.job_role_id);
+      return role && partnerCompanyIds.includes(role.company_id);
+    }).length;
     
     return {
       totalPartners,
@@ -189,8 +197,13 @@ const OpenPositions = () => {
       } else {
         // dynamic values for custom companies
         details.verified = c.name.length % 2 === 0;
-        details.status = c.id % 3 === 0 ? "On Hold" : c.id % 4 === 0 ? "Inactive" : "Active";
+        details.status = "Active";
       }
+
+      // Determine status dynamically based on open roles and candidates in progress
+      const hasOnHold = (pipeline["on_hold"] || []).some((app: any) => c.roles.some((r: any) => r.id === app.job_role_id));
+      const hasOpenRoles = c.roles.length > 0;
+      details.status = hasOnHold ? "On Hold" as const : hasOpenRoles ? "Active" as const : "Inactive" as const;
 
       // Aggregate positions filled
       let totalFilled = 0;
@@ -296,7 +309,7 @@ const OpenPositions = () => {
             <Building2 className="w-6 h-6" />
           </div>
           <div>
-            <h3 className="text-2xl font-bold text-foreground leading-none">{statsSummary.totalPartners || 24}</h3>
+            <h3 className="text-2xl font-bold text-foreground leading-none">{statsSummary.totalPartners ?? 0}</h3>
             <p className="text-[11px] text-muted-foreground font-semibold mt-1">Total Partner Companies</p>
           </div>
         </div>
@@ -307,7 +320,7 @@ const OpenPositions = () => {
             <Briefcase className="w-6 h-6" />
           </div>
           <div>
-            <h3 className="text-2xl font-bold text-foreground leading-none">{statsSummary.activePositions || 37}</h3>
+            <h3 className="text-2xl font-bold text-foreground leading-none">{statsSummary.activePositions ?? 0}</h3>
             <p className="text-[11px] text-muted-foreground font-semibold mt-1">Active Positions</p>
           </div>
         </div>
@@ -318,7 +331,7 @@ const OpenPositions = () => {
             <Users className="w-6 h-6" />
           </div>
           <div>
-            <h3 className="text-2xl font-bold text-foreground leading-none">{statsSummary.totalCandidates || 256}</h3>
+            <h3 className="text-2xl font-bold text-foreground leading-none">{statsSummary.totalCandidates ?? 0}</h3>
             <p className="text-[11px] text-muted-foreground font-semibold mt-1">Total Candidates</p>
           </div>
         </div>
@@ -329,7 +342,7 @@ const OpenPositions = () => {
             <Star className="w-6 h-6 fill-amber-500/20" />
           </div>
           <div>
-            <h3 className="text-2xl font-bold text-foreground leading-none">{statsSummary.successfulHires || 42}</h3>
+            <h3 className="text-2xl font-bold text-foreground leading-none">{statsSummary.successfulHires ?? 0}</h3>
             <p className="text-[11px] text-muted-foreground font-semibold mt-1">Successful Hires</p>
           </div>
         </div>

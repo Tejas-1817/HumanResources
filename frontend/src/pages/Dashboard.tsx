@@ -212,6 +212,7 @@ const MetricCard = ({
   trendColor = "text-green-600",
   icon: Icon,
   iconBg = "bg-blue-50 text-blue-600",
+  onClick,
 }: {
   label: string;
   value: string | number;
@@ -219,11 +220,15 @@ const MetricCard = ({
   trendColor?: string;
   icon: any;
   iconBg?: string;
+  onClick?: () => void;
 }) => {
   return (
     <motion.div
       variants={item}
-      className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all duration-200 flex items-center justify-between"
+      onClick={onClick}
+      className={`bg-white border border-slate-100 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all duration-200 flex items-center justify-between ${
+        onClick ? "cursor-pointer hover:border-primary/20" : ""
+      }`}
     >
       <div className="flex items-center gap-4">
         <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${iconBg}`}>
@@ -272,6 +277,7 @@ const Dashboard = () => {
   const { data: jobRolesData } = useQuery({ queryKey: ["job-roles"], queryFn: () => getJobRoles() });
   const { data: pipeline = {} } = useQuery({ queryKey: ["pipeline"], queryFn: () => getPipeline() });
   const { data: schedules = [] } = useQuery({ queryKey: ["interview-schedules"], queryFn: () => getInterviewSchedules() });
+  const { data: benchData } = useQuery({ queryKey: ["bench-candidates-count"], queryFn: () => getCandidates({ page_size: 1, unassigned_only: true }) });
 
   const data = statsData;
   const companies = companiesData ?? [];
@@ -338,6 +344,63 @@ const Dashboard = () => {
   });
 
   // ── Derived statistics & helpers ─────────────────────
+  const benchCount = benchData?.total ?? 0;
+
+  const candidateSchedulesCount = useMemo(() => {
+    const groups: { [key: string]: any } = {};
+    schedules.forEach((item) => {
+      const key = `${item.job_role_id}-${item.interviewer_id}-${item.date}-${item.time}-${(item.venue || "").toLowerCase()}`;
+      if (!groups[key]) {
+        groups[key] = {
+          ...item,
+          candidate_ids: item.candidate_id ? [item.candidate_id] : [],
+        };
+      } else {
+        const g = groups[key];
+        if (item.candidate_id && !g.candidate_ids.includes(item.candidate_id)) {
+          g.candidate_ids.push(item.candidate_id);
+        }
+      }
+    });
+    let count = 0;
+    Object.values(groups).forEach((group: any) => {
+      count += group.candidate_ids.length === 0 ? 1 : group.candidate_ids.length;
+    });
+    return count;
+  }, [schedules]);
+
+  const todayInterviewsRealCount = useMemo(() => {
+    const localToday = new Date();
+    const year = localToday.getFullYear();
+    const month = String(localToday.getMonth() + 1).padStart(2, '0');
+    const day = String(localToday.getDate()).padStart(2, '0');
+    const todayStr = `${year}-${month}-${day}`;
+
+    const groups: { [key: string]: any } = {};
+    schedules.forEach((item) => {
+      const sDate = item.date.includes("T") ? item.date.split("T")[0] : item.date;
+      if (sDate === todayStr) {
+        const key = `${item.job_role_id}-${item.interviewer_id}-${item.date}-${item.time}-${(item.venue || "").toLowerCase()}`;
+        if (!groups[key]) {
+          groups[key] = {
+            ...item,
+            candidate_ids: item.candidate_id ? [item.candidate_id] : [],
+          };
+        } else {
+          const g = groups[key];
+          if (item.candidate_id && !g.candidate_ids.includes(item.candidate_id)) {
+            g.candidate_ids.push(item.candidate_id);
+          }
+        }
+      }
+    });
+    let count = 0;
+    Object.values(groups).forEach((group: any) => {
+      count += group.candidate_ids.length === 0 ? 1 : group.candidate_ids.length;
+    });
+    return count;
+  }, [schedules]);
+
   const totalPipeline = useMemo(
     () => Object.values(pipeline).reduce((sum: number, apps: any) => sum + (apps?.length || 0), 0),
     [pipeline]
@@ -877,6 +940,7 @@ const Dashboard = () => {
           trend="▲ 18 Today"
           icon={Users}
           iconBg="bg-blue-50 text-blue-600"
+          onClick={() => navigate("/candidates")}
         />
         <MetricCard
           label="Open Positions"
@@ -884,21 +948,24 @@ const Dashboard = () => {
           trend="▲ 3 New"
           icon={Briefcase}
           iconBg="bg-blue-50 text-blue-600"
+          onClick={() => navigate("/open-positions")}
         />
         <MetricCard
-          label="Interviews Today"
-          value={todayInterviewsCount}
+          label="Interviews Today(Internal)"
+          value={todayInterviewsRealCount}
           trend="▲ 2 From Yesterday"
           icon={Calendar}
           iconBg="bg-amber-50 text-amber-600"
+          onClick={() => navigate("/internal-hiring")}
         />
         <MetricCard
           label="On Bench"
-          value={27} // Fallback to match image design
+          value={benchCount}
           trend="— No Change"
           trendColor="text-slate-400"
           icon={Users}
           iconBg="bg-blue-50 text-blue-600"
+          onClick={() => navigate("/vendors")}
         />
       </div>
 

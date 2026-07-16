@@ -613,7 +613,7 @@ export default function InternalHiring() {
       if (r.status.toLowerCase() === "closed") {
         computedStatus = "closed";
       } else {
-        const inProgressStages = ["shortlisted", "interview_scheduled", "interviewed", "on_hold"];
+        const inProgressStages = ["pending", "shortlisted", "interview_scheduled", "interviewed", "on_hold"];
         const hasActiveCandidates = inProgressStages.some(stage => 
           (pipeline[stage] || []).some((app: any) => app.job_role_id === r.id)
         );

@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import { useQuery } from "@tanstack/react-query";
+import { getDashboardStats } from "@/api/resumeiq";
 import {
   LayoutDashboard,
   Building2,
@@ -48,6 +50,21 @@ const quickActions = [
 export const AppSidebar = ({ onMobileClose, onQuickAction }: { onMobileClose?: () => void; onQuickAction?: (actionId: string) => void }) => {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
+
+  const { data: stats } = useQuery({
+    queryKey: ["dashboard-stats"],
+    queryFn: () => getDashboardStats(),
+  });
+
+  const getBadgeValue = (label: string) => {
+    if (label === "Total Candidates") {
+      return stats?.total_candidates;
+    }
+    if (label === "Open Positions") {
+      return stats?.total_open_roles;
+    }
+    return null;
+  };
 
   return (
     <motion.aside
@@ -128,9 +145,16 @@ export const AppSidebar = ({ onMobileClose, onQuickAction }: { onMobileClose?: (
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -10 }}
-                    className="whitespace-nowrap"
+                    className="flex items-center justify-between flex-1 min-w-0"
                   >
-                    {item.label}
+                    <span className="truncate">{item.label}</span>
+                    {getBadgeValue(item.label) !== undefined && getBadgeValue(item.label) !== null && (
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold shrink-0 ml-2 ${
+                        isActive ? "bg-white text-blue-600" : "bg-blue-500/20 text-blue-400"
+                      }`}>
+                        {getBadgeValue(item.label)}
+                      </span>
+                    )}
                   </motion.span>
                 )}
               </AnimatePresence>

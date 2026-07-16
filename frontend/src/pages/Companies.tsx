@@ -21,10 +21,12 @@ import {
   ExternalLink,
   MessageSquare,
   Save,
+  Star,
   UserCheck,
   Eye,
   ChevronDown,
   Check,
+  MapPin,
 } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -268,8 +270,15 @@ const Companies = () => {
     sessionStorage.setItem("companies_active_tab", tab);
   };
 
+  const isPipeline = activeTab === "pipeline";
+
   // ─── Company Search state ─────────────────────────────
   const [companySearch, setCompanySearch] = useState("");
+  const [globalSearch, setGlobalSearch] = useState("");
+  const [mainTab, setMainTab] = useState("All Companies");
+  const [industryFilter, setIndustryFilter] = useState("Industry");
+  const [locationFilter, setLocationFilter] = useState("Location");
+  const [statusFilter, setStatusFilter] = useState("Status");
 
 
   // ─── Company CRUD state ───────────────────────────────
@@ -366,6 +375,136 @@ const Companies = () => {
     return m;
   }, [jobRoles, pipeline]);
 
+  // ─── Dropdown options and filters list ───────────────────
+  const industries = useMemo(() => {
+    const set = new Set<string>();
+    jobRoles.forEach(r => {
+      if (r.department) set.add(r.department);
+      else if (r.title.toLowerCase().includes("software") || r.title.toLowerCase().includes("python") || r.title.toLowerCase().includes("developer") || r.title.toLowerCase().includes("engineer")) {
+        set.add("Software Development");
+      }
+    });
+    return ["Industry", "All", ...Array.from(set)];
+  }, [jobRoles]);
+
+  const locations = useMemo(() => {
+    const set = new Set<string>();
+    companies.forEach(c => {
+      if (c.location) set.add(c.location);
+    });
+    return ["Location", "All", ...Array.from(set)];
+  }, [companies]);
+
+  // ─── KPI Cards Calculations ──────────────────────────────
+  const activePositionsCount = useMemo(() => {
+    return jobRoles.filter(r => r.status.toLowerCase() === "open").length;
+  }, [jobRoles]);
+
+  const totalCandidatesCount = useMemo(() => {
+    const uniqueIds = new Set<number>();
+    Object.values(pipeline).forEach((apps: any) => {
+      apps.forEach((app: any) => {
+        const role = roleById.get(app.job_role_id);
+        if (role) {
+          uniqueIds.add(app.candidate_id);
+        }
+      });
+    });
+    return uniqueIds.size;
+  }, [pipeline, roleById]);
+
+  const successfulHiresCount = useMemo(() => {
+    const uniqueIds = new Set<number>();
+    (pipeline["selected"] || []).forEach((app: any) => {
+      const role = roleById.get(app.job_role_id);
+      if (role) {
+        uniqueIds.add(app.candidate_id);
+      }
+    });
+    return uniqueIds.size;
+  }, [pipeline, roleById]);
+
+  // ─── Filtered Companies for Catalog View ──────────────────
+  const filteredCompanies = useMemo(() => {
+    return companies.filter((c) => {
+      // 1. Global Search
+      const matchesGlobal = !globalSearch.trim() || 
+        c.name.toLowerCase().includes(globalSearch.toLowerCase()) ||
+        jobRoles.some(r => r.company_id === c.id && r.title.toLowerCase().includes(globalSearch.toLowerCase()));
+
+      // 2. Company Search
+      const matchesCompanySearch = !companySearch.trim() ||
+        c.name.toLowerCase().includes(companySearch.toLowerCase());
+
+      // 3. Tab Filter
+      let matchesTab = true;
+      if (mainTab === "Active Positions") {
+        const openRoles = openRoleCountByCompany.get(c.id) || 0;
+        matchesTab = openRoles > 0;
+      } else if (mainTab === "On Hold") {
+        matchesTab = (pipeline["on_hold"] || []).some(app => {
+          const role = roleById.get(app.job_role_id);
+          return role?.company_id === c.id;
+        });
+      } else if (mainTab === "Closed Positions") {
+        matchesTab = jobRoles.some(r => r.company_id === c.id && r.status.toLowerCase() === "closed");
+      } else if (mainTab === "Recently Added") {
+        const daysAgo = (Date.now() - new Date(c.created_at).getTime()) / 86400000;
+        matchesTab = daysAgo <= 30;
+      }
+
+      // 4. Dropdowns
+      let matchesIndustry = true;
+      if (industryFilter && industryFilter !== "All" && industryFilter !== "Industry") {
+        matchesIndustry = jobRoles.some(r => r.company_id === c.id && (r.department?.toLowerCase() === industryFilter.toLowerCase() || r.title.toLowerCase().includes(industryFilter.toLowerCase())));
+      }
+
+      let matchesLocation = true;
+      if (locationFilter && locationFilter !== "All" && locationFilter !== "Location") {
+        matchesLocation = c.location?.toLowerCase().includes(locationFilter.toLowerCase()) || false;
+      }
+
+      let matchesStatus = true;
+      if (statusFilter && statusFilter !== "All" && statusFilter !== "Status") {
+        const openRoles = openRoleCountByCompany.get(c.id) || 0;
+        const isActive = openRoles > 0;
+        if (statusFilter === "Active") matchesStatus = isActive;
+        if (statusFilter === "Inactive") matchesStatus = !isActive;
+      }
+
+      return matchesGlobal && matchesCompanySearch && matchesTab && matchesIndustry && matchesLocation && matchesStatus;
+    });
+  }, [companies, globalSearch, companySearch, mainTab, industryFilter, locationFilter, statusFilter, jobRoles, openRoleCountByCompany, pipeline, roleById]);
+
+  const getCompanyPipelineStage = (companyId: number) => {
+    const companyApps: any[] = [];
+    Object.entries(pipeline).forEach(([stageId, list]: [string, any]) => {
+      list.forEach((app: any) => {
+        const role = roleById.get(app.job_role_id);
+        if (role?.company_id === companyId) {
+          companyApps.push({ ...app, stageId });
+        }
+      });
+    });
+
+    if (companyApps.some(app => app.stageId === "interview_scheduled" || app.stageId === "interviewed")) {
+      return { label: "Interviewing", style: "bg-amber-500/10 text-amber-600 border-amber-500/20" };
+    }
+    if (companyApps.some(app => app.stageId === "shortlisted")) {
+      return { label: "Shortlisted", style: "bg-primary/10 text-primary border-primary/20" };
+    }
+    if (companyApps.some(app => app.stageId === "on_hold")) {
+      return { label: "On Hold", style: "bg-orange-500/10 text-orange-600 border-orange-500/20" };
+    }
+    if (companyApps.some(app => app.stageId === "pending")) {
+      return { label: "Pending", style: "bg-warning/10 text-warning border-warning/20" };
+    }
+    if (companyApps.some(app => app.stageId === "selected")) {
+      return { label: "Selected", style: "bg-success/10 text-success border-success/20" };
+    }
+    return { label: "—", style: "text-muted-foreground bg-transparent border-transparent" };
+  };
+
 
 
   // Filtered roles for selected company
@@ -381,7 +520,7 @@ const Companies = () => {
       if (r.status.toLowerCase() === "closed") {
         computedStatus = "closed";
       } else {
-        const inProgressStages = ["shortlisted", "interview_scheduled", "interviewed", "on_hold"];
+        const inProgressStages = ["pending", "shortlisted", "interview_scheduled", "interviewed", "on_hold"];
         const hasActiveCandidates = inProgressStages.some(stage =>
           (pipeline[stage] || []).some((app: any) => app.job_role_id === r.id)
         );
@@ -913,130 +1052,357 @@ const Companies = () => {
         title={selectedCompanyId ? "Company Hub" : "Partner Companies"}
         description={selectedCompanyId
           ? `Manage recruitment ops for ${selectedCompany?.name}`
-          : "Overview of all active partner organizations and their hiring status"}
+          : "Manage all partner companies and their open positions"}
         actions={
-          <button onClick={openAddCompany} className="px-4 py-2.5 rounded-lg bg-primary text-primary-foreground font-medium text-sm hover:bg-primary/90 transition-all flex items-center gap-2">
-            <Plus className="w-4 h-4" /> Add New Company
-          </button>
+          selectedCompanyId ? (
+            <button onClick={openAddCompany} className="px-4 py-2.5 rounded-lg bg-primary text-primary-foreground font-medium text-sm hover:bg-primary/90 transition-all flex items-center gap-2">
+              <Plus className="w-4 h-4" /> Add New Company
+            </button>
+          ) : (
+            <div className="flex items-center gap-3">
+              <div className="relative group w-64">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                <input
+                  type="text"
+                  placeholder="Search companies or roles..."
+                  value={globalSearch}
+                  onChange={(e) => setGlobalSearch(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2 text-xs rounded-lg border border-border/50 bg-card text-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all shadow-sm"
+                />
+              </div>
+              <button onClick={openAddCompany} className="px-4 py-2 rounded-lg bg-primary text-primary-foreground font-bold text-xs hover:bg-primary/90 transition-all flex items-center gap-1.5 shadow-sm">
+                <Plus className="w-3.5 h-3.5" /> Add Partner Company
+              </button>
+            </div>
+          )
         }
       />
 
-      {/* ─── SEARCH BAR (Only for List View) ─────────────────── */}
+      {/* ─── KPI Cards (Only for List View) ─────────────────── */}
       {!selectedCompanyId && (
-        <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="relative group w-full md:w-[400px]">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-muted-foreground group-focus-within:text-primary transition-colors" />
-            <input
-              type="text"
-              placeholder="Search by company name..."
-              value={companySearch}
-              onChange={(e) => setCompanySearch(e.target.value)}
-              className="w-full pl-11 pr-4 py-3 rounded-xl bg-card border border-border/50 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all shadow-sm"
-            />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+          <div className="bg-card border border-border/50 rounded-xl p-4 flex items-center gap-4 shadow-sm">
+            <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 border border-blue-100 dark:border-blue-900/50">
+              <Building2 className="w-6 h-6" />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Total Partner Companies</p>
+              <p className="text-xl font-bold text-foreground mt-0.5">{companies.length}</p>
+            </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <div className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest bg-secondary/50 px-3 py-1.5 rounded-lg border border-border/50">
-              Total: {companies.length} Partners
+          <div className="bg-card border border-border/50 rounded-xl p-4 flex items-center gap-4 shadow-sm">
+            <div className="w-12 h-12 rounded-xl bg-purple-50 dark:bg-purple-950/30 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0 border border-purple-100 dark:border-purple-900/50">
+              <Briefcase className="w-6 h-6" />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Active Positions</p>
+              <p className="text-xl font-bold text-foreground mt-0.5">{activePositionsCount}</p>
             </div>
           </div>
         </div>
       )}
 
-      {/* ─── CATALOG VIEW (List of Companies) ─────────────────── */}
+      {/* ─── Tabs Filter (Only for List View) ─────────────────── */}
       {!selectedCompanyId && (
-        <div className="glass-card overflow-hidden">
-          <div className="hidden md:block p-4 border-b border-border/50 bg-secondary/20">
-            <div className="grid grid-cols-12 gap-4 px-4 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-              <div className="col-span-12 md:col-span-4">Organization</div>
-              <div className="md:col-span-5 hidden md:block">Activity & Recruitment Stats</div>
-              <div className="md:col-span-3 text-right hidden md:block">Quick Actions</div>
+        <div className="flex items-center gap-6 border-b border-border/50 mb-6 overflow-x-auto scrollbar-none">
+          {[
+            { id: "All Companies", label: "All Companies", icon: Building2 },
+            { id: "Active Positions", label: "Active Positions", icon: Briefcase },
+            { id: "On Hold", label: "On Hold", icon: Clock },
+            { id: "Closed Positions", label: "Closed Positions", icon: null },
+            { id: "Recently Added", label: "Recently Added", icon: null },
+          ].map((tab) => {
+            const isActive = mainTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setMainTab(tab.id)}
+                className={`flex items-center gap-2 pb-3 text-xs font-bold border-b-2 transition-all -mb-px whitespace-nowrap ${
+                  isActive
+                    ? "border-primary text-primary"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {tab.icon && <tab.icon className="w-3.5 h-3.5" />}
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ─── Filters & Search Row (Only for List View) ─────────────────── */}
+      {!selectedCompanyId && (
+        <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex flex-wrap items-center gap-3 flex-1">
+            <div className="relative group w-full md:w-60">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+              <input
+                type="text"
+                placeholder="Search company name..."
+                value={companySearch}
+                onChange={(e) => setCompanySearch(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 rounded-xl bg-card border border-border/50 text-xs focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all shadow-sm text-foreground"
+              />
+            </div>
+
+            <div className="relative w-full md:w-44">
+              <select
+                value={industryFilter}
+                onChange={(e) => setIndustryFilter(e.target.value)}
+                className="w-full pl-3 pr-8 py-2 rounded-xl bg-card border border-border/50 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all shadow-sm appearance-none cursor-pointer"
+              >
+                {industries.map((ind) => (
+                  <option key={ind} value={ind}>
+                    {ind === "Industry" ? "Industry" : ind === "All" ? "All Industries" : ind}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+            </div>
+
+            <div className="relative w-full md:w-44">
+              <select
+                value={locationFilter}
+                onChange={(e) => setLocationFilter(e.target.value)}
+                className="w-full pl-3 pr-8 py-2 rounded-xl bg-card border border-border/50 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all shadow-sm appearance-none cursor-pointer"
+              >
+                {locations.map((loc) => (
+                  <option key={loc} value={loc}>
+                    {loc === "Location" ? "Location" : loc === "All" ? "All Locations" : loc}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+            </div>
+
+            <div className="relative w-full md:w-40">
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="w-full pl-3 pr-8 py-2 rounded-xl bg-card border border-border/50 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all shadow-sm appearance-none cursor-pointer"
+              >
+                {["Status", "All", "Active", "Inactive"].map((st) => (
+                  <option key={st} value={st}>
+                    {st === "Status" ? "Status" : st === "All" ? "All Statuses" : st}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
             </div>
           </div>
 
-          <div className="divide-y divide-border/50">
-            {companies
-              .filter(c => c.name.toLowerCase().includes(companySearch.toLowerCase()))
-              .map((c) => {
-                const totalRoles = roleCountByCompany.get(c.id) || 0;
-                const openRoles = openRoleCountByCompany.get(c.id) || 0;
-                const totalCand = candidateCountByCompany.get(c.id) || 0;
+          <button
+            onClick={() => {
+              setCompanySearch("");
+              setGlobalSearch("");
+              setMainTab("All Companies");
+              setIndustryFilter("Industry");
+              setLocationFilter("Location");
+              setStatusFilter("Status");
+            }}
+            className="px-4 py-2 rounded-xl border border-border/50 bg-card text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-secondary/40 transition-all flex items-center gap-1.5 shadow-sm"
+          >
+            <Filter className="w-3.5 h-3.5" /> Clear Filters
+          </button>
+        </div>
+      )}
 
-                return (
-                  <motion.div
-                    key={c.id}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="flex flex-col md:grid md:grid-cols-12 gap-4 p-5 md:p-4 md:px-8 items-start md:items-center hover:bg-primary/[0.02] transition-all group cursor-pointer"
-                    onClick={() => navigate(`/companies?id=${c.id}`)}
-                  >
-                    {/* Organization Info */}
-                    <div className="w-full md:col-span-4 flex items-center gap-4">
-                      <div className="w-10 h-10 md:w-11 md:h-11 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold text-xs ring-1 ring-primary/20 group-hover:scale-110 transition-transform shadow-sm shrink-0">
-                        <Building2 className="w-5 h-5 md:w-6 md:h-6" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-bold text-foreground group-hover:text-primary transition-colors truncate">
-                          {c.name}
-                        </p>
-                      </div>
-                    </div>
+      {/* ─── CATALOG VIEW (Redesigned Table View) ─────────────────── */}
+      {!selectedCompanyId && (
+        <div className="bg-card border border-border/50 rounded-2xl shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-left">
+              <thead>
+                <tr className="border-b border-border/50 bg-secondary/10 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                  <th className="p-4 pl-6">Company</th>
+                  <th className="p-4">Active Positions</th>
+                  <th className="p-4">Positions Filled</th>
+                  <th className="p-4">Total Candidates</th>
+                  <th className="p-4">Pipeline Stage</th>
+                  <th className="p-4">Status</th>
+                  <th className="p-4 pr-6 text-right">Quick Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/30 text-sm">
+                {filteredCompanies.map((c) => {
+                  const openRoles = openRoleCountByCompany.get(c.id) || 0;
+                  const totalCand = candidateCountByCompany.get(c.id) || 0;
+                  const { filled, required } = positionsFilledByCompany.get(c.id) || { filled: 0, required: 0 };
+                  const percentage = Math.min(100, required > 0 ? (filled / required) * 100 : 0);
+                  const stageInfo = getCompanyPipelineStage(c.id);
 
-                    {/* Stats */}
-                    <div className="w-full md:col-span-5 flex items-center justify-between md:justify-start gap-4 md:gap-6 py-2 md:py-0 border-y border-border/30 md:border-none">
-                      <div className="flex flex-col">
-                        <span className="text-xs font-bold text-foreground">{totalRoles}</span>
-                        <span className="text-[10px] text-muted-foreground uppercase font-bold">Roles</span>
-                      </div>
-                      <div className="flex flex-col">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-bold text-success">{openRoles}</span>
-                          <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
+                  // Get department or fall back to description/mock
+                  const companyDepts = jobRoles.filter(r => r.company_id === c.id).map(r => r.department).filter(Boolean);
+                  const dept = companyDepts[0] || c.description || "Software Development";
+
+                  // Status
+                  const hasOnHold = (pipeline["on_hold"] || []).some((app: any) => jobRoles.filter(r => r.company_id === c.id).some(r => r.id === app.job_role_id));
+                  const companyStatus = hasOnHold ? "On Hold" : (openRoles > 0 ? "Active" : "Inactive");
+                  const companyStatusStyle = companyStatus === "On Hold"
+                    ? "bg-orange-500/10 text-orange-600 border-orange-500/20"
+                    : (companyStatus === "Active" ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" : "bg-muted text-muted-foreground border-border");
+
+                  return (
+                    <tr
+                      key={c.id}
+                      className="hover:bg-primary/[0.01] transition-all group"
+                    >
+                      {/* Company Info */}
+                      <td className="p-4 pl-6">
+                        <div className="flex items-center gap-3.5">
+                          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0 transition-transform group-hover:scale-105">
+                            <Building2 className="w-5 h-5" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <span
+                                onClick={() => selectCompany(c.id)}
+                                className="font-bold text-sm text-foreground hover:text-primary transition-colors cursor-pointer truncate max-w-[150px] sm:max-w-none"
+                              >
+                                {c.name}
+                              </span>
+                              <span className="inline-flex items-center justify-center bg-blue-500 text-white rounded-full w-3.5 h-3.5 shrink-0 animate-fade-in" title="Verified Partner">
+                                <Check className="w-2.5 h-2.5 stroke-[3.5]" />
+                              </span>
+                            </div>
+                            <p className="text-xs text-muted-foreground font-medium truncate mt-0.5">{dept}</p>
+                            <div className="flex items-center gap-1 text-[10px] text-muted-foreground mt-0.5">
+                              <MapPin className="w-3 h-3 text-muted-foreground/60 shrink-0" />
+                              <span className="truncate">{c.location || "Armonk, New York, USA"}</span>
+                            </div>
+                          </div>
                         </div>
-                        <span className="text-[10px] text-muted-foreground uppercase font-bold">Active</span>
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="text-xs font-bold text-primary">{totalCand}</span>
-                        <span className="text-[10px] text-muted-foreground uppercase font-bold">Candidates</span>
-                      </div>
-                    </div>
+                      </td>
 
-                    {/* Actions */}
-                    <div className="w-full md:col-span-3 flex items-center justify-between md:justify-end gap-2 mt-2 md:mt-0">
-                      <div className="flex gap-2">
-                        <button
-                          onClick={(e) => { e.stopPropagation(); openEditCompany(c); }}
-                          className="p-2 rounded-lg bg-secondary/50 text-muted-foreground hover:text-foreground hover:bg-secondary transition-all"
-                          title="Edit Company"
+                      {/* Active Positions */}
+                      <td className="p-4">
+                        <div className="flex flex-col">
+                          <span className="text-sm font-bold text-foreground">{openRoles}</span>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              selectCompany(c.id);
+                              handleTabChange("roles");
+                            }}
+                            className="text-[10px] text-primary hover:underline font-bold mt-1 text-left"
+                          >
+                            View Positions →
+                          </button>
+                        </div>
+                      </td>
+
+                      {/* Positions Filled */}
+                      <td className="p-4">
+                        <div className="flex flex-col w-28">
+                          <span className="text-sm font-bold text-foreground">
+                            {filled}/{required}
+                          </span>
+                          <div className="w-full h-1.5 bg-secondary/60 rounded-full mt-1.5 overflow-hidden">
+                            <div
+                              className="h-full bg-primary rounded-full transition-all duration-500"
+                              style={{ width: `${percentage}%` }}
+                            />
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Total Candidates */}
+                      <td className="p-4">
+                        <div className="flex flex-col">
+                          <span className="text-sm font-bold text-foreground">{totalCand}</span>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              selectCompany(c.id);
+                              handleTabChange("candidates");
+                            }}
+                            className="text-[10px] text-primary hover:underline font-bold mt-1 text-left"
+                          >
+                            View Candidates →
+                          </button>
+                        </div>
+                      </td>
+
+                      {/* Pipeline Stage */}
+                      <td className="p-4">
+                        <span className={`inline-flex items-center rounded-full font-semibold border text-[11px] px-2.5 py-0.5 ${stageInfo.style}`}>
+                          {stageInfo.label}
+                        </span>
+                      </td>
+
+                      {/* Status */}
+                      <td className="p-4">
+                        <span
+                          className={`inline-flex items-center rounded-full font-semibold border text-[11px] px-2.5 py-0.5 ${companyStatusStyle}`}
                         >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setDeleteId(c.id); }}
-                          className="p-2 rounded-lg bg-destructive/5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all"
-                          title="Delete Company"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
+                          {companyStatus}
+                        </span>
+                      </td>
+
+                      {/* Quick Actions */}
+                      <td className="p-4 pr-6 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openEditCompany(c);
+                            }}
+                            className="p-2 rounded-lg border border-border/50 bg-card hover:bg-secondary/40 text-muted-foreground hover:text-foreground transition-all shadow-sm"
+                            title="Edit Company"
+                          >
+                            <Edit className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeleteId(c.id);
+                            }}
+                            className="p-2 rounded-lg border border-border/50 bg-card hover:bg-secondary/40 text-muted-foreground hover:text-destructive transition-all shadow-sm"
+                            title="Delete Company"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              selectCompany(c.id);
+                            }}
+                            className="px-3 py-1.5 text-[11px] font-bold border border-blue-200 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 hover:text-blue-700 transition-all flex items-center gap-1 shadow-sm shrink-0"
+                          >
+                            Details
+                            <ExternalLink className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+
+                {filteredCompanies.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="p-20 text-center text-muted-foreground">
+                      <Building2 className="w-12 h-12 text-muted-foreground/20 mx-auto mb-4" />
+                      <p className="text-sm font-medium">No partner companies match your criteria.</p>
                       <button
-                        className="px-4 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-bold hover:bg-primary hover:text-primary-foreground transition-all flex items-center gap-2 group/btn"
+                        onClick={() => {
+                          setCompanySearch("");
+                          setGlobalSearch("");
+                          setMainTab("All Companies");
+                          setIndustryFilter("Industry");
+                          setLocationFilter("Location");
+                          setStatusFilter("Status");
+                        }}
+                        className="mt-4 text-xs text-primary font-bold hover:underline"
                       >
-                        Details
-                        <ExternalLink className="w-3.5 h-3.5 group-hover/btn:translate-x-0.5 transition-transform" />
+                        Reset Filters
                       </button>
-                    </div>
-                  </motion.div>
-                );
-              })}
-
-            {companies.length === 0 && (
-              <div className="p-20 text-center">
-                <Building2 className="w-12 h-12 text-muted-foreground/20 mx-auto mb-4" />
-                <p className="text-sm text-muted-foreground">No companies registered yet.</p>
-                <button onClick={openAddCompany} className="mt-4 text-xs text-primary font-bold hover:underline">Register New Partner</button>
-              </div>
-            )}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
@@ -1203,7 +1569,8 @@ const Companies = () => {
                               const tags = getRoleTags(r);
                               const iconDetails = getRoleIconDetails(r.title);
                               const IconComponent = iconDetails.icon;
-                              const openingsCount = Math.max(0, (r.positions_required || 1) - r.filledCount);
+                              const filledCount = (pipeline["selected"] || []).filter((app: any) => app.job_role_id === r.id).length;
+                              const openingsCount = Math.max(0, (r.positions_required || 1) - filledCount);
                               const isGeneral = r.title.toLowerCase().includes("general");
 
                               return (
@@ -1235,7 +1602,7 @@ const Companies = () => {
                                           </span>
                                         </div>
                                         <p className="text-[11px] text-muted-foreground mt-0.5">
-                                          Filled: {r.filledCount} / {r.positions_required}
+                                          Filled: {filledCount} / {r.positions_required}
                                         </p>
                                         {isGeneral ? (
                                           <span className="text-[11px] text-muted-foreground/80 mt-1 block font-medium">
