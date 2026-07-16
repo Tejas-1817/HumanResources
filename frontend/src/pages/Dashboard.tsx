@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -215,7 +215,7 @@ const MetricCard = ({
   onClick,
 }: {
   label: string;
-  value: string | number;
+  value: ReactNode;
   trend: string;
   trendColor?: string;
   icon: any;
@@ -236,7 +236,13 @@ const MetricCard = ({
         </div>
         <div>
           <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{label}</span>
-          <h3 className="text-2xl font-black text-slate-800 mt-0.5">{value}</h3>
+          <div className="mt-0.5">
+            {typeof value === "string" || typeof value === "number" ? (
+              <h3 className="text-2xl font-black text-slate-800">{value}</h3>
+            ) : (
+              value
+            )}
+          </div>
           <div className="flex items-center gap-1 mt-1">
             <span className={`text-[10px] font-bold ${trendColor}`}>{trend}</span>
           </div>
@@ -273,7 +279,7 @@ const Dashboard = () => {
 
   // ── Data queries ──────────────────────────────────────
   const { data: statsData } = useQuery({ queryKey: ["dashboard-stats"], queryFn: () => getDashboardStats() });
-  const { data: companiesData } = useQuery({ queryKey: ["companies"], queryFn: () => getCompanies() });
+  const { data: companiesData } = useQuery({ queryKey: ["companies", { include_internal: true }], queryFn: () => getCompanies({ include_internal: true }) });
   const { data: jobRolesData } = useQuery({ queryKey: ["job-roles"], queryFn: () => getJobRoles() });
   const { data: pipeline = {} } = useQuery({ queryKey: ["pipeline"], queryFn: () => getPipeline() });
   const { data: schedules = [] } = useQuery({ queryKey: ["interview-schedules"], queryFn: () => getInterviewSchedules() });
@@ -282,6 +288,24 @@ const Dashboard = () => {
   const data = statsData;
   const companies = companiesData ?? [];
   const jobRoles = jobRolesData ?? [];
+
+  // ── Open positions counts for internal and client ───────
+  const internalCompanyId = useMemo(() => {
+    const internal = companies.find(c => c.name === "Altzor Digital Solutions");
+    return internal?.id ?? null;
+  }, [companies]);
+
+  const internalOpenRolesCount = useMemo(() => {
+    if (!internalCompanyId) return 0;
+    return jobRoles.filter(r => r.status === "open" && r.company_id === internalCompanyId).length;
+  }, [jobRoles, internalCompanyId]);
+
+  const clientOpenRolesCount = useMemo(() => {
+    if (!internalCompanyId) {
+      return jobRoles.filter(r => r.status !== "closed").length;
+    }
+    return jobRoles.filter(r => r.status !== "closed" && r.company_id !== internalCompanyId).length;
+  }, [jobRoles, internalCompanyId]);
 
   // ── Notification API handlers ────────────────────────
   const fetchNotifications = async () => {
@@ -944,11 +968,35 @@ const Dashboard = () => {
         />
         <MetricCard
           label="Open Positions"
-          value={data?.total_open_roles ?? 24}
-          trend="▲ 3 New"
+          value={
+            <div className="flex gap-3.5 items-center mt-1">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  sessionStorage.setItem("internal_hiring_active_tab", "roles");
+                  navigate("/internal-hiring");
+                }}
+                className="flex flex-col items-start text-left hover:bg-slate-50 p-1.5 rounded-lg border border-slate-100/30 transition-all cursor-pointer"
+              >
+                <span className="text-[9px] text-slate-400 font-black uppercase tracking-wider block">Internal</span>
+                <span className="text-xl font-black text-slate-800">{internalOpenRolesCount}</span>
+              </button>
+              <div className="w-px h-6 bg-slate-200 mt-1" />
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate("/open-positions");
+                }}
+                className="flex flex-col items-start text-left hover:bg-slate-50 p-1.5 rounded-lg border border-slate-100/30 transition-all cursor-pointer"
+              >
+                <span className="text-[9px] text-slate-400 font-black uppercase tracking-wider block">Client Side</span>
+                <span className="text-xl font-black text-slate-800">{clientOpenRolesCount}</span>
+              </button>
+            </div>
+          }
+          trend={`Total: ${internalOpenRolesCount + clientOpenRolesCount} Active`}
           icon={Briefcase}
           iconBg="bg-blue-50 text-blue-600"
-          onClick={() => navigate("/open-positions")}
         />
         <MetricCard
           label="Interviews Today(Internal)"
@@ -973,42 +1021,38 @@ const Dashboard = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         
         {/* Recruitment Statistics */}
-        <motion.div variants={item} className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm flex flex-col justify-between h-[390px]">
-          <div>
-            <h3 className="text-sm font-black text-slate-800 tracking-tight mb-5">Recruitment Statistics</h3>
-            
-            {/* Horizontal stages stats row */}
-            <div className="flex justify-between items-start text-center mb-4">
-              {recruitmentStats.map((stat) => (
-                <div key={stat.name} className="flex flex-col items-center flex-1">
-                  <div className={`w-8 h-8 rounded-lg ${stat.bg} flex items-center justify-center shrink-0 mb-2`}>
+        <motion.div variants={item} className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm flex flex-col h-[390px]">
+          <h3 className="text-sm font-black text-slate-800 tracking-tight">Recruitment Statistics</h3>
+          
+          {/* Left-aligned multi-row stages stats */}
+          <div className="flex-1 flex flex-col items-start justify-center gap-6 pl-2">
+            {/* Row 1: 3 items */}
+            <div className="flex justify-start gap-10 w-full">
+              {recruitmentStats.slice(0, 3).map((stat) => (
+                <div key={stat.name} className="flex flex-col items-start text-left w-20">
+                  <div className={`w-9 h-9 rounded-xl ${stat.bg} flex items-center justify-center shrink-0 mb-2 shadow-sm border border-slate-100/50`}>
                     <stat.icon className={`w-4 h-4 ${stat.textColor}`} />
                   </div>
-                  <span className="text-[10px] font-bold text-slate-400">{stat.name}</span>
-                  <span className="text-sm font-black text-slate-800 mt-1">{stat.value}</span>
-                  <span className="text-[9px] font-semibold text-slate-400 mt-0.5">{stat.pct}</span>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{stat.name}</span>
+                  <span className="text-lg font-black text-slate-800 mt-1 tracking-tight">{stat.value}</span>
+                  <span className="text-[10px] font-bold text-slate-400/80 mt-0.5">{stat.pct}</span>
                 </div>
               ))}
             </div>
-
-
-          </div>
-
-          {/* Conversion rate sub-card */}
-          <div className="p-4 bg-blue-50/40 border border-blue-100/50 rounded-2xl flex items-center justify-between mt-auto">
-            <div>
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Overall Conversion Rate</span>
-              <div className="flex items-baseline gap-2 mt-1">
-                <h4 className="text-2xl font-black text-slate-800">{conversionRate || 7.6}%</h4>
-                <span className="text-[9px] font-black text-green-600 bg-green-50 px-1.5 py-0.5 rounded-md flex items-center gap-0.5">
-                  ▲ 2.1% <span className="text-[8px] text-slate-400 font-bold">vs last week</span>
-                </span>
-              </div>
-              <p className="text-[9px] font-bold text-slate-400 mt-1.5">
-                {selectedCount || 14} Joined out of {totalPipeline || 184} Interviewed
-              </p>
+            
+            {/* Row 2: 2 items */}
+            <div className="flex justify-start gap-10 w-full">
+              {recruitmentStats.slice(3, 5).map((stat) => (
+                <div key={stat.name} className="flex flex-col items-start text-left w-20">
+                  <div className={`w-9 h-9 rounded-xl ${stat.bg} flex items-center justify-center shrink-0 mb-2 shadow-sm border border-slate-100/50`}>
+                    <stat.icon className={`w-4 h-4 ${stat.textColor}`} />
+                  </div>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{stat.name}</span>
+                  <span className="text-lg font-black text-slate-800 mt-1 tracking-tight">{stat.value}</span>
+                  <span className="text-[10px] font-bold text-slate-400/80 mt-0.5">{stat.pct}</span>
+                </div>
+              ))}
             </div>
-            <Sparkline />
           </div>
         </motion.div>
 

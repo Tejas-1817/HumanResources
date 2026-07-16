@@ -57,12 +57,6 @@ export const AppSidebar = ({ onMobileClose, onQuickAction }: { onMobileClose?: (
   });
 
   const getBadgeValue = (label: string) => {
-    if (label === "Total Candidates") {
-      return stats?.total_candidates;
-    }
-    if (label === "Open Positions") {
-      return stats?.total_open_roles;
-    }
     return null;
   };
 
