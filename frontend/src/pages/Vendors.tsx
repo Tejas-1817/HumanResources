@@ -20,7 +20,9 @@ import {
   Users,
   ListFilter,
   ChevronDown,
-  Pencil
+  Pencil,
+  User,
+  Hourglass
 } from "lucide-react";
 import {
   getVendors,
@@ -202,6 +204,23 @@ const Vendors = () => {
 
   const roleById = useMemo(() => new Map((allJobs || []).map((r: any) => [r.id, r])), [allJobs]);
 
+  const stats = useMemo(() => {
+    const total = candidates.length;
+    const available = candidates.filter(c => {
+      const app = appsByCandidate.get(c.id);
+      return !app || app.status !== "selected";
+    }).length;
+    const interviewing = candidates.filter(c => {
+      const app = appsByCandidate.get(c.id);
+      return app && app.status !== "selected" && app.status !== "dropped" && app.status !== "rejected";
+    }).length;
+    const placed = candidates.filter(c => {
+      const app = appsByCandidate.get(c.id);
+      return app && app.status === "selected";
+    }).length;
+    return { total, available, interviewing, placed };
+  }, [candidates, appsByCandidate]);
+
   const displayedCandidates = useMemo(() => {
     if (selectedJobRoleId === "all") {
       return candidates.map((c: any) => {
@@ -341,45 +360,86 @@ const Vendors = () => {
         }
       />
 
-      {/* Tabs - Swapped so Talent Hub is first */}
-      <div className="flex items-center gap-1 bg-secondary/30 p-1 rounded-xl w-fit border border-border/50">
-        <button
-          onClick={() => setActiveView("talent")}
-          className={`flex items-center gap-2 px-6 py-2 rounded-lg text-sm font-bold transition-all ${activeView === "talent" ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20" : "text-muted-foreground hover:text-foreground"}`}
-        >
-          <Users className="w-4 h-4" /> Talent Hub
-        </button>
-        <button
-          onClick={() => setActiveView("partners")}
-          className={`flex items-center gap-2 px-6 py-2 rounded-lg text-sm font-bold transition-all ${activeView === "partners" ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20" : "text-muted-foreground hover:text-foreground"}`}
-        >
-          <Handshake className="w-4 h-4" /> Partner Management
-        </button>
+      {/* Tabs & Search Bar Container */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        {/* Tabs - Swapped so Talent Hub is first */}
+        <div className="flex items-center gap-1 bg-secondary/30 p-1 rounded-xl w-fit border border-border/50">
+          <button
+            onClick={() => setActiveView("talent")}
+            className={`flex items-center gap-2 px-6 py-2 rounded-lg text-sm font-bold transition-all ${activeView === "talent" ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            <Users className="w-4 h-4" /> Talent Hub
+          </button>
+          <button
+            onClick={() => setActiveView("partners")}
+            className={`flex items-center gap-2 px-6 py-2 rounded-lg text-sm font-bold transition-all ${activeView === "partners" ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            <Handshake className="w-4 h-4" /> Partner Management
+          </button>
+        </div>
+
+        {/* Search Bar next to tabs */}
+        {activeView === "talent" && (
+          <div className="relative w-full sm:w-[320px] md:w-[380px] shrink-0">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Search name, skills, experience..."
+              value={searchTerm}
+              onChange={(e) => { setSearchTerm(e.target.value); }}
+              className="w-full pl-11 pr-4 py-2.5 rounded-xl bg-card border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+            />
+          </div>
+        )}
       </div>
 
       {activeView === "talent" ? (
         /* Talent Hub View (Candidates) */
         <div className="space-y-6">
-          {/* Header info with Search */}
-          <div className="p-4 rounded-2xl bg-secondary/10 border border-border/30 flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-              <h3 className="text-base font-bold text-foreground">
-                {vendorFilterId ? `On Bench: ${vendors.find(v => v.id === vendorFilterId)?.name}` : "On Bench: All"}
-              </h3>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {vendorFilterId ? `Viewing available candidates provided by ${vendors.find(v => v.id === vendorFilterId)?.name}` : "Viewing available candidates across all sources"}
-              </p>
+          {/* Stats Banners */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Card 1: Total On Bench */}
+            <div className="flex items-center gap-4 p-5 rounded-2xl bg-card border border-border/50 shadow-sm relative overflow-hidden group hover:border-primary/20 transition-all duration-300">
+              <div className="w-12 h-12 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-500 ring-1 ring-indigo-500/20 group-hover:scale-105 transition-transform duration-300">
+                <Users className="w-6 h-6" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-muted-foreground">Total On Bench</p>
+                <p className="text-2xl font-black text-foreground mt-0.5">{stats.total}</p>
+              </div>
             </div>
 
-            <div className="relative w-full md:w-[480px] shrink-0">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <input
-                type="text"
-                placeholder="Search name, skills, experience..."
-                value={searchTerm}
-                onChange={(e) => { setSearchTerm(e.target.value); }}
-                className="w-full pl-11 pr-4 py-2.5 rounded-xl bg-white border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-              />
+            {/* Card 2: Available */}
+            <div className="flex items-center gap-4 p-5 rounded-2xl bg-card border border-border/50 shadow-sm relative overflow-hidden group hover:border-primary/20 transition-all duration-300">
+              <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-500 ring-1 ring-blue-500/20 group-hover:scale-105 transition-transform duration-300">
+                <User className="w-6 h-6" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-muted-foreground">Available</p>
+                <p className="text-2xl font-black text-foreground mt-0.5">{stats.available}</p>
+              </div>
+            </div>
+
+            {/* Card 3: Interviewing */}
+            <div className="flex items-center gap-4 p-5 rounded-2xl bg-card border border-border/50 shadow-sm relative overflow-hidden group hover:border-primary/20 transition-all duration-300">
+              <div className="w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-500 ring-1 ring-amber-500/20 group-hover:scale-105 transition-transform duration-300">
+                <Hourglass className="w-6 h-6" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-muted-foreground">Interviewing</p>
+                <p className="text-2xl font-black text-foreground mt-0.5">{stats.interviewing}</p>
+              </div>
+            </div>
+
+            {/* Card 4: Placed */}
+            <div className="flex items-center gap-4 p-5 rounded-2xl bg-card border border-border/50 shadow-sm relative overflow-hidden group hover:border-primary/20 transition-all duration-300">
+              <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500 ring-1 ring-emerald-500/20 group-hover:scale-105 transition-transform duration-300">
+                <Briefcase className="w-6 h-6" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-muted-foreground">Placed</p>
+                <p className="text-2xl font-black text-foreground mt-0.5">{stats.placed}</p>
+              </div>
             </div>
           </div>
 
@@ -579,7 +639,7 @@ const Vendors = () => {
                       <div className="w-full md:col-span-2 flex items-center justify-center">
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-secondary/50 border border-border text-[11px] font-bold text-muted-foreground truncate max-w-full">
                           <Building className="w-3 h-3 text-muted-foreground/70" />
-                          {c.source_vendor || vendors.find(v => v.id === c.uploaded_by_vendor_id)?.name || "Partner"}
+                          {c.source_vendor || (() => { const v = vendors.find(v => v.id === c.uploaded_by_vendor_id); return v ? (v.company_name || v.name) : "Partner"; })()}
                         </span>
                       </div>
 

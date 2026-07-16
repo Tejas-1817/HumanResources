@@ -159,7 +159,7 @@ export const Topbar = ({
         ? "Vendor" 
         : (location.pathname === "/" && currentUser?.name) 
           ? `Welcome, ${currentUser.name}!` 
-          : "Altzor",
+          : "Altzör",
       path: isVendor ? "/vendor" : "/",
       isLast: isVendor ? pathnames.length === 1 : pathnames.length === 0
     }];

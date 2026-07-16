@@ -21,17 +21,12 @@ import {
   ExternalLink,
   MessageSquare,
   Save,
+  Star,
   UserCheck,
   Eye,
   ChevronDown,
   Check,
-  ArrowUp,
-  ArrowDown,
-  Star,
   MapPin,
-  ArrowRight,
-  MoreVertical,
-  Download,
 } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -87,6 +82,133 @@ const getStatusFromAge = (c: Candidate): string => {
   if (days <= 1) return "New";
   if (days <= 7) return "Screening";
   return "Review";
+};
+
+const getRoleTags = (r: any) => {
+  const title = r.title.toLowerCase();
+  const tags: string[] = [];
+
+  if (title.includes("general")) {
+    return ["— General positions and unassigned roles"];
+  }
+
+  if (title.includes("python")) {
+    tags.push("Python", "Django");
+  } else if (title.includes("outreach")) {
+    tags.push("Sales", "CRM");
+  } else if (title.includes("devops")) {
+    tags.push("AWS", "Docker");
+  } else if (title.includes("tester")) {
+    tags.push("QA", "Testing");
+  } else if (title.includes("accountant")) {
+    tags.push("Finance", "Tally");
+  } else if (title.includes("hr") || title.includes("human resources")) {
+    tags.push("HR", "People Mgmt.");
+  } else if (title.includes("ui") || title.includes("ux") || title.includes("design")) {
+    tags.push("Figma", "Adobe XD");
+  } else if (title.includes("data") || title.includes("analyst")) {
+    tags.push("SQL", "Excel");
+  } else {
+    tags.push(r.title);
+  }
+
+  if (r.experience_required != null && r.experience_required !== "") {
+    const exp = r.experience_required;
+    if (typeof exp === "number") {
+      tags.push(`${exp}+ Yrs`);
+    } else {
+      tags.push(String(exp).includes("Yrs") ? exp : `${exp} Yrs`);
+    }
+  } else {
+    // Fallbacks matching the design mock image
+    if (title.includes("outreach")) tags.push("1-2 Yrs");
+    else if (title.includes("python") || title.includes("devops")) tags.push("3+ Yrs");
+    else if (title.includes("ui") || title.includes("ux") || title.includes("design")) tags.push("2-4 Yrs");
+    else tags.push("2-3 Yrs");
+  }
+  return tags;
+};
+
+const getRoleIconDetails = (title: string) => {
+  const t = title.toLowerCase();
+  if (t.includes("python") || t.includes("developer") || t.includes("engineer") || t.includes("devops")) {
+    if (t.includes("python")) {
+      return {
+        icon: Briefcase,
+        bg: "bg-blue-50 dark:bg-blue-950/30",
+        text: "text-blue-600 dark:text-blue-400",
+        border: "border border-blue-100 dark:border-blue-900/50"
+      };
+    }
+    if (t.includes("devops")) {
+      return {
+        icon: Briefcase,
+        bg: "bg-amber-50 dark:bg-amber-950/30",
+        text: "text-amber-600 dark:text-amber-400",
+        border: "border border-amber-100 dark:border-amber-900/50"
+      };
+    }
+    return {
+      icon: Briefcase,
+      bg: "bg-blue-50 dark:bg-blue-950/30",
+      text: "text-blue-600 dark:text-blue-400",
+      border: "border border-blue-100 dark:border-blue-900/50"
+    };
+  }
+  if (t.includes("outreach") || t.includes("sales") || t.includes("marketing")) {
+    return {
+      icon: Briefcase,
+      bg: "bg-purple-50 dark:bg-purple-950/30",
+      text: "text-purple-600 dark:text-purple-400",
+      border: "border border-purple-100 dark:border-purple-900/50"
+    };
+  }
+  if (t.includes("general")) {
+    return {
+      icon: GitBranch,
+      bg: "bg-emerald-50 dark:bg-emerald-950/30",
+      text: "text-emerald-600 dark:text-emerald-400",
+      border: "border border-emerald-100 dark:border-emerald-900/50"
+    };
+  }
+  if (t.includes("hr") || t.includes("human resources") || t.includes("recruiter")) {
+    return {
+      icon: Clock,
+      bg: "bg-amber-50 dark:bg-amber-950/30",
+      text: "text-amber-600 dark:text-amber-400",
+      border: "border border-amber-100 dark:border-amber-900/50"
+    };
+  }
+  if (t.includes("accountant") || t.includes("finance") || t.includes("billing")) {
+    return {
+      icon: Users,
+      bg: "bg-rose-50 dark:bg-rose-950/30",
+      text: "text-rose-600 dark:text-rose-400",
+      border: "border border-rose-100 dark:border-rose-900/50"
+    };
+  }
+  if (t.includes("ui") || t.includes("ux") || t.includes("design") || t.includes("frontend")) {
+    return {
+      icon: GitBranch,
+      bg: "bg-cyan-50 dark:bg-cyan-950/30",
+      text: "text-cyan-600 dark:text-cyan-400",
+      border: "border border-cyan-100 dark:border-cyan-900/50"
+    };
+  }
+  if (t.includes("data") || t.includes("analyst") || t.includes("analytics")) {
+    return {
+      icon: Briefcase,
+      bg: "bg-indigo-50 dark:bg-indigo-950/30",
+      text: "text-indigo-600 dark:text-indigo-400",
+      border: "border border-indigo-100 dark:border-indigo-900/50"
+    };
+  }
+  return {
+    icon: Briefcase,
+    bg: "bg-gray-50 dark:bg-gray-950/30",
+    text: "text-gray-600 dark:text-gray-400",
+    border: "border border-gray-100 dark:border-gray-900/50"
+  };
 };
 
 // ──────────────────────────────────────────────────────────
@@ -148,15 +270,22 @@ const Companies = () => {
     sessionStorage.setItem("companies_active_tab", tab);
   };
 
+  const isPipeline = activeTab === "pipeline";
+
   // ─── Company Search state ─────────────────────────────
   const [companySearch, setCompanySearch] = useState("");
+  const [globalSearch, setGlobalSearch] = useState("");
+  const [mainTab, setMainTab] = useState("All Companies");
+  const [industryFilter, setIndustryFilter] = useState("Industry");
+  const [locationFilter, setLocationFilter] = useState("Location");
+  const [statusFilter, setStatusFilter] = useState("Status");
 
 
   // ─── Company CRUD state ───────────────────────────────
   const [companyModalOpen, setCompanyModalOpen] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
-  const [companyForm, setCompanyForm] = useState({ name: "" });
+  const [companyForm, setCompanyForm] = useState({ name: "", location: "" });
 
   // ─── Job Roles state ──────────────────────────────────
   const [roleModalOpen, setRoleModalOpen] = useState(false);
@@ -180,7 +309,7 @@ const Companies = () => {
   const [candFiltersOpen, setCandFiltersOpen] = useState(false);
 
   // ─── Pipeline state ───────────────────────────────────
-  const [pipelineRoleFilter, setPipelineRoleFilter] = useState<number | null>(null);
+  const [pipelineRoleFilter, setPipelineRoleFilter] = useState<number | "all" | null>(null);
   const [draggedCard, setDraggedCard] = useState<{ id: number; fromCol: string; name: string; currentInterviewDate?: string } | null>(null);
   const [draggedStageIdx, setDraggedStageIdx] = useState<number | null>(null);
   const [dropTarget, setDropTarget] = useState<string | null>(null);
@@ -226,20 +355,195 @@ const Companies = () => {
     return new Map([...m].map(([k, v]) => [k, v.size]));
   }, [pipeline, roleById]);
 
+  // Total positions filled and required per company
+  const positionsFilledByCompany = useMemo(() => {
+    const m = new Map<number, { filled: number, required: number }>();
+
+    for (const r of jobRoles) {
+      const cid = r.company_id;
+      const filledCount = (pipeline["selected"] || []).filter((app: any) => app.job_role_id === r.id).length;
+      const requiredCount = r.positions_required || 0;
+
+      if (!m.has(cid)) {
+        m.set(cid, { filled: 0, required: 0 });
+      }
+      const val = m.get(cid)!;
+      val.filled += filledCount;
+      val.required += requiredCount;
+    }
+
+    return m;
+  }, [jobRoles, pipeline]);
+
+  // ─── Dropdown options and filters list ───────────────────
+  const industries = useMemo(() => {
+    const set = new Set<string>();
+    jobRoles.forEach(r => {
+      if (r.department) set.add(r.department);
+      else if (r.title.toLowerCase().includes("software") || r.title.toLowerCase().includes("python") || r.title.toLowerCase().includes("developer") || r.title.toLowerCase().includes("engineer")) {
+        set.add("Software Development");
+      }
+    });
+    return ["Industry", "All", ...Array.from(set)];
+  }, [jobRoles]);
+
+  const locations = useMemo(() => {
+    const set = new Set<string>();
+    companies.forEach(c => {
+      if (c.location) set.add(c.location);
+    });
+    return ["Location", "All", ...Array.from(set)];
+  }, [companies]);
+
+  // ─── KPI Cards Calculations ──────────────────────────────
+  const activePositionsCount = useMemo(() => {
+    return jobRoles.filter(r => r.status.toLowerCase() === "open").length;
+  }, [jobRoles]);
+
+  const totalCandidatesCount = useMemo(() => {
+    const uniqueIds = new Set<number>();
+    Object.values(pipeline).forEach((apps: any) => {
+      apps.forEach((app: any) => {
+        const role = roleById.get(app.job_role_id);
+        if (role) {
+          uniqueIds.add(app.candidate_id);
+        }
+      });
+    });
+    return uniqueIds.size;
+  }, [pipeline, roleById]);
+
+  const successfulHiresCount = useMemo(() => {
+    const uniqueIds = new Set<number>();
+    (pipeline["selected"] || []).forEach((app: any) => {
+      const role = roleById.get(app.job_role_id);
+      if (role) {
+        uniqueIds.add(app.candidate_id);
+      }
+    });
+    return uniqueIds.size;
+  }, [pipeline, roleById]);
+
+  // ─── Filtered Companies for Catalog View ──────────────────
+  const filteredCompanies = useMemo(() => {
+    return companies.filter((c) => {
+      // 1. Global Search
+      const matchesGlobal = !globalSearch.trim() || 
+        c.name.toLowerCase().includes(globalSearch.toLowerCase()) ||
+        jobRoles.some(r => r.company_id === c.id && r.title.toLowerCase().includes(globalSearch.toLowerCase()));
+
+      // 2. Company Search
+      const matchesCompanySearch = !companySearch.trim() ||
+        c.name.toLowerCase().includes(companySearch.toLowerCase());
+
+      // 3. Tab Filter
+      let matchesTab = true;
+      if (mainTab === "Active Positions") {
+        const openRoles = openRoleCountByCompany.get(c.id) || 0;
+        matchesTab = openRoles > 0;
+      } else if (mainTab === "On Hold") {
+        matchesTab = (pipeline["on_hold"] || []).some(app => {
+          const role = roleById.get(app.job_role_id);
+          return role?.company_id === c.id;
+        });
+      } else if (mainTab === "Closed Positions") {
+        matchesTab = jobRoles.some(r => r.company_id === c.id && r.status.toLowerCase() === "closed");
+      } else if (mainTab === "Recently Added") {
+        const daysAgo = (Date.now() - new Date(c.created_at).getTime()) / 86400000;
+        matchesTab = daysAgo <= 30;
+      }
+
+      // 4. Dropdowns
+      let matchesIndustry = true;
+      if (industryFilter && industryFilter !== "All" && industryFilter !== "Industry") {
+        matchesIndustry = jobRoles.some(r => r.company_id === c.id && (r.department?.toLowerCase() === industryFilter.toLowerCase() || r.title.toLowerCase().includes(industryFilter.toLowerCase())));
+      }
+
+      let matchesLocation = true;
+      if (locationFilter && locationFilter !== "All" && locationFilter !== "Location") {
+        matchesLocation = c.location?.toLowerCase().includes(locationFilter.toLowerCase()) || false;
+      }
+
+      let matchesStatus = true;
+      if (statusFilter && statusFilter !== "All" && statusFilter !== "Status") {
+        const openRoles = openRoleCountByCompany.get(c.id) || 0;
+        const isActive = openRoles > 0;
+        if (statusFilter === "Active") matchesStatus = isActive;
+        if (statusFilter === "Inactive") matchesStatus = !isActive;
+      }
+
+      return matchesGlobal && matchesCompanySearch && matchesTab && matchesIndustry && matchesLocation && matchesStatus;
+    });
+  }, [companies, globalSearch, companySearch, mainTab, industryFilter, locationFilter, statusFilter, jobRoles, openRoleCountByCompany, pipeline, roleById]);
+
+  const getCompanyPipelineStage = (companyId: number) => {
+    const companyApps: any[] = [];
+    Object.entries(pipeline).forEach(([stageId, list]: [string, any]) => {
+      list.forEach((app: any) => {
+        const role = roleById.get(app.job_role_id);
+        if (role?.company_id === companyId) {
+          companyApps.push({ ...app, stageId });
+        }
+      });
+    });
+
+    if (companyApps.some(app => app.stageId === "interview_scheduled" || app.stageId === "interviewed")) {
+      return { label: "Interviewing", style: "bg-amber-500/10 text-amber-600 border-amber-500/20" };
+    }
+    if (companyApps.some(app => app.stageId === "shortlisted")) {
+      return { label: "Shortlisted", style: "bg-primary/10 text-primary border-primary/20" };
+    }
+    if (companyApps.some(app => app.stageId === "on_hold")) {
+      return { label: "On Hold", style: "bg-orange-500/10 text-orange-600 border-orange-500/20" };
+    }
+    if (companyApps.some(app => app.stageId === "pending")) {
+      return { label: "Pending", style: "bg-warning/10 text-warning border-warning/20" };
+    }
+    if (companyApps.some(app => app.stageId === "selected")) {
+      return { label: "Selected", style: "bg-success/10 text-success border-success/20" };
+    }
+    return { label: "—", style: "text-muted-foreground bg-transparent border-transparent" };
+  };
+
 
 
   // Filtered roles for selected company
   const companyRoles = useMemo(() => {
     if (!selectedCompanyId) return [];
     const roles = jobRoles.filter((r) => r.company_id === selectedCompanyId);
-    if (roleFilter === "All") return roles;
-    return roles.filter((r) => r.status.toLowerCase() === roleFilter.toLowerCase());
-  }, [jobRoles, selectedCompanyId, roleFilter]);
+
+    // Map each role to include its computed status and filled count
+    const rolesWithComputedStatus = roles.map(r => {
+      const filledCount = (pipeline["selected"] || []).filter((app: any) => app.job_role_id === r.id).length;
+
+      let computedStatus = "open";
+      if (r.status.toLowerCase() === "closed") {
+        computedStatus = "closed";
+      } else {
+        const inProgressStages = ["pending", "shortlisted", "interview_scheduled", "interviewed", "on_hold"];
+        const hasActiveCandidates = inProgressStages.some(stage =>
+          (pipeline[stage] || []).some((app: any) => app.job_role_id === r.id)
+        );
+        if (hasActiveCandidates) {
+          computedStatus = "in progress";
+        }
+      }
+
+      return {
+        ...r,
+        filledCount,
+        computedStatus
+      };
+    });
+
+    if (roleFilter === "All") return rolesWithComputedStatus;
+    return rolesWithComputedStatus.filter((r) => r.computedStatus.toLowerCase() === roleFilter.toLowerCase());
+  }, [jobRoles, selectedCompanyId, roleFilter, pipeline]);
 
   // Auto-select first job role when Pipeline tab is entered
   useEffect(() => {
     if (activeTab === "pipeline" && selectedCompanyId && !pipelineRoleFilter && companyRoles.length > 0) {
-      setPipelineRoleFilter(companyRoles[0].id);
+      setPipelineRoleFilter("all");
     }
   }, [activeTab, selectedCompanyId, pipelineRoleFilter, companyRoles]);
   // Filtered pipeline for selected company
@@ -255,7 +559,7 @@ const Companies = () => {
     }
 
     // Use stages from filtered role, or default if none/multiple
-    const activeRole = pipelineRoleFilter ? roleById.get(pipelineRoleFilter) : null;
+    const activeRole = pipelineRoleFilter && pipelineRoleFilter !== "all" ? roleById.get(pipelineRoleFilter) : null;
     const stagesToUse = activeRole?.pipeline_stages || DEFAULT_STAGES;
 
     return stagesToUse.map((stage) => ({
@@ -286,9 +590,12 @@ const Companies = () => {
           };
         })
         .filter((c: any) => {
-          const isMatch = c.companyId === selectedCompanyId && c.roleId === pipelineRoleFilter;
+          const isMatch = pipelineRoleFilter === "all"
+            ? c.companyId === selectedCompanyId
+            : (c.companyId === selectedCompanyId && c.roleId === pipelineRoleFilter);
+
           if (!isMatch) return false;
-          
+
           const isFinalStage = ["selected", "rejected", "dropped"].includes(stage.id.toLowerCase());
           if (isFinalStage && c.statusDate) {
             const days = Math.max(0, Math.floor((Date.now() - new Date(c.statusDate).getTime()) / 86400000));
@@ -348,16 +655,16 @@ const Companies = () => {
   // ──────────────────────────────────────────────────────────
   // Company CRUD handlers
   // ──────────────────────────────────────────────────────────
-  const openAddCompany = () => { setEditId(null); setCompanyForm({ name: "" }); setCompanyModalOpen(true); };
-  const openEditCompany = (c: Company) => { setEditId(c.id); setCompanyForm({ name: c.name }); setCompanyModalOpen(true); };
+  const openAddCompany = () => { setEditId(null); setCompanyForm({ name: "", location: "" }); setCompanyModalOpen(true); };
+  const openEditCompany = (c: Company) => { setEditId(c.id); setCompanyForm({ name: c.name, location: c.location || "" }); setCompanyModalOpen(true); };
   const handleSaveCompany = async () => {
     if (!companyForm.name.trim()) { toast.error("Company name is required"); return; }
     try {
       if (editId) {
-        await updateCompany(editId, { name: companyForm.name.trim() });
+        await updateCompany(editId, { name: companyForm.name.trim(), location: companyForm.location.trim() || null });
         toast.success("Company updated");
       } else {
-        await createCompany({ name: companyForm.name.trim() });
+        await createCompany({ name: companyForm.name.trim(), location: companyForm.location.trim() || null });
         toast.success("Company added");
       }
       await queryClient.invalidateQueries({ queryKey: ["companies"] });
@@ -722,402 +1029,380 @@ const Companies = () => {
     setRoleFilter("All");
   };
 
+  const handleViewCompanyTab = (e: React.MouseEvent, companyId: number, tab: "roles" | "candidates") => {
+    e.stopPropagation();
+    sessionStorage.setItem("companies_active_tab", tab);
+    setActiveTab(tab);
+    // Reset candidate page & states if transitioning to candidates
+    if (tab === "candidates") {
+      setCandSearch("");
+      setCandPage(1);
+      setCandExpFilter(0);
+      setCandSkillFilter("");
+    }
+    navigate(`/companies?id=${companyId}`);
+  };
+
   // ──────────────────────────────────────────────────────────
   // RENDER
   // ──────────────────────────────────────────────────────────
-
-  const [activeListTab, setActiveListTab] = useState("All Companies");
-
-  const MOCK_INDUSTRIES = ["IT Services & Consulting", "Technology & Consulting", "Software Development"];
-  const MOCK_LOCATIONS = ["Bengaluru, Karnataka", "Teaneck, New Jersey, USA", "Armonk, New York, USA", "Redmond, Washington, USA", "Mumbai, Maharashtra"];
-  const MOCK_STAGES = ["Sourcing", "Screening", "Interviewing", "On Hold"];
-  const MOCK_STATUSES = ["Active", "On Hold"];
-
-  const getMockIndustry = (id: number) => MOCK_INDUSTRIES[id % MOCK_INDUSTRIES.length];
-  const getMockLocation = (id: number) => MOCK_LOCATIONS[id % MOCK_LOCATIONS.length];
-  const getMockStage = (id: number) => MOCK_STAGES[id % MOCK_STAGES.length];
-  const getMockStatus = (id: number) => id % 4 === 3 ? "On Hold" : "Active";
-
-  const [selectedIndustry, setSelectedIndustry] = useState<string>("All");
-  const [selectedLocation, setSelectedLocation] = useState<string>("All");
-  const [selectedStatus, setSelectedStatus] = useState<string>("All");
-
-  const [currentPage, setCurrentPage] = useState(1);
-  const PAGE_SIZE = 5;
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [companySearch, selectedIndustry, selectedLocation, selectedStatus, activeListTab]);
-
-  const filteredCompaniesList = useMemo(() => {
-    return companies.filter(c => {
-      // 1. Search Filter
-      if (companySearch && !c.name.toLowerCase().includes(companySearch.toLowerCase())) return false;
-      
-      const openRoles = openRoleCountByCompany.get(c.id) || 0;
-      const totalRoles = roleCountByCompany.get(c.id) || 0;
-      const mockStatus = getMockStatus(c.id);
-      const mockIndustry = getMockIndustry(c.id);
-      const mockLocation = getMockLocation(c.id);
-
-      // 2. Tab Filter
-      if (activeListTab === "Active Positions" && openRoles === 0) return false;
-      if (activeListTab === "On Hold" && mockStatus !== "On Hold") return false;
-      if (activeListTab === "Closed Positions" && (totalRoles === 0 || openRoles > 0)) return false;
-      if (activeListTab === "Recently Added") {
-        const daysOld = (Date.now() - new Date(c.created_at).getTime()) / (1000 * 3600 * 24);
-        if (daysOld > 14) return false;
-      }
-
-      // 3. Dropdown Filters
-      if (selectedIndustry !== "All" && mockIndustry !== selectedIndustry) return false;
-      if (selectedLocation !== "All" && mockLocation !== selectedLocation) return false;
-      if (selectedStatus !== "All" && mockStatus !== selectedStatus) return false;
-
-      return true;
-    });
-  }, [companies, companySearch, activeListTab, selectedIndustry, selectedLocation, selectedStatus, openRoleCountByCompany, roleCountByCompany]);
-
-  const activePositionsCount = filteredCompaniesList.reduce((acc, c) => acc + (openRoleCountByCompany.get(c.id) || 0), 0);
-  const totalCandidatesCount = filteredCompaniesList.reduce((acc, c) => acc + (candidateCountByCompany.get(c.id) || 0), 0);
-  const successfulHiresCount = useMemo(() => {
-    const selectedApps = pipeline["selected"] || pipeline["Selected"] || [];
-    const validCompanyIds = new Set(filteredCompaniesList.map(c => c.id));
-    return selectedApps.filter(app => {
-      const role = roleById.get(app.job_role_id);
-      return role && validCompanyIds.has(role.company_id);
-    }).length;
-  }, [pipeline, roleById, filteredCompaniesList]);
-
-  const summaryCards = [
-    { title: "Total Partner Companies", value: filteredCompaniesList.length, icon: Building2, iconColor: "text-blue-600", bg: "bg-blue-50" },
-    { title: "Active Positions", value: activePositionsCount, icon: Briefcase, iconColor: "text-purple-600", bg: "bg-purple-50" },
-    { title: "Total Candidates", value: totalCandidatesCount, icon: Users, iconColor: "text-blue-600", bg: "bg-blue-50" },
-    { title: "Successful Hires", value: successfulHiresCount, icon: Star, iconColor: "text-yellow-600", bg: "bg-yellow-50" },
-  ];
-
-  const handleClearFilters = () => {
-    setCompanySearch("");
-    setSelectedIndustry("All");
-    setSelectedLocation("All");
-    setSelectedStatus("All");
-    setActiveListTab("All Companies");
-  };
-
-  const handleExportCsv = () => {
-    const headers = ["Company", "Active Positions", "Total Candidates", "Pipeline Stage", "Status"];
-    const rows = filteredCompaniesList.map(c => {
-      const openRoles = openRoleCountByCompany.get(c.id) || 0;
-      const totalCand = candidateCountByCompany.get(c.id) || 0;
-      const mockStage = getMockStage(c.id);
-      const mockStatus = getMockStatus(c.id);
-      return [
-        `"${c.name}"`,
-        openRoles,
-        totalCand,
-        `"${mockStage}"`,
-        `"${mockStatus}"`
-      ].join(",");
-    });
-    
-    const csvContent = [headers.join(","), ...rows].join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", "partner_companies.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
   return (
-    <div className="min-h-screen bg-slate-50/50">
-      {selectedCompanyId ? (
-        <PageHeader
-          title="Company Hub"
-          description={`Manage recruitment ops for ${selectedCompany?.name}`}
-          actions={
+    <div>
+      <PageHeader
+        title={selectedCompanyId ? "Company Hub" : "Partner Companies"}
+        description={selectedCompanyId
+          ? `Manage recruitment ops for ${selectedCompany?.name}`
+          : "Manage all partner companies and their open positions"}
+        actions={
+          selectedCompanyId ? (
             <button onClick={openAddCompany} className="px-4 py-2.5 rounded-lg bg-primary text-primary-foreground font-medium text-sm hover:bg-primary/90 transition-all flex items-center gap-2">
               <Plus className="w-4 h-4" /> Add New Company
             </button>
-          }
-        />
-      ) : (
-        <div className="p-8">
-          {/* Header */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-            <div>
-              <h1 className="text-2xl font-bold text-slate-900">Partner Companies</h1>
-              <p className="text-sm text-slate-500 mt-1">Manage all partner companies and their open positions</p>
-            </div>
+          ) : (
             <div className="flex items-center gap-3">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <div className="relative group w-64">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
                 <input
                   type="text"
                   placeholder="Search companies or roles..."
-                  value={companySearch}
-                  onChange={(e) => setCompanySearch(e.target.value)}
-                  className="pl-9 pr-4 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 w-[260px]"
+                  value={globalSearch}
+                  onChange={(e) => setGlobalSearch(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2 text-xs rounded-lg border border-border/50 bg-card text-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all shadow-sm"
                 />
               </div>
-              <button onClick={openAddCompany} className="px-4 py-2 rounded-lg bg-blue-600 text-white font-medium text-sm hover:bg-blue-700 transition-colors flex items-center gap-2 shadow-sm">
-                <Plus className="w-4 h-4" /> Add Partner Company
+              <button onClick={openAddCompany} className="px-4 py-2 rounded-lg bg-primary text-primary-foreground font-bold text-xs hover:bg-primary/90 transition-all flex items-center gap-1.5 shadow-sm">
+                <Plus className="w-3.5 h-3.5" /> Add Partner Company
               </button>
+            </div>
+          )
+        }
+      />
+
+      {/* ─── KPI Cards (Only for List View) ─────────────────── */}
+      {!selectedCompanyId && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+          <div className="bg-card border border-border/50 rounded-xl p-4 flex items-center gap-4 shadow-sm">
+            <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 border border-blue-100 dark:border-blue-900/50">
+              <Building2 className="w-6 h-6" />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Total Partner Companies</p>
+              <p className="text-xl font-bold text-foreground mt-0.5">{companies.length}</p>
             </div>
           </div>
 
-          {/* Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-            {summaryCards.map((card, idx) => (
-              <div key={idx} className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-blue-300 transition-all cursor-default">
-                <div className="flex items-center gap-3">
-                  <div className={`w-11 h-11 rounded-lg flex items-center justify-center shrink-0 ${card.bg}`}>
-                    <card.icon className={`w-6 h-6 ${card.iconColor}`} />
-                  </div>
-                  <div>
-                    <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">{card.title}</div>
-                    <div className="text-xl font-bold text-slate-900">{card.value}</div>
-                  </div>
-                </div>
-              </div>
-            ))}
+          <div className="bg-card border border-border/50 rounded-xl p-4 flex items-center gap-4 shadow-sm">
+            <div className="w-12 h-12 rounded-xl bg-purple-50 dark:bg-purple-950/30 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0 border border-purple-100 dark:border-purple-900/50">
+              <Briefcase className="w-6 h-6" />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Active Positions</p>
+              <p className="text-xl font-bold text-foreground mt-0.5">{activePositionsCount}</p>
+            </div>
           </div>
+        </div>
+      )}
 
-          {/* Tabs */}
-          <div className="flex items-center gap-8 border-b border-slate-200 mb-6">
-            {["All Companies", "Active Positions", "On Hold", "Closed Positions", "Recently Added"].map(tab => (
+      {/* ─── Tabs Filter (Only for List View) ─────────────────── */}
+      {!selectedCompanyId && (
+        <div className="flex items-center gap-6 border-b border-border/50 mb-6 overflow-x-auto scrollbar-none">
+          {[
+            { id: "All Companies", label: "All Companies", icon: Building2 },
+            { id: "Active Positions", label: "Active Positions", icon: Briefcase },
+            { id: "On Hold", label: "On Hold", icon: Clock },
+            { id: "Closed Positions", label: "Closed Positions", icon: null },
+            { id: "Recently Added", label: "Recently Added", icon: null },
+          ].map((tab) => {
+            const isActive = mainTab === tab.id;
+            return (
               <button
-                key={tab}
-                onClick={() => setActiveListTab(tab)}
-                className={`pb-3 text-sm font-bold transition-colors relative ${activeListTab === tab ? "text-blue-600" : "text-slate-500 hover:text-slate-700"}`}
+                key={tab.id}
+                onClick={() => setMainTab(tab.id)}
+                className={`flex items-center gap-2 pb-3 text-xs font-bold border-b-2 transition-all -mb-px whitespace-nowrap ${
+                  isActive
+                    ? "border-primary text-primary"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                }`}
               >
-                {tab === "All Companies" && <Building2 className="w-4 h-4 inline-block mr-2" />}
-                {tab === "Active Positions" && <Briefcase className="w-4 h-4 inline-block mr-2" />}
-                {tab === "On Hold" && <Clock className="w-4 h-4 inline-block mr-2" />}
-                {tab}
-                {activeListTab === tab && (
-                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 rounded-t-full" />
-                )}
+                {tab.icon && <tab.icon className="w-3.5 h-3.5" />}
+                {tab.label}
               </button>
-            ))}
+            );
+          })}
+        </div>
+      )}
+
+      {/* ─── Filters & Search Row (Only for List View) ─────────────────── */}
+      {!selectedCompanyId && (
+        <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex flex-wrap items-center gap-3 flex-1">
+            <div className="relative group w-full md:w-60">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+              <input
+                type="text"
+                placeholder="Search company name..."
+                value={companySearch}
+                onChange={(e) => setCompanySearch(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 rounded-xl bg-card border border-border/50 text-xs focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all shadow-sm text-foreground"
+              />
+            </div>
+
+            <div className="relative w-full md:w-44">
+              <select
+                value={industryFilter}
+                onChange={(e) => setIndustryFilter(e.target.value)}
+                className="w-full pl-3 pr-8 py-2 rounded-xl bg-card border border-border/50 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all shadow-sm appearance-none cursor-pointer"
+              >
+                {industries.map((ind) => (
+                  <option key={ind} value={ind}>
+                    {ind === "Industry" ? "Industry" : ind === "All" ? "All Industries" : ind}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+            </div>
+
+            <div className="relative w-full md:w-44">
+              <select
+                value={locationFilter}
+                onChange={(e) => setLocationFilter(e.target.value)}
+                className="w-full pl-3 pr-8 py-2 rounded-xl bg-card border border-border/50 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all shadow-sm appearance-none cursor-pointer"
+              >
+                {locations.map((loc) => (
+                  <option key={loc} value={loc}>
+                    {loc === "Location" ? "Location" : loc === "All" ? "All Locations" : loc}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+            </div>
+
+            <div className="relative w-full md:w-40">
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="w-full pl-3 pr-8 py-2 rounded-xl bg-card border border-border/50 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all shadow-sm appearance-none cursor-pointer"
+              >
+                {["Status", "All", "Active", "Inactive"].map((st) => (
+                  <option key={st} value={st}>
+                    {st === "Status" ? "Status" : st === "All" ? "All Statuses" : st}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+            </div>
           </div>
 
-          {/* Filters Bar */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-            <div className="flex items-center gap-3 flex-wrap">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="Search company name..."
-                  value={companySearch}
-                  onChange={(e) => setCompanySearch(e.target.value)}
-                  className="pl-9 pr-4 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-blue-500 w-[240px]"
-                />
-              </div>
-              <div className="relative">
-                <select
-                  value={selectedIndustry}
-                  onChange={(e) => setSelectedIndustry(e.target.value)}
-                  className="appearance-none px-4 py-2 pr-10 rounded-lg border border-slate-200 text-slate-600 text-sm font-medium bg-white hover:bg-slate-50 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 cursor-pointer"
-                >
-                  <option value="All">Industry</option>
-                  {MOCK_INDUSTRIES.map(i => <option key={i} value={i}>{i}</option>)}
-                </select>
-                <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-              </div>
-              <div className="relative">
-                <select
-                  value={selectedLocation}
-                  onChange={(e) => setSelectedLocation(e.target.value)}
-                  className="appearance-none px-4 py-2 pr-10 rounded-lg border border-slate-200 text-slate-600 text-sm font-medium bg-white hover:bg-slate-50 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 cursor-pointer"
-                >
-                  <option value="All">Location</option>
-                  {MOCK_LOCATIONS.map(l => <option key={l} value={l}>{l}</option>)}
-                </select>
-                <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-              </div>
-              <div className="relative">
-                <select
-                  value={selectedStatus}
-                  onChange={(e) => setSelectedStatus(e.target.value)}
-                  className="appearance-none px-4 py-2 pr-10 rounded-lg border border-slate-200 text-slate-600 text-sm font-medium bg-white hover:bg-slate-50 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 cursor-pointer"
-                >
-                  <option value="All">Status</option>
-                  {MOCK_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
-                <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <button onClick={handleClearFilters} className="px-4 py-2 rounded-lg border border-slate-200 text-slate-600 text-sm font-medium flex items-center gap-2 bg-white hover:bg-slate-50 shadow-sm transition-all">
-                <Filter className="w-4 h-4" /> Clear Filters
-              </button>
-            </div>
-          </div>
+          <button
+            onClick={() => {
+              setCompanySearch("");
+              setGlobalSearch("");
+              setMainTab("All Companies");
+              setIndustryFilter("Industry");
+              setLocationFilter("Location");
+              setStatusFilter("Status");
+            }}
+            className="px-4 py-2 rounded-xl border border-border/50 bg-card text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-secondary/40 transition-all flex items-center gap-1.5 shadow-sm"
+          >
+            <Filter className="w-3.5 h-3.5" /> Clear Filters
+          </button>
+        </div>
+      )}
 
-          {/* Table */}
-          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-slate-200 bg-slate-50/50">
-                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Company</th>
-                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Active Positions</th>
-                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Positions Filled</th>
-                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Total Candidates</th>
-                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Pipeline Stage</th>
-                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
-                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Quick Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {filteredCompaniesList
-                    .slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
-                    .map((c, i) => {
-                      const openRoles = openRoleCountByCompany.get(c.id) || 0;
-                      const totalRoles = roleCountByCompany.get(c.id) || 0;
-                      const totalCand = candidateCountByCompany.get(c.id) || 0;
-                      
-                      const selectedApps = pipeline["selected"] || pipeline["Selected"] || [];
-                      const companyHiresCount = selectedApps.filter(app => {
-                        const role = roleById.get(app.job_role_id);
-                        return role && role.company_id === c.id;
-                      }).length;
-                      const fillPercentage = Math.min(100, Math.max(0, totalRoles > 0 ? (companyHiresCount / totalRoles) * 100 : 0));
-                      
-                      // Use consistent mock data
-                      const mockIndustry = getMockIndustry(c.id);
-                      const mockLocation = getMockLocation(c.id);
-                      const mockStage = getMockStage(c.id);
-                      const mockStageColors: Record<string, string> = {
-                        "Sourcing": "bg-blue-50 text-blue-600 border border-blue-200",
-                        "Screening": "bg-purple-50 text-purple-600 border border-purple-200",
-                        "Interviewing": "bg-amber-50 text-amber-600 border border-amber-200",
-                        "On Hold": "bg-orange-50 text-orange-600 border border-orange-200"
-                      };
-                      const mockStatus = getMockStatus(c.id);
-                      const mockStatusColors: Record<string, string> = {
-                        "Active": "bg-green-50 text-green-600 border border-green-200",
-                        "On Hold": "bg-orange-50 text-orange-600 border border-orange-200"
-                      };
+      {/* ─── CATALOG VIEW (Redesigned Table View) ─────────────────── */}
+      {!selectedCompanyId && (
+        <div className="bg-card border border-border/50 rounded-2xl shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-left">
+              <thead>
+                <tr className="border-b border-border/50 bg-secondary/10 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                  <th className="p-4 pl-6">Company</th>
+                  <th className="p-4">Active Positions</th>
+                  <th className="p-4">Positions Filled</th>
+                  <th className="p-4">Total Candidates</th>
+                  <th className="p-4">Pipeline Stage</th>
+                  <th className="p-4">Status</th>
+                  <th className="p-4 pr-6 text-right">Quick Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/30 text-sm">
+                {filteredCompanies.map((c) => {
+                  const openRoles = openRoleCountByCompany.get(c.id) || 0;
+                  const totalCand = candidateCountByCompany.get(c.id) || 0;
+                  const { filled, required } = positionsFilledByCompany.get(c.id) || { filled: 0, required: 0 };
+                  const percentage = Math.min(100, required > 0 ? (filled / required) * 100 : 0);
+                  const stageInfo = getCompanyPipelineStage(c.id);
 
-                      return (
-                        <tr key={c.id} className="hover:bg-slate-50/80 transition-colors group">
-                          {/* Company */}
-                          <td className="px-6 py-4">
-                            <div className="flex items-center gap-3 cursor-pointer" onClick={() => selectCompany(c.id)}>
-                              <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
-                                <Building2 className="w-5 h-5 text-blue-500" />
-                              </div>
-                              <div>
-                                <div className="flex items-center gap-1.5">
-                                  <span className="font-bold text-sm text-slate-900 group-hover:text-blue-600 transition-colors">{c.name}</span>
-                                  <Check className="w-3 h-3 text-white bg-blue-600 rounded-full p-0.5" />
-                                </div>
-                                <div className="flex flex-col gap-0.5 mt-0.5">
-                                  <span className="text-[11px] text-slate-500">{mockIndustry}</span>
-                                  <span className="text-[11px] text-slate-400 flex items-center gap-1">
-                                    <MapPin className="w-3 h-3" /> {mockLocation}
-                                  </span>
-                                </div>
-                              </div>
+                  // Get department or fall back to description/mock
+                  const companyDepts = jobRoles.filter(r => r.company_id === c.id).map(r => r.department).filter(Boolean);
+                  const dept = companyDepts[0] || c.description || "Software Development";
+
+                  // Status
+                  const hasOnHold = (pipeline["on_hold"] || []).some((app: any) => jobRoles.filter(r => r.company_id === c.id).some(r => r.id === app.job_role_id));
+                  const companyStatus = hasOnHold ? "On Hold" : (openRoles > 0 ? "Active" : "Inactive");
+                  const companyStatusStyle = companyStatus === "On Hold"
+                    ? "bg-orange-500/10 text-orange-600 border-orange-500/20"
+                    : (companyStatus === "Active" ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" : "bg-muted text-muted-foreground border-border");
+
+                  return (
+                    <tr
+                      key={c.id}
+                      className="hover:bg-primary/[0.01] transition-all group"
+                    >
+                      {/* Company Info */}
+                      <td className="p-4 pl-6">
+                        <div className="flex items-center gap-3.5">
+                          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0 transition-transform group-hover:scale-105">
+                            <Building2 className="w-5 h-5" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <span
+                                onClick={() => selectCompany(c.id)}
+                                className="font-bold text-sm text-foreground hover:text-primary transition-colors cursor-pointer truncate max-w-[150px] sm:max-w-none"
+                              >
+                                {c.name}
+                              </span>
+                              <span className="inline-flex items-center justify-center bg-blue-500 text-white rounded-full w-3.5 h-3.5 shrink-0 animate-fade-in" title="Verified Partner">
+                                <Check className="w-2.5 h-2.5 stroke-[3.5]" />
+                              </span>
                             </div>
-                          </td>
-                          {/* Active Positions */}
-                          <td className="px-6 py-4">
-                            <div className="text-sm font-bold text-slate-900">{openRoles}</div>
-                            <button onClick={() => { selectCompany(c.id); handleTabChange("roles"); }} className="text-[11px] text-blue-600 font-bold hover:underline mt-1 flex items-center gap-1">
-                              View Positions <ArrowRight className="w-3 h-3" />
-                            </button>
-                          </td>
-                          {/* Positions Filled */}
-                          <td className="px-6 py-4 w-48">
-                            <div className="text-sm font-bold text-slate-900">{companyHiresCount} / {totalRoles}</div>
-                            <div className="w-full bg-slate-100 rounded-full h-1.5 mt-2 overflow-hidden">
-                              <div className="bg-blue-600 h-1.5 rounded-full" style={{ width: `${fillPercentage}%` }}></div>
+                            <p className="text-xs text-muted-foreground font-medium truncate mt-0.5">{dept}</p>
+                            <div className="flex items-center gap-1 text-[10px] text-muted-foreground mt-0.5">
+                              <MapPin className="w-3 h-3 text-muted-foreground/60 shrink-0" />
+                              <span className="truncate">{c.location || "Armonk, New York, USA"}</span>
                             </div>
-                          </td>
-                          {/* Total Candidates */}
-                          <td className="px-6 py-4">
-                            <div className="text-sm font-bold text-slate-900">{totalCand}</div>
-                            <button onClick={() => { selectCompany(c.id); handleTabChange("candidates"); }} className="text-[11px] text-blue-600 font-bold hover:underline mt-1 flex items-center gap-1">
-                              View Candidates <ArrowRight className="w-3 h-3" />
-                            </button>
-                          </td>
-                          {/* Pipeline Stage */}
-                          <td className="px-6 py-4">
-                            <span className={`px-3 py-1.5 text-[10px] font-bold rounded-full ${mockStageColors[mockStage]}`}>
-                              {mockStage}
-                            </span>
-                          </td>
-                          {/* Status */}
-                          <td className="px-6 py-4">
-                            <span className={`px-3 py-1.5 text-[10px] font-bold rounded-full ${mockStatusColors[mockStatus]}`}>
-                              {mockStatus}
-                            </span>
-                          </td>
-                          {/* Quick Actions */}
-                          <td className="px-6 py-4 text-right">
-                            <div className="flex items-center justify-end gap-2">
-                              <button onClick={() => { setEditId(c.id); setCompanyForm({ name: c.name }); setCompanyModalOpen(true); }} className="p-1.5 rounded border border-slate-200 text-slate-400 hover:text-blue-600 hover:bg-blue-50 hover:border-blue-200 transition-all bg-white" title="Edit Company">
-                                <Edit className="w-4 h-4" />
-                              </button>
-                              <button onClick={() => setDeleteId(c.id)} className="p-1.5 rounded border border-slate-200 text-slate-400 hover:text-red-600 hover:bg-red-50 hover:border-red-200 transition-all bg-white" title="Delete Company">
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                              <button onClick={() => selectCompany(c.id)} className="px-3 py-1.5 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors text-xs font-bold flex items-center gap-1.5 ml-1">
-                                Details <ExternalLink className="w-3 h-3" />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  
-                  {companies.length === 0 && (
-                    <tr>
-                      <td colSpan={6} className="px-6 py-12 text-center">
-                        <Building2 className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-                        <p className="text-sm text-slate-500">No partner companies found.</p>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Active Positions */}
+                      <td className="p-4">
+                        <div className="flex flex-col">
+                          <span className="text-sm font-bold text-foreground">{openRoles}</span>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              selectCompany(c.id);
+                              handleTabChange("roles");
+                            }}
+                            className="text-[10px] text-primary hover:underline font-bold mt-1 text-left"
+                          >
+                            View Positions →
+                          </button>
+                        </div>
+                      </td>
+
+                      {/* Positions Filled */}
+                      <td className="p-4">
+                        <div className="flex flex-col w-28">
+                          <span className="text-sm font-bold text-foreground">
+                            {filled}/{required}
+                          </span>
+                          <div className="w-full h-1.5 bg-secondary/60 rounded-full mt-1.5 overflow-hidden">
+                            <div
+                              className="h-full bg-primary rounded-full transition-all duration-500"
+                              style={{ width: `${percentage}%` }}
+                            />
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Total Candidates */}
+                      <td className="p-4">
+                        <div className="flex flex-col">
+                          <span className="text-sm font-bold text-foreground">{totalCand}</span>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              selectCompany(c.id);
+                              handleTabChange("candidates");
+                            }}
+                            className="text-[10px] text-primary hover:underline font-bold mt-1 text-left"
+                          >
+                            View Candidates →
+                          </button>
+                        </div>
+                      </td>
+
+                      {/* Pipeline Stage */}
+                      <td className="p-4">
+                        <span className={`inline-flex items-center rounded-full font-semibold border text-[11px] px-2.5 py-0.5 ${stageInfo.style}`}>
+                          {stageInfo.label}
+                        </span>
+                      </td>
+
+                      {/* Status */}
+                      <td className="p-4">
+                        <span
+                          className={`inline-flex items-center rounded-full font-semibold border text-[11px] px-2.5 py-0.5 ${companyStatusStyle}`}
+                        >
+                          {companyStatus}
+                        </span>
+                      </td>
+
+                      {/* Quick Actions */}
+                      <td className="p-4 pr-6 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openEditCompany(c);
+                            }}
+                            className="p-2 rounded-lg border border-border/50 bg-card hover:bg-secondary/40 text-muted-foreground hover:text-foreground transition-all shadow-sm"
+                            title="Edit Company"
+                          >
+                            <Edit className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeleteId(c.id);
+                            }}
+                            className="p-2 rounded-lg border border-border/50 bg-card hover:bg-secondary/40 text-muted-foreground hover:text-destructive transition-all shadow-sm"
+                            title="Delete Company"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              selectCompany(c.id);
+                            }}
+                            className="px-3 py-1.5 text-[11px] font-bold border border-blue-200 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 hover:text-blue-700 transition-all flex items-center gap-1 shadow-sm shrink-0"
+                          >
+                            Details
+                            <ExternalLink className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-            
-            {/* Pagination */}
-            {Math.ceil(filteredCompaniesList.length / PAGE_SIZE) > 1 && (
-              <div className="p-4 border-t border-slate-200 flex items-center justify-between text-sm text-slate-500">
-                <div>Showing {(currentPage - 1) * PAGE_SIZE + 1} to {Math.min(currentPage * PAGE_SIZE, filteredCompaniesList.length)} of {filteredCompaniesList.length} companies</div>
-                <div className="flex items-center gap-1">
-                  <button 
-                    disabled={currentPage === 1}
-                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                    className="w-8 h-8 flex items-center justify-center rounded border border-slate-200 bg-white hover:bg-slate-50 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                  ><ChevronLeft className="w-4 h-4" /></button>
-                  
-                  {Array.from({ length: Math.ceil(filteredCompaniesList.length / PAGE_SIZE) }).map((_, i) => (
-                    <button 
-                      key={i}
-                      onClick={() => setCurrentPage(i + 1)}
-                      className={`w-8 h-8 flex items-center justify-center rounded shadow-sm font-bold ${currentPage === i + 1 ? 'bg-blue-600 text-white' : 'border border-slate-200 bg-white hover:bg-slate-50'}`}
-                    >
-                      {i + 1}
-                    </button>
-                  ))}
+                  );
+                })}
 
-                  <button 
-                    disabled={currentPage === Math.ceil(filteredCompaniesList.length / PAGE_SIZE)}
-                    onClick={() => setCurrentPage(prev => Math.min(Math.ceil(filteredCompaniesList.length / PAGE_SIZE), prev + 1))}
-                    className="w-8 h-8 flex items-center justify-center rounded border border-slate-200 bg-white hover:bg-slate-50 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                  ><ChevronRight className="w-4 h-4" /></button>
-                </div>
-              </div>
-            )}
+                {filteredCompanies.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="p-20 text-center text-muted-foreground">
+                      <Building2 className="w-12 h-12 text-muted-foreground/20 mx-auto mb-4" />
+                      <p className="text-sm font-medium">No partner companies match your criteria.</p>
+                      <button
+                        onClick={() => {
+                          setCompanySearch("");
+                          setGlobalSearch("");
+                          setMainTab("All Companies");
+                          setIndustryFilter("Industry");
+                          setLocationFilter("Location");
+                          setStatusFilter("Status");
+                        }}
+                        className="mt-4 text-xs text-primary font-bold hover:underline"
+                      >
+                        Reset Filters
+                      </button>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
@@ -1142,7 +1427,7 @@ const Companies = () => {
                 Back to All Companies
               </button>
             </div>
-            <div className="glass-card overflow-hidden">
+            <div className={`glass-card overflow-hidden ${isPipeline ? "flex-1 flex flex-col min-h-0" : ""}`}>
               {/* Detail header */}
               <div className="p-5 border-b border-border flex items-center gap-4 flex-wrap">
                 <div className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center">
@@ -1187,7 +1472,7 @@ const Companies = () => {
               {/* Tabs */}
               <div className="flex items-center border-b border-border px-5 pt-1">
                 {([
-                  { key: "roles" as const, label: "Job Roles", icon: Briefcase, count: companyRoles.length },
+                  { key: "roles" as const, label: "Job Roles", icon: Briefcase, count: null },
                   { key: "candidates" as const, label: "Candidates", icon: Users, count: candTotal },
                   { key: "pipeline" as const, label: "In Progress", icon: GitBranch, count: pipelineTotalCount },
                 ]).map((t) => (
@@ -1198,25 +1483,26 @@ const Companies = () => {
                   >
                     <t.icon className="w-4 h-4" />
                     {t.label}
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${activeTab === t.key ? "bg-primary/10 text-primary" : "bg-secondary text-muted-foreground"}`}>
-                      {t.count}
-                    </span>
+                    {t.count !== null && (
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${activeTab === t.key ? "bg-primary/10 text-primary" : "bg-secondary text-muted-foreground"}`}>
+                        {t.count}
+                      </span>
+                    )}
                   </button>
                 ))}
-
               </div>
 
               {/* Tab Content */}
-              <div className="p-5">
+              <div className={`p-5 ${isPipeline ? "flex-1 flex flex-col min-h-0 overflow-hidden" : ""}`}>
                 {/* ═══ JOB ROLES TAB ═══ */}
                 {activeTab === "roles" && (
                   <div>
                     <div className="flex items-center gap-2 mb-4">
-                      {["All", "Open", "Closed"].map((f) => (
+                      {["All", "Open", "In Progress", "Closed"].map((f) => (
                         <button
                           key={f}
                           onClick={() => setRoleFilter(f as any)}
-                          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${roleFilter === f ? "bg-primary/10 text-primary" : "bg-secondary text-muted-foreground hover:text-foreground"}`}
+                          className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${roleFilter === f ? "bg-primary/10 text-primary" : "bg-secondary text-muted-foreground hover:text-foreground"}`}
                         >
                           {f}
                         </button>
@@ -1225,146 +1511,164 @@ const Companies = () => {
                         <button
                           onClick={() => setIsAssignVendorOpen(true)}
                           disabled={selectedRoleIds.length === 0}
-                          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 shadow-sm ${
-                            selectedRoleIds.length > 0 
-                              ? "bg-violet-600 text-white hover:bg-violet-700" 
-                              : "bg-secondary text-muted-foreground/50 cursor-not-allowed border border-border/50"
-                          }`}
+                          className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 border border-border/60 ${selectedRoleIds.length > 0
+                              ? "bg-violet-600 border-violet-600 text-white hover:bg-violet-700 shadow-md shadow-violet-600/15"
+                              : "bg-transparent text-muted-foreground hover:text-foreground hover:bg-secondary/40"
+                            }`}
                         >
-                          <Users className="w-4 h-4" /> Assign to Vendor {selectedRoleIds.length > 0 && `(${selectedRoleIds.length})`}
+                          <UserCheck className="w-4 h-4" /> Assign to Vendor {selectedRoleIds.length > 0 && `(${selectedRoleIds.length})`}
+                          <ChevronDown className="w-3.5 h-3.5 opacity-60" />
                         </button>
                         <button
                           onClick={() => { setRoleForm({ title: "", description: "", deadline: "", estimated_budget: "", currency: "INR", positions_required: 1, pipeline_stages: [...DEFAULT_STAGES], location: "", work_mode: "onsite", experience_required: "", project_time_period: "" }); setRoleModalOpen(true); }}
-                          className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-all flex items-center gap-2"
+                          className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition-all flex items-center gap-2 shadow-md shadow-blue-600/10"
                         >
                           <Plus className="w-4 h-4" /> Add Position
                         </button>
                       </div>
                     </div>
-                    <div className="flex flex-col gap-3">
-                      {companyRoles.map((r) => {
-                        const roleIsOpen = r.status.toLowerCase() === "open";
-                        const filledCount = (pipeline["selected"] || []).filter((app: any) => app.job_role_id === r.id).length;
-                        const isFullyStaffed = filledCount >= r.positions_required;
-
-                        return (
-                          <motion.div
-                            key={r.id}
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className={`group relative glass-card p-4 md:p-5 border border-border/50 hover:border-primary/30 transition-all cursor-pointer flex flex-col md:flex-row md:items-center justify-between gap-4 ${!roleIsOpen ? "opacity-60" : ""} ${selectedRoleIds.includes(r.id) ? "border-primary/50 bg-primary/[0.03]" : ""}`}
-                            onClick={() => navigate(`/job-roles/${r.id}`)}
-                          >
-                            <div className="flex items-center gap-4 flex-1 min-w-0">
-                              <div 
-                                className="relative z-10 p-1"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setSelectedRoleIds(prev => 
-                                    prev.includes(r.id) ? prev.filter(id => id !== r.id) : [...prev, r.id]
-                                  );
-                                }}
-                              >
-                                <div className={`w-5 h-5 rounded border-2 transition-colors flex items-center justify-center ${selectedRoleIds.includes(r.id) ? "bg-primary border-primary" : "border-muted-foreground/30 hover:border-primary/50"}`}>
-                                  {selectedRoleIds.includes(r.id) && <Check className="w-3.5 h-3.5 text-white" />}
+                    {companyRoles.length === 0 ? (
+                      <div className="text-center py-16 text-muted-foreground glass-card border-dashed">
+                        <Briefcase className="w-10 h-10 mx-auto mb-4 opacity-20" />
+                        <p className="text-sm font-medium">No job roles yet for {selectedCompany?.name || "the company"}</p>
+                        <button onClick={() => { setRoleForm({ title: "", description: "", deadline: "", estimated_budget: "", currency: "INR", positions_required: 1, pipeline_stages: [...DEFAULT_STAGES], location: "", work_mode: "onsite", experience_required: "", project_time_period: "" }); setRoleModalOpen(true); }} className="mt-4 text-xs text-primary font-bold hover:underline underline-offset-4">
+                          + Initialize Active Recruitment
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto rounded-xl border border-border bg-secondary/10">
+                        <table className="w-full border-collapse text-left">
+                          <thead>
+                            <tr className="border-b border-border bg-secondary/30 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                              <th className="p-4 w-12">
+                                <div
+                                  className="p-1 cursor-pointer"
+                                  onClick={() => {
+                                    if (selectedRoleIds.length === companyRoles.length) {
+                                      setSelectedRoleIds([]);
+                                    } else {
+                                      setSelectedRoleIds(companyRoles.map(r => r.id));
+                                    }
+                                  }}
+                                >
+                                  <div className={`w-4 h-4 rounded border transition-colors flex items-center justify-center ${selectedRoleIds.length === companyRoles.length && companyRoles.length > 0 ? "bg-primary border-primary text-white" : "border-muted-foreground/30"}`}>
+                                    {selectedRoleIds.length === companyRoles.length && companyRoles.length > 0 && <Check className="w-3 h-3 text-white" />}
+                                  </div>
                                 </div>
-                              </div>
-                              <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shrink-0 ring-1 ring-primary/20 shadow-sm">
-                                <Briefcase className="w-6 h-6" />
-                              </div>
-                              <div className="min-w-0 flex-1">
-                                <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4">
-                                  <h4 className="text-base font-bold text-foreground leading-tight truncate">{r.title}</h4>
-                                  <div className="flex items-center gap-2">
-                                    <StatusBadge status={r.status} className="scale-90 origin-left" />
-                                    {r.deadline && (
-                                      <div className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-secondary border border-border/50 text-[9px] font-bold text-muted-foreground whitespace-nowrap">
-                                        <Clock className="w-2.5 h-2.5 text-primary/70" /> {new Date(r.deadline).toLocaleDateString()}
+                              </th>
+                              <th className="p-4">Job Role</th>
+                              <th className="p-4">Department</th>
+                              <th className="p-4 text-center">Openings</th>
+                              <th className="p-4">Status</th>
+                              <th className="p-4 text-right">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-border/50 text-sm">
+                            {companyRoles.map((r) => {
+                              const roleIsOpen = r.status.toLowerCase() === "open";
+                              const tags = getRoleTags(r);
+                              const iconDetails = getRoleIconDetails(r.title);
+                              const IconComponent = iconDetails.icon;
+                              const filledCount = (pipeline["selected"] || []).filter((app: any) => app.job_role_id === r.id).length;
+                              const openingsCount = Math.max(0, (r.positions_required || 1) - filledCount);
+                              const isGeneral = r.title.toLowerCase().includes("general");
+
+                              return (
+                                <tr
+                                  key={r.id}
+                                  className={`hover:bg-primary/[0.02] transition-colors ${!roleIsOpen ? "opacity-60" : ""} ${selectedRoleIds.includes(r.id) ? "bg-primary/[0.01]" : ""}`}
+                                >
+                                  <td className="p-4">
+                                    <div
+                                      className="p-1 cursor-pointer"
+                                      onClick={() => {
+                                        setSelectedRoleIds(prev =>
+                                          prev.includes(r.id) ? prev.filter(id => id !== r.id) : [...prev, r.id]
+                                        );
+                                      }}
+                                    >
+                                      <div className={`w-4 h-4 rounded border transition-colors flex items-center justify-center ${selectedRoleIds.includes(r.id) ? "bg-primary border-primary text-white" : "border-muted-foreground/30 hover:border-primary/50"}`}>
+                                        {selectedRoleIds.includes(r.id) && <Check className="w-3 h-3 text-white" />}
                                       </div>
-                                    )}
-                                  </div>
-                                </div>
-                                <div className="flex flex-wrap items-center gap-2 mt-2">
-                                  <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-lg border text-[9px] font-black uppercase tracking-wider ${isFullyStaffed ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-500" : "bg-secondary border-border/50 text-muted-foreground"}`}>
-                                    Filled: {filledCount} / {r.positions_required}
-                                  </div>
-
-                                  {r.location && (
-                                    <div className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-secondary/50 border border-border/50 text-[9px] font-bold text-muted-foreground">
-                                      📍 {r.location}
                                     </div>
-                                  )}
-
-                                  {r.work_mode && (
-                                    <div className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-secondary/50 border border-border/50 text-[9px] font-bold text-muted-foreground capitalize">
-                                      {r.work_mode === "remote" ? "🌐" : r.work_mode === "hybrid" ? "🔀" : "🏢"} {r.work_mode}
+                                  </td>
+                                  <td className="p-4">
+                                    <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate(`/job-roles/${r.id}`)}>
+                                      <div className="min-w-0">
+                                        <div className="flex items-center gap-2">
+                                          <h4 className="font-bold text-foreground hover:text-primary transition-colors truncate max-w-[220px]">{r.title}</h4>
+                                          <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 uppercase tracking-wider">
+                                            Open
+                                          </span>
+                                        </div>
+                                        <p className="text-[11px] text-muted-foreground mt-0.5">
+                                          Filled: {filledCount} / {r.positions_required}
+                                        </p>
+                                        {isGeneral ? (
+                                          <span className="text-[11px] text-muted-foreground/80 mt-1 block font-medium">
+                                            {tags[0]}
+                                          </span>
+                                        ) : (
+                                          <div className="flex flex-wrap gap-1 mt-1">
+                                            {tags.map((tag, idx) => (
+                                              <span key={idx} className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-secondary text-muted-foreground border border-border/50 uppercase tracking-wider">
+                                                {tag}
+                                              </span>
+                                            ))}
+                                          </div>
+                                        )}
+                                      </div>
                                     </div>
-                                  )}
-
-                                  {r.experience_required != null && (
-                                    <div className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-secondary/50 border border-border/50 text-[9px] font-bold text-muted-foreground text-nowrap">
-                                      🎯 {r.experience_required} yrs
+                                  </td>
+                                  <td className="p-4">
+                                    <span className="font-semibold text-muted-foreground dark:text-muted-foreground/80 text-xs">
+                                      {r.department || "Operations"}
+                                    </span>
+                                  </td>
+                                  <td className="p-4 text-center font-bold text-foreground">
+                                    {openingsCount}
+                                  </td>
+                                  <td className="p-4">
+                                    <StatusBadge status={r.computedStatus} className="scale-90 origin-left" />
+                                  </td>
+                                  <td className="p-4 text-right">
+                                    <div className="flex items-center justify-end gap-1.5">
+                                      <button
+                                        onClick={(e) => { e.stopPropagation(); navigate(`/job-roles/${r.id}`); }}
+                                        className="p-1.5 rounded-lg border border-border/50 bg-card hover:bg-secondary/40 text-blue-500 hover:text-blue-600 transition-colors shadow-sm"
+                                        title="View Details"
+                                      >
+                                        <Eye className="w-3.5 h-3.5" />
+                                      </button>
+                                      <button
+                                        onClick={(e) => { e.stopPropagation(); openEditRole(r); }}
+                                        className="p-1.5 rounded-lg border border-border/50 bg-card hover:bg-secondary/40 text-muted-foreground hover:text-foreground transition-colors shadow-sm"
+                                        title="Edit Role"
+                                      >
+                                        <Edit className="w-3.5 h-3.5" />
+                                      </button>
+                                      <button
+                                        onClick={(e) => { e.stopPropagation(); setRoleDeleteId(r.id); }}
+                                        className="p-1.5 rounded-lg border border-border/50 bg-card hover:bg-secondary/40 text-muted-foreground hover:text-destructive transition-colors shadow-sm"
+                                        title="Delete Role"
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                      </button>
+                                      <button
+                                        onClick={(e) => { e.stopPropagation(); navigate(`/job-roles/${r.id}`); }}
+                                        className="px-3.5 py-1.5 text-[11px] font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center gap-1 shadow-sm ml-2"
+                                      >
+                                        View Details <ChevronRight className="w-3 h-3" />
+                                      </button>
                                     </div>
-                                  )}
-
-                                  {r.project_time_period && (
-                                    <div className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-secondary/50 border border-border/50 text-[9px] font-bold text-muted-foreground">
-                                      🕒 {r.project_time_period}
-                                    </div>
-                                  )}
-
-                                  {isFullyStaffed && (
-                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                                  )}
-                                  <p className="text-[10px] text-muted-foreground truncate opacity-60 italic hidden lg:block max-w-[200px]">— {r.description.slice(0, 60)}...</p>
-                                </div>
-                              </div>
-                            </div>
-
-                            <div className="flex items-center gap-2 pt-4 md:pt-0 border-t md:border-t-0 border-border/30 md:ml-4 shrink-0 justify-between md:justify-end">
-                              <div className="flex items-center gap-1 mr-2">
-                                <button
-                                  onClick={(e) => { e.stopPropagation(); setConfirmRoleId(r.id); setConfirmAction(roleIsOpen ? "close" : "reopen"); }}
-                                  className={`p-2 rounded-xl transition-all ${roleIsOpen ? "bg-destructive/5 text-destructive hover:bg-destructive/10 border border-destructive/20" : "bg-success/5 text-success hover:bg-success/10 border border-success/20"}`}
-                                  title={roleIsOpen ? "Close Role" : "Reopen Role"}
-                                >
-                                  {roleIsOpen ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}
-                                </button>
-                                <button
-                                  onClick={(e) => { e.stopPropagation(); openEditRole(r); }}
-                                  className="p-2 rounded-xl text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all border border-transparent hover:border-primary/20"
-                                  title="Edit Role"
-                                >
-                                  <Edit className="w-4 h-4" />
-                                </button>
-                                <button
-                                  onClick={(e) => { e.stopPropagation(); setRoleDeleteId(r.id); }}
-                                  className="p-2 rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all border border-transparent hover:border-destructive/20"
-                                  title="Delete Role"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              </div>
-                              <button
-                                onClick={() => navigate(`/job-roles/${r.id}`)}
-                                className="px-5 py-2 rounded-xl text-xs font-bold bg-primary text-primary-foreground hover:bg-primary/90 transition-all shadow-md shadow-primary/10"
-                              >
-                                View Details →
-                              </button>
-                            </div>
-                          </motion.div>
-                        );
-                      })}
-                      {companyRoles.length === 0 && (
-                        <div className="text-center py-16 text-muted-foreground glass-card border-dashed">
-                          <Briefcase className="w-10 h-10 mx-auto mb-4 opacity-20" />
-                          <p className="text-sm font-medium">No job roles yet for {selectedCompany.name}</p>
-                          <button onClick={() => { setRoleForm({ title: "", description: "", deadline: "", estimated_budget: "", currency: "INR", positions_required: 1, pipeline_stages: [...DEFAULT_STAGES], location: "", work_mode: "onsite", experience_required: "", project_time_period: "" }); setRoleModalOpen(true); }} className="mt-4 text-xs text-primary font-bold hover:underline underline-offset-4">
-                            + Initialize Active Recruitment
-                          </button>
-                        </div>
-                      )}
-                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -1482,22 +1786,28 @@ const Companies = () => {
 
                 {/* ═══ PIPELINE TAB ═══ */}
                 {activeTab === "pipeline" && (
-                  <div>
+                  <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
                     {/* Role Filter for Pipeline */}
                     <div className="flex items-center gap-3 mb-5">
                       <div className="text-sm font-medium text-muted-foreground mr-2 flex items-center gap-1.5 border-r border-border pr-4 h-9">
                         <Filter className="w-4 h-4" /> Filter Pipeline:
                       </div>
+                      <button
+                        onClick={() => setPipelineRoleFilter("all")}
+                        className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${pipelineRoleFilter === "all" ? "bg-primary text-primary-foreground font-bold" : "bg-secondary text-muted-foreground hover:text-foreground"}`}
+                      >
+                        All
+                      </button>
                       {jobRoles.filter(r => r.company_id === selectedCompanyId!).map(role => (
                         <button
                           key={role.id}
                           onClick={() => setPipelineRoleFilter(role.id)}
-                          className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${pipelineRoleFilter === role.id ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground hover:text-foreground"}`}
+                          className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${pipelineRoleFilter === role.id ? "bg-primary text-primary-foreground font-bold" : "bg-secondary text-muted-foreground hover:text-foreground"}`}
                         >
                           {role.title}
                         </button>
                       ))}
-                      {pipelineRoleFilter && (
+                      {pipelineRoleFilter && pipelineRoleFilter !== "all" && (
                         <button
                           onClick={() => handleAddStage(pipelineRoleFilter)}
                           className="px-3 py-2 rounded-lg text-xs font-bold bg-primary/10 text-primary hover:bg-primary/20 transition-all flex items-center gap-1 ml-4 border border-primary/20"
@@ -1524,7 +1834,7 @@ const Companies = () => {
 
 
                     {/* Kanban columns */}
-                    <div className="flex gap-4 overflow-x-auto pb-6 scroll-smooth snap-x snap-mandatory no-scrollbar -mx-5 px-5 md:mx-0 md:px-0">
+                    <div className="flex gap-4 overflow-x-auto pb-6 scroll-smooth snap-x snap-mandatory custom-scrollbar max-h-[calc(100vh-290px)] -mx-5 px-5 md:mx-0 md:px-0">
                       {!pipelineRoleFilter ? (
                         <div className="flex-1 flex flex-col items-center justify-center p-10 bg-secondary/20 border border-border/50 border-dashed rounded-2xl min-h-[400px] text-center snap-start">
                           <div className="w-20 h-20 rounded-3xl bg-primary/10 flex items-center justify-center mb-6 shadow-sm ring-1 ring-primary/20">
@@ -1550,13 +1860,13 @@ const Companies = () => {
                             >
                               <div
                                 className={`flex items-center gap-2 mb-4 px-2 group py-1 transition-all ${draggedStageIdx === idx ? "opacity-30" : ""}`}
-                                draggable={!!pipelineRoleFilter}
+                                draggable={!!pipelineRoleFilter && pipelineRoleFilter !== "all"}
                                 onDragStart={() => handleStageDragStart(idx)}
                               >
                                 <div className={`w-2.5 h-2.5 rounded-full ${col.color} shadow-sm`} />
                                 <h3 className="text-[11px] font-black text-foreground uppercase tracking-widest">{col.title}</h3>
                                 <span className="text-[10px] text-primary ml-auto bg-primary/10 px-2.5 py-1 rounded-full font-black ring-1 ring-primary/20">{col.cards.length}</span>
-                                {pipelineRoleFilter && (
+                                {pipelineRoleFilter && pipelineRoleFilter !== "all" && (
                                   <button
                                     onClick={(e) => { e.stopPropagation(); handleRemoveStage(pipelineRoleFilter, col.id); }}
                                     className="ml-2 p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors opacity-0 group-hover:opacity-100"
@@ -1566,7 +1876,7 @@ const Companies = () => {
                                 )}
                               </div>
                               <div
-                                className={`flex-1 space-y-3 min-h-[350px] p-2.5 rounded-2xl border transition-all duration-300 ${isDropping
+                                className={`flex-1 space-y-3 min-h-[350px] max-h-[calc(100vh-320px)] overflow-y-auto custom-scrollbar p-2.5 rounded-2xl border transition-all duration-300 ${isDropping
                                   ? "bg-primary/5 border-primary/50 ring-4 ring-primary/[0.03]"
                                   : "bg-secondary/40 border-border/40"
                                   }`}
@@ -1706,6 +2016,10 @@ const Companies = () => {
             <label className="label-text mb-2 block">Company Name</label>
             <input value={companyForm.name} onChange={(e) => setCompanyForm({ ...companyForm, name: e.target.value })} className="w-full px-4 py-3 rounded-lg bg-secondary border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50" placeholder="e.g. Acme Corp" />
           </div>
+          <div>
+            <label className="label-text mb-2 block">Location</label>
+            <input value={companyForm.location} onChange={(e) => setCompanyForm({ ...companyForm, location: e.target.value })} className="w-full px-4 py-3 rounded-lg bg-secondary border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50" placeholder="e.g. Bangalore, India" />
+          </div>
 
           <button onClick={handleSaveCompany} className="w-full py-3 rounded-lg bg-primary text-primary-foreground font-medium text-sm hover:bg-primary/90 transition-all font-bold">
             {editId ? "Update Company" : "Add Company"}
@@ -1789,7 +2103,7 @@ const Companies = () => {
                         const v = vendors.find(vend => vend.id === id);
                         return (
                           <span key={id} className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-bold border border-primary/20">
-                            {v?.name || id}
+                            {v ? (v.company_name || v.name) : id}
                             <X
                               className="w-2.5 h-2.5 hover:text-destructive cursor-pointer"
                               onClick={(e) => {

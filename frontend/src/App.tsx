@@ -164,9 +164,23 @@ const AppRoutes = () => {
 
 const App = () => {
   useEffect(() => {
-    const savedTheme = localStorage.getItem("theme");
-    const isDark = savedTheme === "dark";
-    document.documentElement.classList.toggle("dark", isDark);
+    let savedTheme = localStorage.getItem("theme") || "slate-light";
+    if (savedTheme === "light") savedTheme = "slate-light";
+    if (savedTheme === "dark") savedTheme = "slate-dark";
+    
+    const root = document.documentElement;
+    const themeClasses = [
+      "theme-slate-light", "theme-slate-dark",
+      "theme-ocean-light", "theme-ocean-dark",
+      "theme-amethyst-light", "theme-amethyst-dark",
+      "theme-forest-light", "theme-forest-dark",
+      "theme-sunset-light", "theme-sunset-dark"
+    ];
+    themeClasses.forEach(c => root.classList.remove(c));
+    
+    const isDark = savedTheme.endsWith("-dark");
+    root.classList.toggle("dark", isDark);
+    root.classList.add(`theme-${savedTheme}`);
   }, []);
 
   return (

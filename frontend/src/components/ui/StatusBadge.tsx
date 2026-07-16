@@ -22,6 +22,10 @@ const statusStyles: Record<string, string> = {
   dropped: "bg-zinc-500/10 text-zinc-600 border-zinc-500/20",
   not_joined: "bg-rose-500/10 text-rose-600 border-rose-500/20",
 
+  // Custom computed statuses
+  "in progress": "bg-orange-500/10 text-orange-600 border-orange-500/20",
+  in_progress: "bg-orange-500/10 text-orange-600 border-orange-500/20",
+
   // Fallback
   default: "bg-muted text-muted-foreground border-border",
 };
@@ -31,6 +35,8 @@ const statusLabels: Record<string, string> = {
   interview_scheduled: "Interview Scheduled",
   on_hold: "On Hold",
   not_joined: "Did Not Join",
+  "in progress": "In Progress",
+  in_progress: "In Progress",
 };
 
 interface StatusBadgeProps {

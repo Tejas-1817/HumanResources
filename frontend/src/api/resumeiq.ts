@@ -69,6 +69,7 @@ export interface JobRole {
   estimated_budget: number | null;
   currency: string;
   positions_required: number;
+  department?: string | null;
   location: string | null;
   work_mode: string | null;
   experience_required: number | null;
@@ -113,6 +114,7 @@ interface PipelineResponse {
 export interface Company {
   id: number;
   name: string;
+  location?: string | null;
   is_internal?: boolean;
   created_at: string;
   description?: string;
@@ -200,6 +202,7 @@ export interface LoginPayload {
 
 interface CompanyCreatePayload {
   name: string;
+  location?: string | null;
 }
 
 export const registerApi = async (payload: any): Promise<any> => {
@@ -291,6 +294,7 @@ export const createJobRole = async (payload: {
   estimated_budget?: number | null;
   currency?: string;
   positions_required?: number;
+  department?: string | null;
   location?: string | null;
   work_mode?: string | null;
   experience_required?: number | null;
@@ -312,6 +316,7 @@ export const updateJobRole = async (
     estimated_budget?: number | null;
     currency?: string;
     positions_required?: number;
+    department?: string | null;
     location?: string | null;
     work_mode?: string | null;
     experience_required?: number | null;

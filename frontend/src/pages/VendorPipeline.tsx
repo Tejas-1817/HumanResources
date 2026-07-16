@@ -49,7 +49,7 @@ const VendorPipeline = () => {
   }, [pipeline, selectedRoleId]);
 
   return (
-    <div className="h-full flex flex-col space-y-6">
+    <div className="h-[calc(100vh-110px)] md:h-[calc(100vh-130px)] flex flex-col overflow-hidden space-y-4">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-foreground mb-2">Pipeline Visibility</h1>
@@ -97,8 +97,8 @@ const VendorPipeline = () => {
         </div>
       </div>
 
-      <div className="flex-1 overflow-x-auto pb-6 custom-scrollbar">
-        <div className="flex gap-4 h-full min-h-[500px]">
+      <div className="flex-1 overflow-x-auto pb-6 custom-scrollbar max-h-[calc(100vh-220px)]">
+        <div className="flex gap-4 h-full min-h-[300px]">
           {columns.map(col => (
             <div key={col.id} className="min-w-[260px] flex flex-col">
               <div className="flex items-center gap-2 mb-4 px-2">
@@ -109,7 +109,7 @@ const VendorPipeline = () => {
                 </span>
               </div>
 
-              <div className="flex-1 space-y-3 p-2 rounded-2xl bg-white/[0.02] border border-white/5 min-h-[400px]">
+              <div className="flex-1 space-y-3 p-2 rounded-2xl bg-white/[0.02] border border-white/5 min-h-[350px] max-h-[calc(100vh-270px)] overflow-y-auto custom-scrollbar">
                 {col.apps.map((app: any) => (
                   <motion.div
                     layout="position"

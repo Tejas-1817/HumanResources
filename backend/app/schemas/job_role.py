@@ -22,6 +22,7 @@ class JobRoleCreate(BaseModel):
     estimated_budget: float | None = None
     currency: str = "INR"
     positions_required: int = 1
+    department: str | None = None
     location: str | None = None
     work_mode: str | None = None  # remote, hybrid, onsite
     experience_required: float | None = None
@@ -38,6 +39,7 @@ class JobRoleUpdate(BaseModel):
     estimated_budget: float | None = None
     currency: str | None = None
     positions_required: int | None = None
+    department: str | None = None
     location: str | None = None
     work_mode: str | None = None
     experience_required: float | None = None
@@ -56,6 +58,7 @@ class JobRoleResponse(BaseModel):
     estimated_budget: float | None = None
     currency: str = "INR"
     positions_required: int = 1
+    department: str | None = None
     location: str | None = None
     work_mode: str | None = None
     experience_required: float | None = None
