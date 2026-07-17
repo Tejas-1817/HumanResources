@@ -12,13 +12,14 @@ from app.schemas.job_application import ApplicationCreate, ApplicationStatusUpda
 
 
 class ApplicationService:
-    ALL_STATUSES = {"pending", "shortlisted", "interview_scheduled", "interviewed", "selected", "rejected", "on_hold", "dropped", "not_joined"}
+    ALL_STATUSES = {"pending", "shortlisted", "interview_scheduled", "interviewed", "selected", "joined", "rejected", "on_hold", "dropped", "not_joined"}
     VALID_TRANSITIONS: dict[str, set[str]] = {
         "pending": ALL_STATUSES,
         "shortlisted": ALL_STATUSES,
         "interview_scheduled": ALL_STATUSES,
         "interviewed": ALL_STATUSES,
         "selected": ALL_STATUSES,
+        "joined": ALL_STATUSES,
         "rejected": ALL_STATUSES,
         "on_hold": ALL_STATUSES,
         "dropped": ALL_STATUSES,
@@ -142,7 +143,7 @@ class ApplicationService:
         # All these statuses are ALWAYS valid for any application
         all_standard_statuses = {
             "pending", "shortlisted", "interview_scheduled", "interviewed", 
-            "selected", "rejected", "on_hold", "dropped", "not_joined"
+            "selected", "joined", "rejected", "on_hold", "dropped", "not_joined"
         }
         
         # First check: Is this a standard pipeline status?

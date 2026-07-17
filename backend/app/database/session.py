@@ -86,6 +86,7 @@ def init_db() -> None:
     from app.models.interviewer import Interviewer  # noqa: F401
     from app.models.interview_schedule import InterviewSchedule  # noqa: F401
     from app.models.notification import Notification  # noqa: F401
+    from app.models.system_activity import SystemActivity  # noqa: F401
 
     Base.metadata.create_all(bind=engine)
     

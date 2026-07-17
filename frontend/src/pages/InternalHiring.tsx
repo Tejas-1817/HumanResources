@@ -82,6 +82,7 @@ const DEFAULT_STAGES = [
   { id: "on_hold", title: "On Hold", color: "bg-orange-400", bgGlow: "from-orange-400/10" },
   { id: "rejected", title: "Rejected", color: "bg-destructive", bgGlow: "from-destructive/10" },
   { id: "selected", title: "Selected", color: "bg-emerald-500", bgGlow: "from-emerald-500/10" },
+  { id: "joined", title: "Joined", color: "bg-teal-500", bgGlow: "from-teal-500/10" },
   { id: "dropped", title: "Dropped", color: "bg-zinc-400", bgGlow: "from-zinc-400/10" },
 ];
 
@@ -567,6 +568,18 @@ export default function InternalHiring() {
 
   // ─── Interviews Scheduled role filter ──────────────────────────
   const [scheduleRoleFilter, setScheduleRoleFilter] = useState<number | null>(null);
+
+  // Auto-open schedule modal if navigated from dashboard calendar
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const scheduleDateStr = params.get("scheduleDate");
+    if (scheduleDateStr) {
+      setScheduleForm((prev) => ({ ...prev, date: scheduleDateStr }));
+      setScheduleModalOpen(true);
+      // Clean up URL to avoid re-triggering on refresh
+      window.history.replaceState({}, "", "/internal-hiring");
+    }
+  }, []);
 
   // Unique job roles that appear in current candidateSchedules (auto-updates when roles are deleted)
   const scheduledRoleIds = useMemo(() => {
@@ -2504,9 +2517,9 @@ export default function InternalHiring() {
           <p className="text-sm text-muted-foreground">
             Plan transition for <strong>{schedulingData?.name}</strong>.
           </p>
-          <div className="grid grid-cols-2 gap-4">
+          {schedulingData?.stageId === "joined" ? (
             <div>
-              <label className="label-text mb-2 block font-bold uppercase tracking-tight text-[10px]">Target Date</label>
+              <label className="label-text mb-2 block font-bold uppercase tracking-tight text-[10px]">Joining Date</label>
               <input
                 type="date"
                 value={interviewDate}
@@ -2514,16 +2527,28 @@ export default function InternalHiring() {
                 className="w-full px-4 py-3 rounded-lg bg-secondary border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
               />
             </div>
-            <div>
-              <label className="label-text mb-2 block font-bold uppercase tracking-tight text-[10px]">Target Time</label>
-              <input
-                type="time"
-                value={interviewTime}
-                onChange={(e) => setInterviewTime(e.target.value)}
-                className="w-full px-4 py-3 rounded-lg bg-secondary border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-              />
+          ) : (
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="label-text mb-2 block font-bold uppercase tracking-tight text-[10px]">Target Date</label>
+                <input
+                  type="date"
+                  value={interviewDate}
+                  onChange={(e) => setInterviewDate(e.target.value)}
+                  className="w-full px-4 py-3 rounded-lg bg-secondary border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+                />
+              </div>
+              <div>
+                <label className="label-text mb-2 block font-bold uppercase tracking-tight text-[10px]">Target Time</label>
+                <input
+                  type="time"
+                  value={interviewTime}
+                  onChange={(e) => setInterviewTime(e.target.value)}
+                  className="w-full px-4 py-3 rounded-lg bg-secondary border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+                />
+              </div>
             </div>
-          </div>
+          )}
           <div>
             <label className="label-text mb-2 block font-bold uppercase tracking-tight text-[10px]">Transition Remark</label>
             <textarea

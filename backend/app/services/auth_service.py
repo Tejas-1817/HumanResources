@@ -62,6 +62,8 @@ class AuthService:
 
     @staticmethod
     def login(db: Session, email: str, password: str) -> dict:
+        from app.models.system_activity import SystemActivity
+
         processed_email = email.lower().strip()
         
         # 1. Try HR User
@@ -72,6 +74,10 @@ class AuthService:
             if not user.is_active:
                 raise UnauthorizedException(message="User is inactive")
             
+            # Log Activity
+            db.add(SystemActivity(text=f"{user.name} logged in", activity_type="login"))
+            db.commit()
+
             access_token = create_access_token(
                 data={"sub": user.email, "role": user.role},
                 expires_delta=timedelta(minutes=settings.access_token_expire_minutes),
@@ -92,6 +98,10 @@ class AuthService:
             if not vendor.is_active:
                 raise UnauthorizedException(message="Vendor account is inactive")
             
+            # Log Activity
+            db.add(SystemActivity(text=f"Vendor {vendor.name} logged in", activity_type="login"))
+            db.commit()
+
             access_token = create_access_token(
                 data={"sub": vendor.email, "role": "vendor", "vendor_id": vendor.id},
                 expires_delta=timedelta(minutes=settings.access_token_expire_minutes),
@@ -110,6 +120,10 @@ class AuthService:
             if not verify_password(password, interviewer.hashed_password):
                 raise UnauthorizedException(message="Invalid credentials")
             
+            # Log Activity
+            db.add(SystemActivity(text=f"Interviewer {interviewer.name} logged in", activity_type="login"))
+            db.commit()
+
             access_token = create_access_token(
                 data={"sub": interviewer.email, "role": "interviewer", "interviewer_id": interviewer.id},
                 expires_delta=timedelta(minutes=settings.access_token_expire_minutes),

@@ -34,6 +34,14 @@ class SkillFrequency(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class ActivityFeedItem(BaseModel):
+    id: int
+    text: str
+    time: str
+    iconBg: str
+    created_at: datetime
+
+
 class DashboardStatsResponse(BaseModel):
     total_candidates: int
     total_companies: int
@@ -43,6 +51,7 @@ class DashboardStatsResponse(BaseModel):
     total_replacements: int
     top_skills: list[SkillFrequency]
     recent_uploads: list[RecentUploadItem]
+    activity_feed: list[ActivityFeedItem] | None = None
     pipeline_summary: PipelineSummaryItem
 
     model_config = ConfigDict(from_attributes=True)

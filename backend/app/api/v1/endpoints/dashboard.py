@@ -106,6 +106,84 @@ def get_dashboard_stats(db: Session = Depends(get_db)) -> DashboardStatsResponse
         for skill, count in sorted(frequency.items(), key=lambda i: i[1], reverse=True)[:10]
     ]
 
+    # Fetch Activity Feed from today and yesterday
+    from app.models.activity_log import ActivityLog
+    from datetime import timedelta
+    
+    # We will use python's datetime to roughly filter "since yesterday"
+    yesterday = datetime.now(timezone.utc) - timedelta(days=2)
+    
+    activities = []
+    
+    # 2. Candidate Creations
+    new_candidates = db.query(Candidate).filter(Candidate.created_at >= yesterday).all()
+    for c in new_candidates:
+        activities.append({
+            "id": f"cand-{c.id}",
+            "text": f"New candidate {c.name or c.email or 'Candidate'} added to talent pool",
+            "created_at": c.created_at,
+            "iconBg": "bg-blue-50 text-blue-600"
+        })
+        
+    # 3. JobRole Creations
+    new_jobs = db.query(JobRole).filter(JobRole.created_at >= yesterday).all()
+    for j in new_jobs:
+        activities.append({
+            "id": f"job-{j.id}",
+            "text": f"Job position {j.title} created",
+            "created_at": j.created_at,
+            "iconBg": "bg-amber-50 text-amber-600"
+        })
+        
+    # 4. Activity Logs (Pipeline changes)
+    act_logs = db.query(ActivityLog).options(selectinload(ActivityLog.application).selectinload(JobApplication.candidate)).filter(ActivityLog.created_at >= yesterday).all()
+    for a in act_logs:
+        c_name = a.application.candidate.name if a.application and a.application.candidate else "Candidate"
+        action = "moved to"
+        if a.new_status == "shortlisted":
+            action = "was shortlisted"
+        elif a.new_status == "interview_scheduled":
+            action = "Interview scheduled for"
+        elif a.new_status == "selected":
+            action = "was selected"
+            
+        activities.append({
+            "id": f"act-{a.id}",
+            "text": f"{c_name} {action} {a.new_status.replace('_', ' ')}",
+            "created_at": a.created_at,
+            "iconBg": "bg-purple-50 text-purple-600"
+        })
+        
+    # Sort by created_at DESC
+    activities.sort(key=lambda x: x["created_at"], reverse=True)
+    
+    # Format times and map to schema
+    from app.schemas.dashboard import ActivityFeedItem
+    
+    def format_time_ago(d: datetime):
+        if not d: return ""
+        # Handle offset-aware vs offset-naive
+        now = datetime.now(d.tzinfo)
+        diff = now - d
+        diff_mins = int(diff.total_seconds() / 60)
+        if diff_mins < 1: return "Just now"
+        if diff_mins < 60: return f"{diff_mins}m ago"
+        diff_hours = int(diff_mins / 60)
+        if diff_hours < 24: return f"{diff_hours}h ago"
+        diff_days = int(diff_hours / 24)
+        return f"{diff_days}d ago"
+        
+    activity_feed = []
+    # Only keep a reasonable number for feed
+    for idx, act in enumerate(activities[:50]):
+        activity_feed.append(ActivityFeedItem(
+            id=idx,
+            text=act["text"],
+            time=format_time_ago(act["created_at"]),
+            iconBg=act["iconBg"],
+            created_at=act["created_at"]
+        ))
+
     payload = {
         "total_candidates": int(total_candidates),
         "total_companies": int(total_companies),
@@ -115,6 +193,7 @@ def get_dashboard_stats(db: Session = Depends(get_db)) -> DashboardStatsResponse
         "total_replacements": int(total_replacements),
         "top_skills": top_skills,
         "recent_uploads": recent_uploads,
+        "activity_feed": activity_feed,
         "pipeline_summary": PipelineSummaryItem(
             pending=int(pipeline_counts.pending or 0),
             shortlisted=int(pipeline_counts.shortlisted or 0),

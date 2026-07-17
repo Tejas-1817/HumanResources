@@ -87,12 +87,15 @@ const DashboardCalendar = ({
   selectedDate,
   onSelectDate,
   schedules = [],
+  onScheduleInterview,
 }: {
   selectedDate: Date;
   onSelectDate: (date: Date) => void;
   schedules?: any[];
+  onScheduleInterview?: (date: Date) => void;
 }) => {
   const [currentDate, setCurrentDate] = useState(new Date(selectedDate));
+  const [popoverDay, setPopoverDay] = useState<number | null>(null);
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -103,25 +106,34 @@ const DashboardCalendar = ({
 
   const handlePrevMonth = () => {
     setCurrentDate(new Date(year, month - 1, 1));
+    setPopoverDay(null);
   };
   const handleNextMonth = () => {
     setCurrentDate(new Date(year, month + 1, 1));
+    setPopoverDay(null);
   };
 
   // Helper to check if a day has interviews
   const hasInterviewsOnDay = (day: number) => {
     const dayStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-    const mockDates = ["2026-05-13", "2026-05-14", "2026-07-13", "2026-07-15"];
     
     if (!schedules || schedules.length === 0) {
-      return mockDates.includes(dayStr);
+      return false;
     }
     
     return schedules.some((s) => {
+      if (!s.date) return false;
       const sDate = s.date.includes("T") ? s.date.split("T")[0] : s.date;
       return sDate === dayStr;
     });
   };
+
+  // Close popover when clicking anywhere else
+  useEffect(() => {
+    const handleClickOutside = () => setPopoverDay(null);
+    document.addEventListener("click", handleClickOutside);
+    return () => document.removeEventListener("click", handleClickOutside);
+  }, []);
 
   return (
     <div className="flex flex-col h-full justify-between">
@@ -130,7 +142,7 @@ const DashboardCalendar = ({
         <h3 className="text-sm font-black text-slate-800 tracking-tight">Interview Schedule Calendar</h3>
         <div className="flex items-center gap-1.5">
           <button
-            onClick={handlePrevMonth}
+            onClick={(e) => { e.stopPropagation(); handlePrevMonth(); }}
             className="p-1 rounded-md hover:bg-slate-100 border border-slate-200 text-slate-500 hover:text-slate-900 transition-all cursor-pointer"
           >
             <ChevronLeft className="w-3.5 h-3.5" />
@@ -139,7 +151,7 @@ const DashboardCalendar = ({
             {monthName} {year}
           </span>
           <button
-            onClick={handleNextMonth}
+            onClick={(e) => { e.stopPropagation(); handleNextMonth(); }}
             className="p-1 rounded-md hover:bg-slate-100 border border-slate-200 text-slate-500 hover:text-slate-900 transition-all cursor-pointer"
           >
             <ChevronRight className="w-3.5 h-3.5" />
@@ -179,24 +191,54 @@ const DashboardCalendar = ({
           const hasInterviews = hasInterviewsOnDay(dayNum);
 
           return (
-            <button
-              key={`day-${dayNum}`}
-              onClick={() => onSelectDate(new Date(year, month, dayNum))}
-              className={`w-8 h-8 rounded-full flex flex-col items-center justify-center text-xs font-bold transition-all relative cursor-pointer
-                ${
-                  isSelected
-                    ? "bg-blue-600 text-white shadow-sm font-extrabold"
-                    : isToday
-                    ? "bg-blue-50 text-blue-600 border border-blue-200"
-                    : "text-slate-800 hover:bg-slate-100"
-                }`}
-            >
-              <span>{dayNum}</span>
-              {/* Dot indicator if day has interviews */}
-              {hasInterviews && !isSelected && (
-                <span className={`w-1 h-1 rounded-full absolute bottom-1 ${isToday ? "bg-blue-600" : "bg-blue-500"}`} />
-              )}
-            </button>
+            <div key={`day-${dayNum}`} className="relative">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSelectDate(new Date(year, month, dayNum));
+                  setPopoverDay(popoverDay === dayNum ? null : dayNum);
+                }}
+                className={`w-8 h-8 rounded-full flex flex-col items-center justify-center text-xs font-bold transition-all cursor-pointer
+                  ${
+                    isSelected
+                      ? "bg-blue-600 text-white shadow-sm font-extrabold"
+                      : isToday
+                      ? "bg-blue-50 text-blue-600 border border-blue-200"
+                      : "text-slate-800 hover:bg-slate-100"
+                  }`}
+              >
+                <span>{dayNum}</span>
+                {/* Dot indicator if day has interviews */}
+                {hasInterviews && !isSelected && (
+                  <span className={`w-1 h-1 rounded-full absolute bottom-1 ${isToday ? "bg-blue-600" : "bg-blue-500"}`} />
+                )}
+              </button>
+              
+              <AnimatePresence>
+                {popoverDay === dayNum && onScheduleInterview && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -5, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -5, scale: 0.95 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute top-10 left-1/2 -translate-x-1/2 z-[100] bg-white shadow-xl border border-slate-100 rounded-xl p-2 min-w-[160px]"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                     <p className="text-[10px] text-slate-500 font-bold mb-2 text-center uppercase tracking-wider">Options</p>
+                     <button 
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setPopoverDay(null);
+                            onScheduleInterview(new Date(year, month, dayNum));
+                        }} 
+                        className="text-[11px] w-full bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg py-2 transition-colors flex items-center justify-center gap-1.5 shadow-sm shadow-blue-600/20"
+                     >
+                        <Plus className="w-3 h-3" /> Schedule Interview
+                     </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           );
         })}
       </div>
@@ -208,16 +250,12 @@ const DashboardCalendar = ({
 const MetricCard = ({
   label,
   value,
-  trend,
-  trendColor = "text-green-600",
   icon: Icon,
   iconBg = "bg-blue-50 text-blue-600",
   onClick,
 }: {
   label: string;
   value: ReactNode;
-  trend: string;
-  trendColor?: string;
   icon: any;
   iconBg?: string;
   onClick?: () => void;
@@ -243,9 +281,6 @@ const MetricCard = ({
               value
             )}
           </div>
-          <div className="flex items-center gap-1 mt-1">
-            <span className={`text-[10px] font-bold ${trendColor}`}>{trend}</span>
-          </div>
         </div>
       </div>
     </motion.div>
@@ -266,7 +301,20 @@ const Dashboard = () => {
   const [timeframe, setTimeframe] = useState("This Week");
   const [upcomingView, setUpcomingView] = useState("View");
   const [upcomingWeek, setUpcomingWeek] = useState("Week");
-  const [upcomingMonth, setUpcomingMonth] = useState("May 2026");
+  
+  const [upcomingMonth, setUpcomingMonth] = useState(() => 
+    new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" })
+  );
+
+  const monthOptions = useMemo(() => {
+    const opts = ["Month", "All Months"];
+    const now = new Date();
+    for (let i = 0; i < 4; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+      opts.push(d.toLocaleDateString("en-US", { month: "long", year: "numeric" }));
+    }
+    return opts;
+  }, []);
 
   // Dropdown open states
   const [showTimeframeDropdown, setShowTimeframeDropdown] = useState(false);
@@ -444,23 +492,105 @@ const Dashboard = () => {
 
   const conversionRate = totalPipeline > 0 ? Math.round((selectedCount / totalPipeline) * 100) : 0;
 
-  const recruitmentStats = useMemo(() => {
-    const appliedVal = data?.total_candidates ?? 210;
-    const shortlistedVal = data?.pipeline_summary?.shortlisted ?? 96;
-    const interviewVal = interviewCount || 42;
-    const selectedVal = selectedCount || 14;
-    const joinedVal = 8; // fallback to match image
+  const internalStats = useMemo(() => {
+    let internalPendingCount = 0;
+    let internalShortlistedCount = 0;
+    let internalInterviewCount = 0;
+    let internalSelectedCount = 0;
+    let internalJoinedCount = 0;
+    const hasPipelineData = Object.keys(pipeline).length > 0;
+    if (internalCompanyId && hasPipelineData) {
+      internalPendingCount = (pipeline["pending"] || []).filter((app: any) => {
+        const role = jobRoles.find((r: any) => r.id === app.job_role_id);
+        return role?.company_id === internalCompanyId;
+      }).length;
+      internalShortlistedCount = (pipeline["shortlisted"] || []).filter((app: any) => {
+        const role = jobRoles.find((r: any) => r.id === app.job_role_id);
+        return role?.company_id === internalCompanyId;
+      }).length;
+      internalInterviewCount = (pipeline["interview_scheduled"] || []).filter((app: any) => {
+        const role = jobRoles.find((r: any) => r.id === app.job_role_id);
+        return role?.company_id === internalCompanyId;
+      }).length + (pipeline["interviewed"] || []).filter((app: any) => {
+        const role = jobRoles.find((r: any) => r.id === app.job_role_id);
+        return role?.company_id === internalCompanyId;
+      }).length;
+      internalSelectedCount = (pipeline["selected"] || []).filter((app: any) => {
+        const role = jobRoles.find((r: any) => r.id === app.job_role_id);
+        return role?.company_id === internalCompanyId;
+      }).length;
+      internalJoinedCount = (pipeline["joined"] || []).filter((app: any) => {
+        const role = jobRoles.find((r: any) => r.id === app.job_role_id);
+        return role?.company_id === internalCompanyId;
+      }).length;
+    }
+
+    const appliedVal = hasPipelineData ? internalPendingCount : (data?.total_candidates ?? 210);
+    const shortlistedVal = hasPipelineData ? internalShortlistedCount : (data?.pipeline_summary?.shortlisted ?? 96);
+    const interviewVal = hasPipelineData ? internalInterviewCount : (interviewCount || 42);
+    const selectedVal = hasPipelineData ? internalSelectedCount : (selectedCount || 14);
+    const joinedVal = hasPipelineData ? internalJoinedCount : 8; // fallback to match image
 
     const totalStats = appliedVal + shortlistedVal + interviewVal + selectedVal + joinedVal || 370;
 
     return [
-      { name: "Applied", value: appliedVal, pct: `${Math.round((appliedVal / totalStats) * 100) || 58}%`, dotColor: "bg-blue-500", bg: "bg-blue-50", textColor: "text-blue-500", icon: Send },
-      { name: "Shortlisted", value: shortlistedVal, pct: `${Math.round((shortlistedVal / totalStats) * 100) || 27}%`, dotColor: "bg-purple-500", bg: "bg-purple-50", textColor: "text-purple-500", icon: UserCheck },
-      { name: "Interview", value: interviewVal, pct: `${Math.round((interviewVal / totalStats) * 100) || 12}%`, dotColor: "bg-amber-500", bg: "bg-amber-50", textColor: "text-amber-500", icon: Clock },
-      { name: "Selected", value: selectedVal, pct: `${Math.round((selectedVal / totalStats) * 100) || 4}%`, dotColor: "bg-emerald-500", bg: "bg-emerald-50", textColor: "text-emerald-500", icon: CheckCircle2 },
-      { name: "Joined", value: joinedVal, pct: `${Math.round((joinedVal / totalStats) * 100) || 2}%`, dotColor: "bg-cyan-500", bg: "bg-cyan-50", textColor: "text-cyan-500", icon: Users },
+      { name: "Applied", value: appliedVal, pct: `${Math.round((appliedVal / totalStats) * 100) || 58}%`, bg: "bg-blue-50", textColor: "text-blue-500", icon: Send },
+      { name: "Shortlisted", value: shortlistedVal, pct: `${Math.round((shortlistedVal / totalStats) * 100) || 27}%`, bg: "bg-purple-50", textColor: "text-purple-500", icon: UserCheck },
+      { name: "Interview", value: interviewVal, pct: `${Math.round((interviewVal / totalStats) * 100) || 12}%`, bg: "bg-amber-50", textColor: "text-amber-500", icon: Clock },
+      { name: "Selected", value: selectedVal, pct: `${Math.round((selectedVal / totalStats) * 100) || 4}%`, bg: "bg-emerald-50", textColor: "text-emerald-500", icon: CheckCircle2 },
+      { name: "Joined", value: joinedVal, pct: `${Math.round((joinedVal / totalStats) * 100) || 2}%`, bg: "bg-cyan-50", textColor: "text-cyan-500", icon: Users },
     ];
-  }, [data, interviewCount, selectedCount]);
+  }, [data, interviewCount, selectedCount, pipeline, jobRoles, internalCompanyId]);
+
+  const clientStats = useMemo(() => {
+    let clientPendingCount = 0;
+    let clientShortlistedCount = 0;
+    let clientInterviewCount = 0;
+    let clientSelectedCount = 0;
+    let clientJoinedCount = 0;
+    const hasPipelineData = Object.keys(pipeline).length > 0;
+    if (internalCompanyId && hasPipelineData) {
+      clientPendingCount = (pipeline["pending"] || []).filter((app: any) => {
+        const role = jobRoles.find((r: any) => r.id === app.job_role_id);
+        return role && role.company_id !== internalCompanyId;
+      }).length;
+      clientShortlistedCount = (pipeline["shortlisted"] || []).filter((app: any) => {
+        const role = jobRoles.find((r: any) => r.id === app.job_role_id);
+        return role && role.company_id !== internalCompanyId;
+      }).length;
+      clientInterviewCount = (pipeline["interview_scheduled"] || []).filter((app: any) => {
+        const role = jobRoles.find((r: any) => r.id === app.job_role_id);
+        return role && role.company_id !== internalCompanyId;
+      }).length + (pipeline["interviewed"] || []).filter((app: any) => {
+        const role = jobRoles.find((r: any) => r.id === app.job_role_id);
+        return role && role.company_id !== internalCompanyId;
+      }).length;
+      clientSelectedCount = (pipeline["selected"] || []).filter((app: any) => {
+        const role = jobRoles.find((r: any) => r.id === app.job_role_id);
+        return role && role.company_id !== internalCompanyId;
+      }).length;
+      clientJoinedCount = (pipeline["joined"] || []).filter((app: any) => {
+        const role = jobRoles.find((r: any) => r.id === app.job_role_id);
+        return role && role.company_id !== internalCompanyId;
+      }).length;
+    }
+
+    const appliedVal = hasPipelineData ? clientPendingCount : 180;
+    const shortlistedVal = hasPipelineData ? clientShortlistedCount : 85;
+    const interviewVal = hasPipelineData ? clientInterviewCount : 38;
+    const selectedVal = hasPipelineData ? clientSelectedCount : 25;
+    const joinedVal = hasPipelineData ? clientJoinedCount : 15;
+
+    const totalStats = appliedVal + shortlistedVal + interviewVal + selectedVal + joinedVal;
+
+    return [
+      { name: "Applied", value: appliedVal, pct: `${Math.round((appliedVal / totalStats) * 100)}%` },
+      { name: "Shortlisted", value: shortlistedVal, pct: `${Math.round((shortlistedVal / totalStats) * 100)}%` },
+      { name: "Interview", value: interviewVal, pct: `${Math.round((interviewVal / totalStats) * 100)}%` },
+      { name: "Selected", value: selectedVal, pct: `${Math.round((selectedVal / totalStats) * 100)}%` },
+      { name: "Joined", value: joinedVal, pct: `${Math.round((joinedVal / totalStats) * 100)}%` },
+    ];
+  }, [pipeline, jobRoles, internalCompanyId]);
 
   // ── Upcoming Interviews Mapper ────────────────────────
   const mockUpcomingInterviews = [
@@ -470,26 +600,83 @@ const Dashboard = () => {
     { time: "04:00 PM", name: "Priya Singh", role: "UI/UX Designer", round: "HR Round", interviewer: "Neha Joshi", date: "2026-07-15" },
   ];
 
-  const formattedUpcoming = useMemo(() => {
-    if (!schedules || schedules.length === 0) {
-      return mockUpcomingInterviews.map((item, i) => {
-        const colors = [
-          { color: "text-blue-600 bg-blue-50 border-blue-100", badgeColor: "bg-blue-100 text-blue-800" },
-          { color: "text-indigo-600 bg-indigo-50 border-indigo-100", badgeColor: "bg-purple-100 text-purple-800" },
-          { color: "text-amber-600 bg-amber-50 border-amber-100", badgeColor: "bg-blue-100 text-blue-800" },
-          { color: "text-emerald-600 bg-emerald-50 border-emerald-100", badgeColor: "bg-purple-100 text-purple-800" },
-        ];
-        const style = colors[i % colors.length];
-        return {
-          id: i,
-          ...item,
-          color: style.color,
-          badgeColor: style.badgeColor,
-        };
+  const allCombinedInterviews = useMemo(() => {
+    const pipelineInterviews = [
+      ...(pipeline["interview_scheduled"] || []),
+      ...(pipeline["interviewed"] || [])
+    ];
+    
+    let combined: any[] = [];
+    const seenCandidates = new Set<string>();
+
+    const addInterview = (item: any) => {
+      const key = `${item.name}-${item.role}`.toLowerCase();
+      if (!seenCandidates.has(key)) {
+        seenCandidates.add(key);
+        combined.push(item);
+      }
+    };
+
+    if (schedules && schedules.length > 0) {
+      schedules.forEach((s: any) => {
+        if (!s.date) return;
+        addInterview({
+          id: `sched-${s.id}`,
+          time: s.time || "10:00 AM",
+          name: s.candidate_name || "Candidate",
+          role: s.job_role_title || "Role",
+          round: "Interview",
+          interviewer: s.interviewer_name || "TBD",
+          date: s.date.includes("T") ? s.date.split("T")[0] : s.date,
+          sortDate: new Date(s.date).getTime()
+        });
       });
     }
 
-    return schedules.slice(0, 10).map((s, i) => {
+    pipelineInterviews.forEach((app: any) => {
+      const dStr = app.interview_date || app.status_date;
+      if (!dStr) return;
+      const d = new Date(dStr);
+      
+      const role = jobRoles.find((r: any) => r.id === app.job_role_id);
+      const timeString = new Date(dStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      const dateString = `${year}-${month}-${day}`;
+
+      addInterview({
+        id: `pipe-${app.id}`,
+        time: timeString,
+        name: app.candidate_name || "Candidate",
+        role: role?.title || "Role",
+        round: "Interview",
+        interviewer: "TBD",
+        date: dateString,
+        sortDate: new Date(dStr).getTime()
+      });
+    });
+
+    return combined.sort((a, b) => a.sortDate - b.sortDate);
+  }, [pipeline, schedules, jobRoles]);
+
+  const formattedUpcoming = useMemo(() => {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    
+    const upcoming = allCombinedInterviews.filter((item: any) => {
+      if (!item.date) return false;
+      const d = new Date(item.date);
+      d.setHours(0, 0, 0, 0);
+      return d >= now;
+    });
+
+    if (upcoming.length === 0) {
+      return [];
+    }
+
+    return upcoming.slice(0, 10).map((item: any, i: number) => {
       const colors = [
         { color: "text-blue-600 bg-blue-50 border-blue-100", badgeColor: "bg-blue-100 text-blue-800" },
         { color: "text-indigo-600 bg-indigo-50 border-indigo-100", badgeColor: "bg-purple-100 text-purple-800" },
@@ -497,19 +684,14 @@ const Dashboard = () => {
         { color: "text-emerald-600 bg-emerald-50 border-emerald-100", badgeColor: "bg-purple-100 text-purple-800" },
       ];
       const style = colors[i % colors.length];
+      
       return {
-        id: s.id,
-        time: s.time || "10:00 AM",
-        name: s.candidate_name || "Candidate",
-        role: s.job_role_title || "Developer",
-        round: i % 2 === 0 ? "Technical Round" : "HR Round",
-        interviewer: s.interviewer_name || "Interviewer",
-        date: s.date,
+        ...item,
         color: style.color,
         badgeColor: style.badgeColor,
       };
     });
-  }, [schedules]);
+  }, [pipeline, schedules, jobRoles]);
 
   // ── Filtered Upcoming Interviews based on active dropdowns ────
   const filteredUpcoming = useMemo(() => {
@@ -552,10 +734,14 @@ const Dashboard = () => {
 
     // Filter by Month
     if (upcomingMonth !== "All Months" && upcomingMonth !== "Month") {
-      if (upcomingMonth === "May 2026") {
-        list = list.filter(item => item.date?.startsWith("2026-05"));
-      } else if (upcomingMonth === "July 2026") {
-        list = list.filter(item => item.date?.startsWith("2026-07"));
+      try {
+        const d = new Date(`${upcomingMonth} 01`);
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const prefix = `${yyyy}-${mm}`;
+        list = list.filter(item => item.date?.startsWith(prefix));
+      } catch (e) {
+        // ignore
       }
     }
 
@@ -606,71 +792,60 @@ const Dashboard = () => {
 
   // ── Activity Feed Mapper ──────────────────────────────
   const activitiesList = useMemo(() => {
-    if (!data?.recent_uploads || data.recent_uploads.length === 0) {
-      return [
-        { id: 1, text: "Rahul Sharma was shortlisted for Frontend Developer", time: "10m ago", iconBg: "bg-blue-50 text-blue-600" },
-        { id: 2, text: "Interview scheduled with Sneha Patil for Data Analyst", time: "45m ago", iconBg: "bg-purple-50 text-purple-600" },
-        { id: 3, text: "New candidate Anjali Mehta added for Data Analyst", time: "3h ago", iconBg: "bg-blue-50 text-blue-600" },
-        { id: 4, text: "Job position Data Analyst created by Priyanka Shete", time: "5h ago", iconBg: "bg-amber-50 text-amber-600" },
-      ];
+    if (!data?.activity_feed || data.activity_feed.length === 0) {
+      return [];
     }
-    return data.recent_uploads.slice(0, 4).map((u: any, idx: number) => {
-      const times = ["10m ago", "45m ago", "3h ago", "5h ago", "1d ago"];
-      const bgs = ["bg-blue-50 text-blue-600", "bg-purple-50 text-purple-600", "bg-blue-50 text-blue-600", "bg-amber-50 text-amber-600"];
-      return {
-        id: u.candidate_id,
-        text: `New candidate ${u.name || u.email || "Candidate"} added to talent pool`,
-        time: formatTimeAgo(u.created_at) || times[idx % times.length],
-        iconBg: bgs[idx % bgs.length],
-      };
-    });
+    return data.activity_feed.map((act: any) => ({
+      id: act.id,
+      text: act.text,
+      time: act.time || formatTimeAgo(act.created_at),
+      iconBg: act.iconBg || "bg-slate-50 text-slate-600",
+    }));
   }, [data]);
 
   // ── Selected Date's Interviews Mapper ──────────────────
   const formattedToday = useMemo(() => {
-    const targetDateStr = selectedCalendarDate.toISOString().split("T")[0];
+    // Avoid toISOString() which shifts date to UTC and may cause off-by-one day bugs in some timezones.
+    const yyyy = selectedCalendarDate.getFullYear();
+    const mm = String(selectedCalendarDate.getMonth() + 1).padStart(2, '0');
+    const dd = String(selectedCalendarDate.getDate()).padStart(2, '0');
+    const targetDateStr = `${yyyy}-${mm}-${dd}`;
+    const targetDateStrReverse = `${dd}-${mm}-${yyyy}`;
 
-    const mockList = [
-      { time: "10:00 AM", name: "Rahul Sharma", role: "Frontend Developer", date: "2026-05-13" },
-      { time: "11:30 AM", name: "Sneha Patil", role: "Data Analyst", date: "2026-05-14" },
-      { time: "02:00 PM", name: "Amit Verma", role: "Backend Developer", date: "2026-07-13" },
-      { time: "04:00 PM", name: "Priya Singh", role: "UI/UX Designer", date: "2026-07-15" },
-    ];
-
-    if (!schedules || schedules.length === 0) {
-      return mockList.filter(item => item.date === targetDateStr);
+    if (!allCombinedInterviews || allCombinedInterviews.length === 0) {
+      return [];
     }
 
-    const daySchedules = schedules.filter((s) => {
+    const daySchedules = allCombinedInterviews.filter((s: any) => {
+      if (!s.date) return false;
       const sDate = s.date.includes("T") ? s.date.split("T")[0] : s.date;
-      return sDate === targetDateStr;
+      return sDate === targetDateStr || sDate === targetDateStrReverse;
     });
 
-    return daySchedules.slice(0, 8).map((s) => ({
+    return daySchedules.slice(0, 8).map((s: any) => ({
       time: s.time || "10:00 AM",
-      name: s.candidate_name || "Candidate",
-      role: s.job_role_title || "Developer",
+      name: s.name || s.candidate_name || "Candidate",
+      role: s.role || s.job_role_title || "Developer",
     }));
-  }, [schedules, selectedCalendarDate]);
+  }, [allCombinedInterviews, selectedCalendarDate]);
 
   const todayInterviewsCount = useMemo(() => {
-    const targetDateStr = selectedCalendarDate.toISOString().split("T")[0];
+    const yyyy = selectedCalendarDate.getFullYear();
+    const mm = String(selectedCalendarDate.getMonth() + 1).padStart(2, '0');
+    const dd = String(selectedCalendarDate.getDate()).padStart(2, '0');
+    const targetDateStr = `${yyyy}-${mm}-${dd}`;
+    const targetDateStrReverse = `${dd}-${mm}-${yyyy}`;
 
-    if (!schedules || schedules.length === 0) {
-      const mockList = [
-        { date: "2026-05-13" },
-        { date: "2026-05-14" },
-        { date: "2026-07-13" },
-        { date: "2026-07-15" },
-      ];
-      return mockList.filter(item => item.date === targetDateStr).length;
+    if (!allCombinedInterviews || allCombinedInterviews.length === 0) {
+      return 0;
     }
 
-    return schedules.filter(s => {
+    return allCombinedInterviews.filter((s: any) => {
+      if (!s.date) return false;
       const sDate = s.date.includes("T") ? s.date.split("T")[0] : s.date;
-      return sDate === targetDateStr;
+      return sDate === targetDateStr || sDate === targetDateStrReverse;
     }).length;
-  }, [schedules, selectedCalendarDate]);
+  }, [allCombinedInterviews, selectedCalendarDate]);
 
   const selectedDateInterviewsLabel = useMemo(() => {
     const todayStr = new Date().toISOString().split("T")[0];
@@ -689,25 +864,26 @@ const Dashboard = () => {
     end.setDate(start.getDate() + 6);
     end.setHours(23,59,59,999);
     
-    const count = schedules.filter(s => {
+    const count = allCombinedInterviews.filter((s: any) => {
+      if (!s.date) return false;
       const d = new Date(s.date);
       return d >= start && d <= end;
     }).length;
     return count || 18;
-  }, [schedules]);
+  }, [allCombinedInterviews]);
 
   const monthInterviewsCount = useMemo(() => {
     const monthPrefix = new Date().toISOString().slice(0, 7); // YYYY-MM
-    const count = schedules.filter(s => s.date.startsWith(monthPrefix)).length;
+    const count = allCombinedInterviews.filter((s: any) => s.date && s.date.startsWith(monthPrefix)).length;
     return count || 42;
-  }, [schedules]);
+  }, [allCombinedInterviews]);
 
   const displayedInterviewsCount = useMemo(() => {
     if (timeframe === "Today") return todayInterviewsCount;
     if (timeframe === "This Week") return weekInterviewsCount;
     if (timeframe === "This Month") return monthInterviewsCount;
-    return schedules.length || 48;
-  }, [timeframe, todayInterviewsCount, weekInterviewsCount, monthInterviewsCount, schedules]);
+    return allCombinedInterviews.length || 48;
+  }, [timeframe, todayInterviewsCount, weekInterviewsCount, monthInterviewsCount, allCombinedInterviews]);
 
   const displayedInterviewsLabel = useMemo(() => {
     if (timeframe === "Today") return "Interviews Today";
@@ -961,7 +1137,6 @@ const Dashboard = () => {
         <MetricCard
           label="Total Candidates"
           value={data?.total_candidates ?? 356}
-          trend="▲ 18 Today"
           icon={Users}
           iconBg="bg-blue-50 text-blue-600"
           onClick={() => navigate("/candidates")}
@@ -994,14 +1169,12 @@ const Dashboard = () => {
               </button>
             </div>
           }
-          trend={`Total: ${internalOpenRolesCount + clientOpenRolesCount} Active`}
           icon={Briefcase}
           iconBg="bg-blue-50 text-blue-600"
         />
         <MetricCard
           label="Interviews Today(Internal)"
           value={todayInterviewsRealCount}
-          trend="▲ 2 From Yesterday"
           icon={Calendar}
           iconBg="bg-amber-50 text-amber-600"
           onClick={() => navigate("/internal-hiring")}
@@ -1009,8 +1182,6 @@ const Dashboard = () => {
         <MetricCard
           label="On Bench"
           value={benchCount}
-          trend="— No Change"
-          trendColor="text-slate-400"
           icon={Users}
           iconBg="bg-blue-50 text-blue-600"
           onClick={() => navigate("/vendors")}
@@ -1021,38 +1192,46 @@ const Dashboard = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         
         {/* Recruitment Statistics */}
-        <motion.div variants={item} className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm flex flex-col h-[390px]">
-          <h3 className="text-sm font-black text-slate-800 tracking-tight">Recruitment Statistics</h3>
+        <motion.div variants={item} className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm flex flex-col h-[390px] overflow-hidden">
+          <h3 className="text-sm font-black text-slate-800 tracking-tight mb-4 shrink-0">Recruitment Statistics</h3>
           
-          {/* Left-aligned multi-row stages stats */}
-          <div className="flex-1 flex flex-col items-start justify-center gap-6 pl-2">
-            {/* Row 1: 3 items */}
-            <div className="flex justify-start gap-10 w-full">
-              {recruitmentStats.slice(0, 3).map((stat) => (
-                <div key={stat.name} className="flex flex-col items-start text-left w-20">
-                  <div className={`w-9 h-9 rounded-xl ${stat.bg} flex items-center justify-center shrink-0 mb-2 shadow-sm border border-slate-100/50`}>
+          <div className="flex flex-col w-full h-full justify-center">
+            {/* Headers with Icons */}
+            <div className="flex justify-between items-center px-1">
+              <div className="w-[72px] shrink-0"></div>
+              {internalStats.map((stat) => (
+                <div key={stat.name} className="flex flex-col items-center flex-1 min-w-0">
+                  <div className={`w-9 h-9 rounded-xl ${stat.bg} flex items-center justify-center mb-2 shadow-sm border border-slate-100/50`}>
                     <stat.icon className={`w-4 h-4 ${stat.textColor}`} />
                   </div>
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{stat.name}</span>
-                  <span className="text-lg font-black text-slate-800 mt-1 tracking-tight">{stat.value}</span>
-                  <span className="text-[10px] font-bold text-slate-400/80 mt-0.5">{stat.pct}</span>
+                  <span className="text-[8px] xl:text-[9px] font-bold text-slate-400 uppercase tracking-wider text-center w-full">{stat.name}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Internal Row */}
+            <div className="flex justify-between items-center bg-slate-50/70 rounded-xl py-3 px-2 border border-slate-100 mt-5 shadow-sm">
+              <span className="w-[72px] text-xs sm:text-sm font-black text-slate-800 leading-tight shrink-0">Internal</span>
+              {internalStats.map((stat, i) => (
+                <div key={i} className="flex flex-col items-center flex-1 min-w-0">
+                  <span className="text-base lg:text-lg font-black text-slate-800 tracking-tight">{stat.value}</span>
+                  <span className="text-[9px] xl:text-[10px] font-bold text-slate-400/80">{stat.pct}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Client Side Row */}
+            <div className="flex justify-between items-center bg-white rounded-xl py-3 px-2 border border-slate-100 mt-4 shadow-sm">
+              <span className="w-[72px] text-xs sm:text-sm font-black text-slate-800 leading-tight shrink-0">Client Side</span>
+              {clientStats.map((stat, i) => (
+                <div key={i} className="flex flex-col items-center flex-1 min-w-0">
+                  <span className="text-base lg:text-lg font-black text-slate-800 tracking-tight">{stat.value}</span>
+                  <span className="text-[9px] xl:text-[10px] font-bold text-slate-400/80">{stat.pct}</span>
                 </div>
               ))}
             </div>
             
-            {/* Row 2: 2 items */}
-            <div className="flex justify-start gap-10 w-full">
-              {recruitmentStats.slice(3, 5).map((stat) => (
-                <div key={stat.name} className="flex flex-col items-start text-left w-20">
-                  <div className={`w-9 h-9 rounded-xl ${stat.bg} flex items-center justify-center shrink-0 mb-2 shadow-sm border border-slate-100/50`}>
-                    <stat.icon className={`w-4 h-4 ${stat.textColor}`} />
-                  </div>
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{stat.name}</span>
-                  <span className="text-lg font-black text-slate-800 mt-1 tracking-tight">{stat.value}</span>
-                  <span className="text-[10px] font-bold text-slate-400/80 mt-0.5">{stat.pct}</span>
-                </div>
-              ))}
-            </div>
+            <div className="flex-1"></div>
           </div>
         </motion.div>
 
@@ -1136,7 +1315,7 @@ const Dashboard = () => {
                     <>
                       <div className="fixed inset-0 z-40" onClick={() => setShowMonthDropdown(false)} />
                       <div className="absolute right-0 mt-1 z-50 bg-white border border-slate-100 shadow-xl rounded-lg py-1 min-w-[100px]">
-                        {["Month", "All Months", "May 2026", "July 2026"].map((option) => (
+                        {monthOptions.map((option) => (
                           <button
                             key={option}
                             onClick={() => {
@@ -1250,17 +1429,27 @@ const Dashboard = () => {
             </div>
 
             <div className="space-y-4 max-h-[280px] overflow-y-auto pr-1 custom-scrollbar">
-              {activitiesList.map((activity) => (
-                <div key={activity.id} className="flex items-start gap-3">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs font-black ${activity.iconBg}`}>
-                    {activity.text.includes("shortlisted") ? "S" : activity.text.includes("Interview") ? "I" : "N"}
+              {activitiesList.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-10 text-slate-400 gap-1.5 h-full">
+                  <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center mb-2">
+                    <span className="text-slate-400 font-bold text-xs">A</span>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold text-slate-800 leading-normal">{activity.text}</p>
-                    <span className="text-[9px] text-slate-400 font-bold block mt-1">{activity.time}</span>
-                  </div>
+                  <span className="text-[11px] font-bold">No recent activities</span>
+                  <span className="text-[9px] text-slate-400 text-center px-4 mt-1">Activities from today and yesterday will appear here</span>
                 </div>
-              ))}
+              ) : (
+                activitiesList.map((activity) => (
+                  <div key={activity.id} className="flex items-start gap-3">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs font-black ${activity.iconBg}`}>
+                      {activity.text.includes("shortlisted") ? "S" : activity.text.includes("Interview") ? "I" : "N"}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-slate-800 leading-normal">{activity.text}</p>
+                      <span className="text-[9px] text-slate-400 font-bold block mt-1">{activity.time}</span>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </motion.div>
@@ -1270,7 +1459,13 @@ const Dashboard = () => {
           <DashboardCalendar
             selectedDate={selectedCalendarDate}
             onSelectDate={setSelectedCalendarDate}
-            schedules={schedules}
+            schedules={allCombinedInterviews}
+            onScheduleInterview={(date) => {
+              const yyyy = date.getFullYear();
+              const mm = String(date.getMonth() + 1).padStart(2, '0');
+              const dd = String(date.getDate()).padStart(2, '0');
+              navigate(`/internal-hiring?scheduleDate=${yyyy}-${mm}-${dd}`);
+            }}
           />
         </motion.div>
 

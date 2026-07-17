@@ -18,6 +18,7 @@ class VendorService:
         print(f"DEBUG: Vendor portal login attempt for '{processed_email}'")
         
         # 1. Try Vendor
+        from app.models.system_activity import SystemActivity
         vendor = db.query(Vendor).filter(Vendor.email == processed_email).first()
         if vendor:
             if not verify_password(password, vendor.hashed_password):
@@ -27,6 +28,10 @@ class VendorService:
             if not vendor.is_active:
                 print(f"DEBUG: Vendor account is inactive: '{processed_email}'")
                 raise UnauthorizedException(message="Vendor account is inactive")
+
+            # Log Activity
+            db.add(SystemActivity(text=f"Vendor {vendor.name} logged in", activity_type="login"))
+            db.commit()
 
             access_token = create_access_token(
                 data={"sub": vendor.email, "role": "vendor", "vendor_id": vendor.id},
