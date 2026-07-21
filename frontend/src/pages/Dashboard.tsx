@@ -547,20 +547,20 @@ const Dashboard = () => {
       }).length;
     }
 
-    const appliedVal = hasPipelineData ? internalPendingCount : (data?.total_candidates ?? 210);
-    const shortlistedVal = hasPipelineData ? internalShortlistedCount : (data?.pipeline_summary?.shortlisted ?? 96);
-    const interviewVal = hasPipelineData ? internalInterviewCount : (interviewCount || 42);
-    const selectedVal = hasPipelineData ? internalSelectedCount : (selectedCount || 14);
-    const joinedVal = hasPipelineData ? internalJoinedCount : 8; // fallback to match image
+    const appliedVal = internalPendingCount;
+    const shortlistedVal = internalShortlistedCount;
+    const interviewVal = internalInterviewCount;
+    const selectedVal = internalSelectedCount;
+    const joinedVal = internalJoinedCount;
 
-    const totalStats = appliedVal + shortlistedVal + interviewVal + selectedVal + joinedVal || 370;
+    const totalStats = appliedVal + shortlistedVal + interviewVal + selectedVal + joinedVal;
 
     return [
-      { name: "Applied", value: appliedVal, pct: `${Math.round((appliedVal / totalStats) * 100) || 58}%`, bg: "bg-blue-50", textColor: "text-blue-500", icon: Send },
-      { name: "Shortlisted", value: shortlistedVal, pct: `${Math.round((shortlistedVal / totalStats) * 100) || 27}%`, bg: "bg-purple-50", textColor: "text-purple-500", icon: UserCheck },
-      { name: "Interview", value: interviewVal, pct: `${Math.round((interviewVal / totalStats) * 100) || 12}%`, bg: "bg-amber-50", textColor: "text-amber-500", icon: Clock },
-      { name: "Selected", value: selectedVal, pct: `${Math.round((selectedVal / totalStats) * 100) || 4}%`, bg: "bg-emerald-50", textColor: "text-emerald-500", icon: CheckCircle2 },
-      { name: "Joined", value: joinedVal, pct: `${Math.round((joinedVal / totalStats) * 100) || 2}%`, bg: "bg-cyan-50", textColor: "text-cyan-500", icon: Users },
+      { name: "Applied", value: appliedVal, pct: `${totalStats > 0 ? Math.round((appliedVal / totalStats) * 100) : 0}%`, bg: "bg-blue-50", textColor: "text-blue-500", icon: Send },
+      { name: "Shortlisted", value: shortlistedVal, pct: `${totalStats > 0 ? Math.round((shortlistedVal / totalStats) * 100) : 0}%`, bg: "bg-purple-50", textColor: "text-purple-500", icon: UserCheck },
+      { name: "Interview", value: interviewVal, pct: `${totalStats > 0 ? Math.round((interviewVal / totalStats) * 100) : 0}%`, bg: "bg-amber-50", textColor: "text-amber-500", icon: Clock },
+      { name: "Selected", value: selectedVal, pct: `${totalStats > 0 ? Math.round((selectedVal / totalStats) * 100) : 0}%`, bg: "bg-emerald-50", textColor: "text-emerald-500", icon: CheckCircle2 },
+      { name: "Joined", value: joinedVal, pct: `${totalStats > 0 ? Math.round((joinedVal / totalStats) * 100) : 0}%`, bg: "bg-cyan-50", textColor: "text-cyan-500", icon: Users },
     ];
   }, [data, interviewCount, selectedCount, pipeline, jobRoles, internalCompanyId]);
 
@@ -597,20 +597,20 @@ const Dashboard = () => {
       }).length;
     }
 
-    const appliedVal = hasPipelineData ? clientPendingCount : 180;
-    const shortlistedVal = hasPipelineData ? clientShortlistedCount : 85;
-    const interviewVal = hasPipelineData ? clientInterviewCount : 38;
-    const selectedVal = hasPipelineData ? clientSelectedCount : 25;
-    const joinedVal = hasPipelineData ? clientJoinedCount : 15;
+    const appliedVal = clientPendingCount;
+    const shortlistedVal = clientShortlistedCount;
+    const interviewVal = clientInterviewCount;
+    const selectedVal = clientSelectedCount;
+    const joinedVal = clientJoinedCount;
 
     const totalStats = appliedVal + shortlistedVal + interviewVal + selectedVal + joinedVal;
 
     return [
-      { name: "Applied", value: appliedVal, pct: `${Math.round((appliedVal / totalStats) * 100)}%` },
-      { name: "Shortlisted", value: shortlistedVal, pct: `${Math.round((shortlistedVal / totalStats) * 100)}%` },
-      { name: "Interview", value: interviewVal, pct: `${Math.round((interviewVal / totalStats) * 100)}%` },
-      { name: "Selected", value: selectedVal, pct: `${Math.round((selectedVal / totalStats) * 100)}%` },
-      { name: "Joined", value: joinedVal, pct: `${Math.round((joinedVal / totalStats) * 100)}%` },
+      { name: "Applied", value: appliedVal, pct: `${totalStats > 0 ? Math.round((appliedVal / totalStats) * 100) : 0}%` },
+      { name: "Shortlisted", value: shortlistedVal, pct: `${totalStats > 0 ? Math.round((shortlistedVal / totalStats) * 100) : 0}%` },
+      { name: "Interview", value: interviewVal, pct: `${totalStats > 0 ? Math.round((interviewVal / totalStats) * 100) : 0}%` },
+      { name: "Selected", value: selectedVal, pct: `${totalStats > 0 ? Math.round((selectedVal / totalStats) * 100) : 0}%` },
+      { name: "Joined", value: joinedVal, pct: `${totalStats > 0 ? Math.round((joinedVal / totalStats) * 100) : 0}%` },
     ];
   }, [pipeline, jobRoles, internalCompanyId]);
 

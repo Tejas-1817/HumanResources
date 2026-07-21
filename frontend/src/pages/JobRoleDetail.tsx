@@ -58,7 +58,9 @@ const JobRoleDetail = () => {
   }
 
   
-  const filledCount = (pipeline?.["selected"] || []).length;
+  const selectedCount = (pipeline?.["selected"] || []).length;
+  const joinedCount = (pipeline?.["joined"] || []).length;
+  const filledCount = selectedCount + joinedCount;
   const positionsRequired = roleData.positions_required ?? 1;
   const isFullyStaffed = filledCount >= positionsRequired;
   const progressPercent = positionsRequired > 0 ? Math.min(100, Math.round((filledCount / positionsRequired) * 100)) : 100;

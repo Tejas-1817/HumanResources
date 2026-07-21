@@ -17,14 +17,18 @@ import {
   MoreVertical,
   Clock,
   Calendar,
+  Edit,
+  Trash2,
 } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { AddOpenPositionModal } from "@/components/modals/AddOpenPositionModal";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import {
   getCompanies,
   getJobRoles,
   getPipeline,
+  deleteCompany,
 } from "@/api/resumeiq";
 
 const container = {
@@ -96,6 +100,27 @@ const OpenPositions = () => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const queryClient = useQueryClient();
+  const [activeDropdown, setActiveDropdown] = useState<number | null>(null);
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => deleteCompany(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["companies"] });
+      toast.success("Company deleted successfully");
+      setActiveDropdown(null);
+    },
+    onError: () => {
+      toast.error("Failed to delete company");
+    }
+  });
+
+  const handleDelete = (id: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (window.confirm("Are you sure you want to delete this company? All associated job roles and applications will be deleted.")) {
+      deleteMutation.mutate(id);
+    }
+  };
 
   // ── Data queries ──────────────────────────────────────
   const { data: companies = [] } = useQuery({
@@ -106,8 +131,7 @@ const OpenPositions = () => {
   const { data: pipeline = {} as any } = useQuery({ queryKey: ["pipeline"], queryFn: () => getPipeline() });
 
   const [activeTabFilter, setActiveTabFilter] = useState<"all" | "active" | "on_hold" | "closed" | "recent">("all");
-  const [selectedIndustry, setSelectedIndustry] = useState("Industry");
-  const [selectedLocation, setSelectedLocation] = useState("Location");
+  const [selectedCompany, setSelectedCompany] = useState("Company");
   const [selectedStatus, setSelectedStatus] = useState("Status");
 
   const statsSummary = useMemo(() => {
@@ -212,9 +236,10 @@ const OpenPositions = () => {
       let totalFilled = 0;
       let totalRequired = 0;
       c.roles.forEach(r => {
-        const filled = (pipeline["selected"] || []).filter((app: any) => app.job_role_id === r.id).length;
+        const filled = (pipeline["selected"] || []).filter((app: any) => app.job_role_id === r.id).length +
+                       (pipeline["joined"] || []).filter((app: any) => app.job_role_id === r.id).length;
         totalFilled += filled;
-        totalRequired += (r.positions_required || 0);
+        totalRequired += (r.positions_required || 1);
       });
 
       return {
@@ -226,31 +251,9 @@ const OpenPositions = () => {
     });
   }, [companies, jobRoles, pipeline]);
 
-  const industries = useMemo(() => {
-    const set = new Set<string>([
-      "IT Services & Consulting",
-      "Software Development",
-      "Technology & Consulting"
-    ]);
-    enrichedCompanies.forEach(c => {
-      if (c.industry) set.add(c.industry);
-    });
-    return Array.from(set);
-  }, [enrichedCompanies]);
-
-  const locations = useMemo(() => {
-    const set = new Set<string>([
-      "Bengaluru, Karnataka",
-      "Teaneck, New Jersey, USA",
-      "Armonk, New York, USA",
-      "Redmond, Washington, USA",
-      "Mumbai, Maharashtra"
-    ]);
-    enrichedCompanies.forEach(c => {
-      if (c.location) set.add(c.location);
-    });
-    return Array.from(set);
-  }, [enrichedCompanies]);
+  const companyNames = useMemo(() => {
+    return companies.map(c => c.name);
+  }, [companies]);
 
   const statuses = ["Active", "On Hold", "Inactive"];
 
@@ -268,11 +271,8 @@ const OpenPositions = () => {
     }
 
     // Apply select filters
-    if (selectedIndustry !== "Industry") {
-      filteredList = filteredList.filter(c => c.industry === selectedIndustry);
-    }
-    if (selectedLocation !== "Location") {
-      filteredList = filteredList.filter(c => c.location === selectedLocation);
+    if (selectedCompany !== "Company") {
+      filteredList = filteredList.filter(c => c.name === selectedCompany);
     }
     if (selectedStatus !== "Status") {
       filteredList = filteredList.filter(c => c.status === selectedStatus);
@@ -285,7 +285,7 @@ const OpenPositions = () => {
       c.name.toLowerCase().includes(lower) ||
       c.roles.some(r => r.title.toLowerCase().includes(lower))
     );
-  }, [enrichedCompanies, activeTabFilter, selectedIndustry, selectedLocation, selectedStatus, searchQuery]);
+  }, [enrichedCompanies, activeTabFilter, selectedCompany, selectedStatus, searchQuery]);
 
   // Pagination Configuration
   const ITEMS_PER_PAGE = 5;
@@ -294,7 +294,7 @@ const OpenPositions = () => {
   // Reset to page 1 on filter changes
   useMemo(() => {
     setCurrentPage(1);
-  }, [activeTabFilter, selectedIndustry, selectedLocation, selectedStatus, searchQuery]);
+  }, [activeTabFilter, selectedCompany, selectedStatus, searchQuery]);
 
   const totalPages = Math.ceil(companyWithRoles.length / ITEMS_PER_PAGE);
 
@@ -354,7 +354,7 @@ const OpenPositions = () => {
                 className="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-semibold text-sm shadow-sm flex items-center justify-center gap-2 transition-all whitespace-nowrap"
               >
                 <Plus className="w-4 h-4" />
-                Add Partner Company
+                Add Position
               </button>
             </div>
           }
@@ -450,24 +450,13 @@ const OpenPositions = () => {
           </div>
 
           <select 
-            value={selectedIndustry}
-            onChange={(e) => setSelectedIndustry(e.target.value)}
+            value={selectedCompany}
+            onChange={(e) => setSelectedCompany(e.target.value)}
             className="bg-card border border-border text-muted-foreground text-xs rounded-xl px-4 py-2.5 focus:outline-none focus:ring-1 focus:ring-primary/50 font-semibold cursor-pointer"
           >
-            <option value="Industry">Industry</option>
-            {industries.map(ind => (
-              <option key={ind} value={ind}>{ind}</option>
-            ))}
-          </select>
-
-          <select 
-            value={selectedLocation}
-            onChange={(e) => setSelectedLocation(e.target.value)}
-            className="bg-card border border-border text-muted-foreground text-xs rounded-xl px-4 py-2.5 focus:outline-none focus:ring-1 focus:ring-primary/50 font-semibold cursor-pointer"
-          >
-            <option value="Location">Location</option>
-            {locations.map(loc => (
-              <option key={loc} value={loc}>{loc}</option>
+            <option value="Company">Company</option>
+            {companyNames.map(name => (
+              <option key={name} value={name}>{name}</option>
             ))}
           </select>
 
@@ -486,8 +475,7 @@ const OpenPositions = () => {
         <div className="flex items-center gap-2">
           <button 
             onClick={() => {
-              setSelectedIndustry("Industry");
-              setSelectedLocation("Location");
+              setSelectedCompany("Company");
               setSelectedStatus("Status");
               setSearchQuery("");
               setActiveTabFilter("all");
@@ -543,11 +531,6 @@ const OpenPositions = () => {
                             </span>
                           )}
                         </div>
-                        <p className="text-[10px] text-muted-foreground font-semibold mt-0.5">{c.industry}</p>
-                        <p className="text-[10px] text-muted-foreground/80 flex items-center gap-1 mt-1 font-medium">
-                          <MapPin className="w-3 h-3 text-muted-foreground/60 shrink-0" />
-                          {c.location}
-                        </p>
                       </div>
                     </div>
                     {renderStatusBadge(c.status)}
@@ -640,13 +623,6 @@ const OpenPositions = () => {
                             </span>
                           )}
                         </div>
-                        <p className="text-[10px] text-muted-foreground font-semibold mt-0.5">
-                          {c.industry}
-                        </p>
-                        <p className="text-[10px] text-muted-foreground/80 flex items-center gap-1 mt-1 font-medium">
-                          <MapPin className="w-3 h-3 text-muted-foreground/60 shrink-0" />
-                          {c.location}
-                        </p>
                       </div>
                     </div>
 
@@ -697,13 +673,34 @@ const OpenPositions = () => {
                       >
                         <Users className="w-3.5 h-3.5" />
                       </button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); }}
-                        className="p-1.5 rounded-lg border border-border/50 bg-card hover:bg-secondary/40 text-muted-foreground hover:text-foreground transition-colors shadow-sm"
-                        title="More Actions"
-                      >
-                        <MoreVertical className="w-3.5 h-3.5" />
-                      </button>
+                      <div className="relative">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setActiveDropdown(activeDropdown === c.id ? null : c.id); }}
+                          className="p-1.5 rounded-lg border border-border/50 bg-card hover:bg-secondary/40 text-muted-foreground hover:text-foreground transition-colors shadow-sm"
+                          title="More Actions"
+                        >
+                          <MoreVertical className="w-3.5 h-3.5" />
+                        </button>
+                        {activeDropdown === c.id && (
+                          <div className="absolute right-0 mt-2 w-32 bg-card border border-border rounded-lg shadow-lg overflow-hidden z-10 py-1">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setActiveDropdown(null); toast.info("Edit feature coming soon"); }}
+                              className="w-full px-4 py-2 text-left text-sm hover:bg-secondary/40 flex items-center gap-2"
+                            >
+                              <Edit className="w-3.5 h-3.5" />
+                              Edit
+                            </button>
+                            <button
+                              onClick={(e) => handleDelete(c.id, e)}
+                              className="w-full px-4 py-2 text-left text-sm hover:bg-secondary/40 text-destructive flex items-center gap-2 disabled:opacity-50"
+                              disabled={deleteMutation.isPending}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              Delete
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </motion.div>
                 );

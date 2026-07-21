@@ -277,8 +277,7 @@ const Companies = () => {
   const [companySearch, setCompanySearch] = useState("");
   const [globalSearch, setGlobalSearch] = useState("");
   const [mainTab, setMainTab] = useState("All Companies");
-  const [industryFilter, setIndustryFilter] = useState("Industry");
-  const [locationFilter, setLocationFilter] = useState("Location");
+  const [companyFilter, setCompanyFilter] = useState("Company");
   const [statusFilter, setStatusFilter] = useState("Status");
 
 
@@ -362,8 +361,9 @@ const Companies = () => {
 
     for (const r of jobRoles) {
       const cid = r.company_id;
-      const filledCount = (pipeline["selected"] || []).filter((app: any) => app.job_role_id === r.id).length;
-      const requiredCount = r.positions_required || 0;
+      const filledCount = (pipeline["selected"] || []).filter((app: any) => app.job_role_id === r.id).length + 
+                          (pipeline["joined"] || []).filter((app: any) => app.job_role_id === r.id).length;
+      const requiredCount = r.positions_required || 1;
 
       if (!m.has(cid)) {
         m.set(cid, { filled: 0, required: 0 });
@@ -455,14 +455,9 @@ const Companies = () => {
       }
 
       // 4. Dropdowns
-      let matchesIndustry = true;
-      if (industryFilter && industryFilter !== "All" && industryFilter !== "Industry") {
-        matchesIndustry = jobRoles.some(r => r.company_id === c.id && (r.department?.toLowerCase() === industryFilter.toLowerCase() || r.title.toLowerCase().includes(industryFilter.toLowerCase())));
-      }
-
-      let matchesLocation = true;
-      if (locationFilter && locationFilter !== "All" && locationFilter !== "Location") {
-        matchesLocation = c.location?.toLowerCase().includes(locationFilter.toLowerCase()) || false;
+      let matchesCompanyFilter = true;
+      if (companyFilter && companyFilter !== "All" && companyFilter !== "Company") {
+        matchesCompanyFilter = c.name === companyFilter;
       }
 
       let matchesStatus = true;
@@ -473,9 +468,9 @@ const Companies = () => {
         if (statusFilter === "Inactive") matchesStatus = !isActive;
       }
 
-      return matchesGlobal && matchesCompanySearch && matchesTab && matchesIndustry && matchesLocation && matchesStatus;
+      return matchesGlobal && matchesCompanySearch && matchesTab && matchesCompanyFilter && matchesStatus;
     });
-  }, [companies, globalSearch, companySearch, mainTab, industryFilter, locationFilter, statusFilter, jobRoles, openRoleCountByCompany, pipeline, roleById]);
+  }, [companies, globalSearch, companySearch, mainTab, companyFilter, statusFilter, jobRoles, openRoleCountByCompany, pipeline, roleById]);
 
   const getCompanyPipelineStage = (companyId: number) => {
     const companyApps: any[] = [];
@@ -515,7 +510,8 @@ const Companies = () => {
 
     // Map each role to include its computed status and filled count
     const rolesWithComputedStatus = roles.map(r => {
-      const filledCount = (pipeline["selected"] || []).filter((app: any) => app.job_role_id === r.id).length;
+      const filledCount = (pipeline["selected"] || []).filter((app: any) => app.job_role_id === r.id).length +
+                          (pipeline["joined"] || []).filter((app: any) => app.job_role_id === r.id).length;
 
       let computedStatus = "open";
       if (r.status.toLowerCase() === "closed") {
@@ -811,7 +807,7 @@ const Companies = () => {
   // Pipeline management handlers
   // ──────────────────────────────────────────────────────────
   const handleStageReorder = async (fromIdx: number, toIdx: number) => {
-    if (!pipelineRoleFilter || fromIdx === toIdx) return;
+    if (typeof pipelineRoleFilter !== "number" || fromIdx === toIdx) return;
     const role = roleById.get(pipelineRoleFilter);
     if (!role) return;
 
@@ -1071,9 +1067,14 @@ const Companies = () => {
                   className="w-full pl-9 pr-4 py-2 text-xs rounded-lg border border-border/50 bg-card text-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all shadow-sm"
                 />
               </div>
-              <button onClick={openAddCompany} className="px-4 py-2 rounded-lg bg-primary text-primary-foreground font-bold text-xs hover:bg-primary/90 transition-all flex items-center gap-1.5 shadow-sm">
-                <Plus className="w-3.5 h-3.5" /> Add Partner Company
-              </button>
+              <div className="flex items-center gap-2">
+                <button onClick={openAddRole} className="px-4 py-2 rounded-lg bg-secondary text-foreground font-bold text-xs hover:bg-secondary/80 transition-all flex items-center gap-1.5 shadow-sm border border-border/50">
+                  <Plus className="w-3.5 h-3.5" /> Add Position
+                </button>
+                <button onClick={openAddCompany} className="px-4 py-2 rounded-lg bg-primary text-primary-foreground font-bold text-xs hover:bg-primary/90 transition-all flex items-center gap-1.5 shadow-sm">
+                  <Plus className="w-3.5 h-3.5" /> Add Companies
+                </button>
+              </div>
             </div>
           )
         }
@@ -1150,29 +1151,14 @@ const Companies = () => {
 
             <div className="relative w-full md:w-44">
               <select
-                value={industryFilter}
-                onChange={(e) => setIndustryFilter(e.target.value)}
+                value={companyFilter}
+                onChange={(e) => setCompanyFilter(e.target.value)}
                 className="w-full pl-3 pr-8 py-2 rounded-xl bg-card border border-border/50 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all shadow-sm appearance-none cursor-pointer"
               >
-                {industries.map((ind) => (
-                  <option key={ind} value={ind}>
-                    {ind === "Industry" ? "Industry" : ind === "All" ? "All Industries" : ind}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
-            </div>
-
-            <div className="relative w-full md:w-44">
-              <select
-                value={locationFilter}
-                onChange={(e) => setLocationFilter(e.target.value)}
-                className="w-full pl-3 pr-8 py-2 rounded-xl bg-card border border-border/50 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all shadow-sm appearance-none cursor-pointer"
-              >
-                {locations.map((loc) => (
-                  <option key={loc} value={loc}>
-                    {loc === "Location" ? "Location" : loc === "All" ? "All Locations" : loc}
-                  </option>
+                <option value="Company">Company</option>
+                <option value="All">All Companies</option>
+                {companies.map((c) => (
+                  <option key={c.id} value={c.name}>{c.name}</option>
                 ))}
               </select>
               <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
@@ -1199,8 +1185,7 @@ const Companies = () => {
               setCompanySearch("");
               setGlobalSearch("");
               setMainTab("All Companies");
-              setIndustryFilter("Industry");
-              setLocationFilter("Location");
+              setCompanyFilter("Company");
               setStatusFilter("Status");
             }}
             className="px-4 py-2 rounded-xl border border-border/50 bg-card text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-secondary/40 transition-all flex items-center gap-1.5 shadow-sm"
@@ -1267,11 +1252,6 @@ const Companies = () => {
                               <span className="inline-flex items-center justify-center bg-blue-500 text-white rounded-full w-3.5 h-3.5 shrink-0 animate-fade-in" title="Verified Partner">
                                 <Check className="w-2.5 h-2.5 stroke-[3.5]" />
                               </span>
-                            </div>
-                            <p className="text-xs text-muted-foreground font-medium truncate mt-0.5">{dept}</p>
-                            <div className="flex items-center gap-1 text-[10px] text-muted-foreground mt-0.5">
-                              <MapPin className="w-3 h-3 text-muted-foreground/60 shrink-0" />
-                              <span className="truncate">{c.location || "Armonk, New York, USA"}</span>
                             </div>
                           </div>
                         </div>
@@ -1391,8 +1371,7 @@ const Companies = () => {
                           setCompanySearch("");
                           setGlobalSearch("");
                           setMainTab("All Companies");
-                          setIndustryFilter("Industry");
-                          setLocationFilter("Location");
+                          setCompanyFilter("Company");
                           setStatusFilter("Status");
                         }}
                         className="mt-4 text-xs text-primary font-bold hover:underline"
@@ -1570,8 +1549,8 @@ const Companies = () => {
                               const tags = getRoleTags(r);
                               const iconDetails = getRoleIconDetails(r.title);
                               const IconComponent = iconDetails.icon;
-                              const filledCount = (pipeline["selected"] || []).filter((app: any) => app.job_role_id === r.id).length;
-                              const openingsCount = Math.max(0, (r.positions_required || 1) - filledCount);
+                              const filledCount = r.filledCount;
+                              const openingsCount = r.positions_required || 1;
                               const isGeneral = r.title.toLowerCase().includes("general");
 
                               return (
@@ -1810,7 +1789,7 @@ const Companies = () => {
                       ))}
                       {pipelineRoleFilter && pipelineRoleFilter !== "all" && (
                         <button
-                          onClick={() => handleAddStage(pipelineRoleFilter)}
+                          onClick={() => typeof pipelineRoleFilter === "number" && handleAddStage(pipelineRoleFilter)}
                           className="px-3 py-2 rounded-lg text-xs font-bold bg-primary/10 text-primary hover:bg-primary/20 transition-all flex items-center gap-1 ml-4 border border-primary/20"
                         >
                           <Plus className="w-3 h-3" /> Add Stage
@@ -1869,7 +1848,7 @@ const Companies = () => {
                                 <span className="text-[10px] text-primary ml-auto bg-primary/10 px-2.5 py-1 rounded-full font-black ring-1 ring-primary/20">{col.cards.length}</span>
                                 {pipelineRoleFilter && pipelineRoleFilter !== "all" && (
                                   <button
-                                    onClick={(e) => { e.stopPropagation(); handleRemoveStage(pipelineRoleFilter, col.id); }}
+                                    onClick={(e) => { e.stopPropagation(); typeof pipelineRoleFilter === "number" && handleRemoveStage(pipelineRoleFilter, col.id); }}
                                     className="ml-2 p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors opacity-0 group-hover:opacity-100"
                                   >
                                     <X className="w-3.5 h-3.5" />

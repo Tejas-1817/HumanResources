@@ -11,13 +11,13 @@ import { BriefcaseBusiness, Loader2 } from "lucide-react";
 const formSchema = z.object({
   company_id: z.string().min(1, "Company is required"),
   title: z.string().min(3, "Title must be at least 3 characters"),
-  skills: z.string().min(1, "Skills are required"),
+  skills: z.string().optional(),
   experience_required: z.string().optional(),
   work_mode: z.string().min(1, "Employment type is required"),
   location: z.string().min(1, "Location is required"),
   positions_required: z.string().min(1, "Number of openings is required"),
   salary_range: z.string().optional(),
-  description: z.string().min(10, "Description must be at least 10 characters"),
+  description: z.string().optional(),
   status: z.string().default("open"),
 });
 
@@ -49,7 +49,11 @@ export const AddOpenPositionModal = ({ open, onClose }: AddOpenPositionModalProp
       return createJobRole({
         company_id: parseInt(values.company_id),
         title: values.title,
-        description: `Skills: ${values.skills}\n\n${values.description}${values.salary_range ? `\n\nSalary Range: ${values.salary_range}` : ""}`,
+        description: [
+          values.skills ? `Skills: ${values.skills}` : "",
+          values.description || "",
+          values.salary_range ? `Salary Range: ${values.salary_range}` : ""
+        ].filter(Boolean).join("\n\n") || "No description provided.",
         status: values.status,
         positions_required: parseInt(values.positions_required),
         location: values.location,
@@ -104,12 +108,17 @@ export const AddOpenPositionModal = ({ open, onClose }: AddOpenPositionModalProp
         </div>
 
         <div className="space-y-1.5">
-          <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Skills Required</label>
-          <input
-            {...register("skills")}
-            placeholder="e.g. React, TypeScript, Tailwind"
-            className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all"
-          />
+          <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex justify-between">
+            <span>Skills Required</span>
+            <span className="font-normal opacity-70">Optional</span>
+          </label>
+          <div className="relative">
+            <input
+              {...register("skills")}
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
+              placeholder="e.g. React, Node.js, Python"
+            />
+          </div>
           {errors.skills && <p className="text-[10px] text-destructive font-bold">{errors.skills.message}</p>}
         </div>
 
@@ -168,12 +177,14 @@ export const AddOpenPositionModal = ({ open, onClose }: AddOpenPositionModalProp
         </div>
 
         <div className="space-y-1.5">
-          <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Job Description</label>
+          <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex justify-between">
+            <span>Job Description</span>
+            <span className="font-normal opacity-70">Optional</span>
+          </label>
           <textarea
             {...register("description")}
-            rows={4}
-            placeholder="Describe the role and responsibilities..."
-            className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all resize-none"
+            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors min-h-[100px] resize-y"
+            placeholder="Detailed job description and responsibilities..."
           />
           {errors.description && <p className="text-[10px] text-destructive font-bold">{errors.description.message}</p>}
         </div>

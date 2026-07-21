@@ -12,6 +12,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { getVendorJobs, vendorUploadResume } from "@/api/resumeiq";
 import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 
 const VendorUpload = () => {
     const [searchParams] = useSearchParams();
@@ -24,6 +25,7 @@ const VendorUpload = () => {
     const [files, setFiles] = useState<File[]>([]);
     const [uploading, setUploading] = useState(false);
     const [results, setResults] = useState<any[]>([]);
+    const queryClient = useQueryClient();
 
     const { data: jobs = [] } = useQuery({
         queryKey: ["vendor-jobs"],
@@ -64,7 +66,7 @@ const VendorUpload = () => {
                 return {
                     filename: file.name,
                     success: false,
-                    error: err.response?.data?.detail || "Upload failed"
+                    error: err.response?.data?.detail || err.response?.data?.message || "Upload failed — check if you are assigned to this job"
                 };
             }
         });
@@ -74,9 +76,15 @@ const VendorUpload = () => {
         setUploading(false);
 
         const successCount = allResults.filter(r => r.success).length;
+        const failCount = allResults.filter(r => !r.success).length;
         if (successCount > 0) {
-            toast.success(`Successfully uploaded ${successCount} candidates`);
+            toast.success(`Successfully synced ${successCount} candidate${successCount > 1 ? 's' : ''}`);
+            queryClient.invalidateQueries({ queryKey: ["vendor-stats"] });
+            queryClient.invalidateQueries({ queryKey: ["vendor-candidates"] });
             setFiles([]);
+        }
+        if (failCount > 0 && successCount === 0) {
+            toast.error(`Failed to sync ${failCount} file${failCount > 1 ? 's' : ''}. Check the results below.`);
         }
     };
 
@@ -98,7 +106,14 @@ const VendorUpload = () => {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {jobs.map((job) => (
+                        {jobs.length === 0 ? (
+                            <div className="col-span-3 py-8 text-center">
+                                <Briefcase className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
+                                <p className="text-sm font-bold text-muted-foreground">No jobs assigned yet</p>
+                                <p className="text-xs text-muted-foreground/70 mt-1">Contact your HR admin to get assigned to job openings before uploading candidates.</p>
+                            </div>
+                        ) : (
+                        jobs.map((job) => (
                             <button
                                 key={job.id}
                                 onClick={() => setSelectedJobId(job.id)}
@@ -127,7 +142,8 @@ const VendorUpload = () => {
                                     <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent pointer-events-none" />
                                 )}
                             </button>
-                        ))}
+                        ))
+                        )}
                     </div>
                 </div>
 
@@ -229,7 +245,7 @@ const VendorUpload = () => {
                     </button>
                     <button
                         onClick={handleUpload}
-                        disabled={uploading || files.length === 0 || !selectedJobId}
+                        disabled={uploading}
                         className="relative group px-10 py-4 rounded-2xl bg-primary text-primary-foreground font-black text-xs uppercase tracking-widest shadow-2xl shadow-primary/30 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:scale-100 overflow-hidden"
                     >
                         <div className="relative z-10 flex items-center gap-2">

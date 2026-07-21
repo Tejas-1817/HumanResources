@@ -614,30 +614,39 @@ export default function InternalHiring() {
   }, [jobRoles]);
 
   // Filtered roles for Altzor Digital Solutions
+  // NOTE: filledCount logic matches JobRoleDetail.tsx exactly — only "selected" counts as filled.
   const companyRoles = useMemo(() => {
     if (!selectedCompanyId) return [];
     const roles = jobRoles.filter((r) => r.company_id === selectedCompanyId);
-    
-    // Map each role to include its computed status and filled count
+
     const rolesWithComputedStatus = roles.map(r => {
-      const filledCount = (pipeline["selected"] || []).filter((app: any) => app.job_role_id === r.id).length;
-      
+      // Match JobRoleDetail.tsx line 61: filledCount = pipeline["selected"] filtered by role
+      const selectedCount = (pipeline["selected"] || []).filter((app: any) => app.job_role_id === r.id).length;
+      const joinedCount = (pipeline["joined"] || []).filter((app: any) => app.job_role_id === r.id).length;
+      // filledCount = selected (same as View Details page)
+      const filledCount = selectedCount + joinedCount;
+      // positions_required comes directly from the DB via getJobRoles()
+      const positionsRequired = r.positions_required ?? 1;
+
       let computedStatus = "open";
       if (r.status.toLowerCase() === "closed") {
         computedStatus = "closed";
       } else {
         const inProgressStages = ["pending", "shortlisted", "interview_scheduled", "interviewed", "on_hold"];
-        const hasActiveCandidates = inProgressStages.some(stage => 
+        const hasActiveCandidates = inProgressStages.some(stage =>
           (pipeline[stage] || []).some((app: any) => app.job_role_id === r.id)
         );
         if (hasActiveCandidates) {
           computedStatus = "in progress";
         }
       }
-      
+
       return {
         ...r,
         filledCount,
+        joinedCount,
+        selectedCount,
+        positionsRequired,
         computedStatus
       };
     });
@@ -1372,7 +1381,8 @@ export default function InternalHiring() {
                         const tags = getRoleTags(r);
                         const iconDetails = getRoleIconDetails(r.title);
                         const IconComponent = iconDetails.icon;
-                        const openingsCount = Math.max(0, (r.positions_required || 1) - r.filledCount);
+                        // Openings = total positions needed
+                        const openingsCount = r.positionsRequired;
                         const isGeneral = r.title.toLowerCase().includes("general");
 
                         return (
@@ -1404,7 +1414,10 @@ export default function InternalHiring() {
                                     </span>
                                   </div>
                                   <p className="text-[11px] text-muted-foreground mt-0.5">
-                                    Filled: {r.filledCount} / {r.positions_required}
+                                    Filled: {r.filledCount} / {r.positionsRequired}
+                                    {r.joinedCount > 0 && (
+                                      <span className="ml-1 text-emerald-500">({r.joinedCount} joined)</span>
+                                    )}
                                   </p>
                                   {isGeneral ? (
                                     <span className="text-[11px] text-muted-foreground/80 mt-1 block font-medium">
@@ -1427,8 +1440,14 @@ export default function InternalHiring() {
                                 {r.department || "Operations"}
                               </span>
                             </td>
-                            <td className="p-4 text-center font-bold text-foreground">
-                              {openingsCount}
+                            <td className="p-4 text-center">
+                              <span className={`inline-flex items-center justify-center min-w-[28px] px-2 py-0.5 rounded-full text-sm font-bold ${
+                                r.positionsRequired > 0
+                                  ? "bg-blue-50 text-blue-700 border border-blue-200"
+                                  : "bg-slate-100 text-slate-400 border border-slate-200"
+                              }`}>
+                                {r.positionsRequired}
+                              </span>
                             </td>
                             <td className="p-4">
                               <StatusBadge status={r.computedStatus} className="scale-90 origin-left" />
