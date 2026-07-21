@@ -34,6 +34,15 @@ class SkillFrequency(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class OpenPositionItem(BaseModel):
+    id: int
+    company: str
+    role: str
+    positions: int
+    count: int  # total applicants across all statuses
+    status: str
+
+
 class ActivityFeedItem(BaseModel):
     id: int
     text: str
@@ -53,5 +62,6 @@ class DashboardStatsResponse(BaseModel):
     recent_uploads: list[RecentUploadItem]
     activity_feed: list[ActivityFeedItem] | None = None
     pipeline_summary: PipelineSummaryItem
+    open_positions: list[OpenPositionItem] = []
 
     model_config = ConfigDict(from_attributes=True)

@@ -314,20 +314,12 @@ const Candidates = () => {
                     )}
                   </div>
                 {!unassignedOnly && (
-                  <>
-                    <div className="space-y-1">
-                      <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Source</p>
-                      <p className="text-xs font-semibold text-foreground truncate">
-                        {c.source_label}
-                      </p>
-                    </div>
-                    <div className="col-span-3 pt-2 border-t border-border/50 mt-1 flex items-center justify-between">
-                      <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Mark Sent</span>
-                      <span className={`text-[10px] font-bold uppercase tracking-wider ${getMarkSentStatus(c.id) === "Sent" ? "text-success" : "text-muted-foreground"}`}>
-                        {getMarkSentStatus(c.id)}
-                      </span>
-                    </div>
-                  </>
+                  <div className="space-y-1">
+                    <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Source</p>
+                    <p className="text-xs font-semibold text-foreground truncate">
+                      {c.source_label}
+                    </p>
+                  </div>
                 )}
                 </div>
 
@@ -360,7 +352,6 @@ const Candidates = () => {
                     <>
                       <th className="py-3 px-4 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Source</th>
                       <th className="py-3 px-4 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Applied To</th>
-                      <th className="py-3 px-4 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Mark Sent</th>
                     </>
                   )}
                   <th className="py-3 px-4 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Actions</th>
@@ -369,7 +360,7 @@ const Candidates = () => {
               <tbody className="divide-y divide-border/50">
                 {isLoading ? (
                   <tr>
-                    <td colSpan={unassignedOnly ? 5 : 8} className="py-20 text-center animate-pulse">
+                    <td colSpan={unassignedOnly ? 5 : 7} className="py-20 text-center animate-pulse">
                       <div className="flex flex-col items-center gap-3">
                         <User className="w-8 h-8 text-primary/20" />
                         <p className="text-sm text-muted-foreground font-medium">Retrieving talent data...</p>
@@ -378,7 +369,7 @@ const Candidates = () => {
                   </tr>
                 ) : candidates.length === 0 ? (
                   <tr>
-                    <td colSpan={unassignedOnly ? 5 : 8} className="py-20 text-center">
+                    <td colSpan={unassignedOnly ? 5 : 7} className="py-20 text-center">
                       <p className="text-sm text-muted-foreground italic">No candidates found matching your criteria.</p>
                     </td>
                   </tr>
@@ -457,11 +448,6 @@ const Candidates = () => {
                                 Available
                               </span>
                             )}
-                          </td>
-                          <td className="py-3 px-4">
-                            <span className={`text-[10px] font-bold uppercase tracking-wider ${getMarkSentStatus(c.id) === "Sent" ? "text-success" : "text-muted-foreground"}`}>
-                              {getMarkSentStatus(c.id)}
-                            </span>
                           </td>
                         </>
                       )}

@@ -106,6 +106,9 @@ const OpenPositions = () => {
   const { data: pipeline = {} as any } = useQuery({ queryKey: ["pipeline"], queryFn: () => getPipeline() });
 
   const [activeTabFilter, setActiveTabFilter] = useState<"all" | "active" | "on_hold" | "closed" | "recent">("all");
+  const [selectedIndustry, setSelectedIndustry] = useState("Industry");
+  const [selectedLocation, setSelectedLocation] = useState("Location");
+  const [selectedStatus, setSelectedStatus] = useState("Status");
 
   const statsSummary = useMemo(() => {
     const partnerCompanyIds = companies.map(c => c.id);
@@ -139,8 +142,8 @@ const OpenPositions = () => {
     };
   }, [companies, jobRoles, pipeline]);
 
-  const companyWithRoles = useMemo(() => {
-    const map = new Map<number, { id: number; name: string; roles: any[]; totalApps: number; created_at: string }>();
+  const enrichedCompanies = useMemo(() => {
+    const map = new Map<number, { id: number; name: string; location: string; roles: any[]; totalApps: number; created_at: string }>();
 
     // Initialize map with companies
     companies.forEach(c => {
@@ -171,7 +174,7 @@ const OpenPositions = () => {
     let list = Array.from(map.values());
 
     // Enrich with computed status and details
-    const enrichedList = list.map(c => {
+    return list.map(c => {
       const nameKey = c.name.toLowerCase().trim();
       
       // Look up well-known info or fallback
@@ -221,17 +224,58 @@ const OpenPositions = () => {
         totalRequired
       };
     });
+  }, [companies, jobRoles, pipeline]);
 
+  const industries = useMemo(() => {
+    const set = new Set<string>([
+      "IT Services & Consulting",
+      "Software Development",
+      "Technology & Consulting"
+    ]);
+    enrichedCompanies.forEach(c => {
+      if (c.industry) set.add(c.industry);
+    });
+    return Array.from(set);
+  }, [enrichedCompanies]);
+
+  const locations = useMemo(() => {
+    const set = new Set<string>([
+      "Bengaluru, Karnataka",
+      "Teaneck, New Jersey, USA",
+      "Armonk, New York, USA",
+      "Redmond, Washington, USA",
+      "Mumbai, Maharashtra"
+    ]);
+    enrichedCompanies.forEach(c => {
+      if (c.location) set.add(c.location);
+    });
+    return Array.from(set);
+  }, [enrichedCompanies]);
+
+  const statuses = ["Active", "On Hold", "Inactive"];
+
+  const companyWithRoles = useMemo(() => {
     // Apply tab filters
-    let filteredList = enrichedList;
+    let filteredList = enrichedCompanies;
     if (activeTabFilter === "active") {
-      filteredList = enrichedList.filter(c => c.roles.length > 0);
+      filteredList = enrichedCompanies.filter(c => c.roles.length > 0);
     } else if (activeTabFilter === "on_hold") {
-      filteredList = enrichedList.filter(c => c.status === "On Hold");
+      filteredList = enrichedCompanies.filter(c => c.status === "On Hold");
     } else if (activeTabFilter === "closed") {
-      filteredList = enrichedList.filter(c => c.roles.length === 0);
+      filteredList = enrichedCompanies.filter(c => c.roles.length === 0);
     } else if (activeTabFilter === "recent") {
-      filteredList = [...enrichedList].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      filteredList = [...enrichedCompanies].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    }
+
+    // Apply select filters
+    if (selectedIndustry !== "Industry") {
+      filteredList = filteredList.filter(c => c.industry === selectedIndustry);
+    }
+    if (selectedLocation !== "Location") {
+      filteredList = filteredList.filter(c => c.location === selectedLocation);
+    }
+    if (selectedStatus !== "Status") {
+      filteredList = filteredList.filter(c => c.status === selectedStatus);
     }
 
     // Apply search filter (if any)
@@ -241,7 +285,23 @@ const OpenPositions = () => {
       c.name.toLowerCase().includes(lower) ||
       c.roles.some(r => r.title.toLowerCase().includes(lower))
     );
-  }, [companies, jobRoles, pipeline, searchQuery, activeTabFilter]);
+  }, [enrichedCompanies, activeTabFilter, selectedIndustry, selectedLocation, selectedStatus, searchQuery]);
+
+  // Pagination Configuration
+  const ITEMS_PER_PAGE = 5;
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Reset to page 1 on filter changes
+  useMemo(() => {
+    setCurrentPage(1);
+  }, [activeTabFilter, selectedIndustry, selectedLocation, selectedStatus, searchQuery]);
+
+  const totalPages = Math.ceil(companyWithRoles.length / ITEMS_PER_PAGE);
+
+  const paginatedCompanies = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return companyWithRoles.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [companyWithRoles, currentPage]);
 
   const handleViewCompanyTab = (e: React.MouseEvent, companyId: number, tab: "roles" | "candidates") => {
     e.stopPropagation();
@@ -389,34 +449,53 @@ const OpenPositions = () => {
             />
           </div>
 
-          <select className="bg-card border border-border text-muted-foreground text-xs rounded-xl px-4 py-2.5 focus:outline-none focus:ring-1 focus:ring-primary/50 font-semibold cursor-pointer">
-            <option>Industry</option>
-            <option>IT Services & Consulting</option>
-            <option>Software Development</option>
-            <option>Technology & Consulting</option>
+          <select 
+            value={selectedIndustry}
+            onChange={(e) => setSelectedIndustry(e.target.value)}
+            className="bg-card border border-border text-muted-foreground text-xs rounded-xl px-4 py-2.5 focus:outline-none focus:ring-1 focus:ring-primary/50 font-semibold cursor-pointer"
+          >
+            <option value="Industry">Industry</option>
+            {industries.map(ind => (
+              <option key={ind} value={ind}>{ind}</option>
+            ))}
           </select>
 
-          <select className="bg-card border border-border text-muted-foreground text-xs rounded-xl px-4 py-2.5 focus:outline-none focus:ring-1 focus:ring-primary/50 font-semibold cursor-pointer">
-            <option>Location</option>
-            <option>Bengaluru, Karnataka</option>
-            <option>Teaneck, New Jersey, USA</option>
-            <option>Armonk, New York, USA</option>
-            <option>Redmond, Washington, USA</option>
-            <option>Mumbai, Maharashtra</option>
+          <select 
+            value={selectedLocation}
+            onChange={(e) => setSelectedLocation(e.target.value)}
+            className="bg-card border border-border text-muted-foreground text-xs rounded-xl px-4 py-2.5 focus:outline-none focus:ring-1 focus:ring-primary/50 font-semibold cursor-pointer"
+          >
+            <option value="Location">Location</option>
+            {locations.map(loc => (
+              <option key={loc} value={loc}>{loc}</option>
+            ))}
           </select>
 
-          <select className="bg-card border border-border text-muted-foreground text-xs rounded-xl px-4 py-2.5 focus:outline-none focus:ring-1 focus:ring-primary/50 font-semibold cursor-pointer">
-            <option>Status</option>
-            <option>Active</option>
-            <option>On Hold</option>
-            <option>Inactive</option>
+          <select 
+            value={selectedStatus}
+            onChange={(e) => setSelectedStatus(e.target.value)}
+            className="bg-card border border-border text-muted-foreground text-xs rounded-xl px-4 py-2.5 focus:outline-none focus:ring-1 focus:ring-primary/50 font-semibold cursor-pointer"
+          >
+            <option value="Status">Status</option>
+            {statuses.map(stat => (
+              <option key={stat} value={stat}>{stat}</option>
+            ))}
           </select>
         </div>
 
         <div className="flex items-center gap-2">
-          <button className="px-4 py-2.5 rounded-xl bg-card border border-border text-muted-foreground text-xs font-semibold hover:bg-secondary/40 hover:text-foreground transition-all flex items-center gap-2">
+          <button 
+            onClick={() => {
+              setSelectedIndustry("Industry");
+              setSelectedLocation("Location");
+              setSelectedStatus("Status");
+              setSearchQuery("");
+              setActiveTabFilter("all");
+            }}
+            className="px-4 py-2.5 rounded-xl bg-card border border-border text-muted-foreground text-xs font-semibold hover:bg-secondary/40 hover:text-foreground transition-all flex items-center gap-2"
+          >
             <Filter className="w-3.5 h-3.5" />
-            Filters
+            Clear Filters
           </button>
           <button className="px-4 py-2.5 rounded-xl bg-card border border-border text-muted-foreground text-xs font-semibold hover:bg-secondary/40 hover:text-foreground transition-all flex items-center gap-2">
             <Download className="w-3.5 h-3.5" />
@@ -441,7 +520,7 @@ const OpenPositions = () => {
         <div className="space-y-4">
           {/* Mobile View (Cards) */}
           <div className="grid grid-cols-1 gap-4 md:hidden">
-            {companyWithRoles.map((c) => {
+            {paginatedCompanies.map((c) => {
               const totalActiveRoles = c.roles.length;
               const percent = c.totalRequired > 0 ? Math.min(100, Math.round((c.totalFilled / c.totalRequired) * 100)) : 0;
 
@@ -536,7 +615,7 @@ const OpenPositions = () => {
             </div>
 
             <div className="divide-y divide-border/50">
-              {companyWithRoles.map((c) => {
+              {paginatedCompanies.map((c) => {
                 const totalActiveRoles = c.roles.length;
                 const percent = c.totalRequired > 0 ? Math.min(100, Math.round((c.totalFilled / c.totalRequired) * 100)) : 0;
 
@@ -634,16 +713,39 @@ const OpenPositions = () => {
             {/* Pagination Footer */}
             <div className="flex items-center justify-between p-4 border-t border-border/50 bg-secondary/10 rounded-b-xl">
               <p className="text-xs text-muted-foreground font-medium">
-                Showing 1 to {companyWithRoles.length} of {companies.length} companies
+                Showing {companyWithRoles.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0} to {Math.min(currentPage * ITEMS_PER_PAGE, companyWithRoles.length)} of {companyWithRoles.length} companies
               </p>
-              <div className="flex items-center gap-1">
-                <button className="p-1.5 rounded-lg border border-border bg-card hover:bg-secondary/40 text-muted-foreground disabled:opacity-40" disabled>&lt;</button>
-                <button className="px-3 py-1.5 rounded-lg text-xs font-bold bg-blue-600 text-white shadow-sm">1</button>
-                <button className="px-3 py-1.5 rounded-lg text-xs font-medium bg-card border border-border hover:bg-secondary/40 text-muted-foreground">2</button>
-                <button className="px-3 py-1.5 rounded-lg text-xs font-medium bg-card border border-border hover:bg-secondary/40 text-muted-foreground">3</button>
-                <button className="px-3 py-1.5 rounded-lg text-xs font-medium bg-card border border-border hover:bg-secondary/40 text-muted-foreground">4</button>
-                <button className="p-1.5 rounded-lg border border-border bg-card hover:bg-secondary/40 text-muted-foreground hover:text-foreground">&gt;</button>
-              </div>
+              {totalPages > 1 && (
+                <div className="flex items-center gap-1">
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); setCurrentPage(prev => Math.max(prev - 1, 1)); }}
+                    className="p-1.5 rounded-lg border border-border bg-card hover:bg-secondary/40 text-muted-foreground disabled:opacity-40" 
+                    disabled={currentPage === 1}
+                  >
+                    &lt;
+                  </button>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                    <button
+                      key={page}
+                      onClick={(e) => { e.stopPropagation(); setCurrentPage(page); }}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold ${
+                        currentPage === page
+                          ? "bg-blue-600 text-white shadow-sm"
+                          : "bg-card border border-border hover:bg-secondary/40 text-muted-foreground"
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  ))}
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); setCurrentPage(prev => Math.min(prev + 1, totalPages)); }}
+                    className="p-1.5 rounded-lg border border-border bg-card hover:bg-secondary/40 text-muted-foreground hover:text-foreground disabled:opacity-40"
+                    disabled={currentPage === totalPages}
+                  >
+                    &gt;
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>

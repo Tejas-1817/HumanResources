@@ -415,6 +415,28 @@ const Dashboard = () => {
     enabled: debouncedQuery.length >= 2,
   });
 
+  // Client-side filter companies by query (already loaded)
+  const filteredCompaniesSearch = useMemo(() => {
+    if (debouncedQuery.length < 2) return [];
+    const q = debouncedQuery.toLowerCase();
+    return companies
+      .filter((c) => c.name.toLowerCase().includes(q))
+      .slice(0, 4);
+  }, [companies, debouncedQuery]);
+
+  // Client-side filter job roles by title or company name
+  const filteredJobRolesSearch = useMemo(() => {
+    if (debouncedQuery.length < 2) return [];
+    const q = debouncedQuery.toLowerCase();
+    return jobRoles
+      .filter(
+        (r) =>
+          r.title.toLowerCase().includes(q) ||
+          (r.company_name && r.company_name.toLowerCase().includes(q))
+      )
+      .slice(0, 4);
+  }, [jobRoles, debouncedQuery]);
+
   // ── Derived statistics & helpers ─────────────────────
   const benchCount = benchData?.total ?? 0;
 
@@ -750,27 +772,21 @@ const Dashboard = () => {
 
   // ── Open Positions Mapper ─────────────────────────────
   const openPositionsList = useMemo(() => {
-    const openRoles = jobRoles.filter((r) => r.status === "open");
-    if (openRoles.length === 0) {
-      return [
-        { id: 1, company: "Altzor", role: "Senior React Developer", positions: 5, count: 12, status: "Active" },
-        { id: 2, company: "Tejas-1817", role: "Data Analyst", positions: 2, count: 36, status: "Active" },
-        { id: 3, company: "Microsoft", role: "Power Platform Developer", positions: 3, count: 18, status: "Active" },
-        { id: 4, company: "Design Agency", role: "UI/UX Designer", positions: 1, count: 15, status: "Active" },
-      ];
+    // Prefer the accurate counts returned by the dashboard stats API
+    if (data?.open_positions && data.open_positions.length > 0) {
+      return data.open_positions;
     }
-    return openRoles.slice(0, 4).map((r) => {
-      const applicantCount = getApplicantCount(r.id) || (12 + (r.id % 5) * 3);
-      return {
-        id: r.id,
-        company: r.company_name || "Altzor",
-        role: r.title,
-        positions: r.positions_required || 1,
-        count: applicantCount,
-        status: "Active",
-      };
-    });
-  }, [jobRoles, pipeline]);
+    // Fallback: derive from jobRoles (counts will be 0 until pipeline loads)
+    const openRoles = jobRoles.filter((r) => r.status === "open");
+    return openRoles.map((r) => ({
+      id: r.id,
+      company: r.company_name || "Unknown",
+      role: r.title,
+      positions: r.positions_required || 1,
+      count: getApplicantCount(r.id),
+      status: "Active",
+    }));
+  }, [data, jobRoles, pipeline]);
 
   // ── Time helper function ──────────────────────────────
   const formatTimeAgo = (dateStr: string) => {
@@ -954,32 +970,89 @@ const Dashboard = () => {
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-2">Top Matches</span>
                     {isSearching && <div className="w-3 h-3 border-2 border-blue-600/30 border-t-blue-600 rounded-full animate-spin" />}
                   </div>
-                  <div className="max-h-80 overflow-y-auto">
-                    {searchResults?.items.length === 0 ? (
-                      <div className="p-4 text-center">
-                        <p className="text-xs text-slate-400 italic">No candidates found for "{debouncedQuery}"</p>
-                      </div>
-                    ) : (
-                      searchResults?.items.map((candidate) => (
-                        <button
-                          key={candidate.id}
-                          onClick={() => { navigate(`/candidates/${candidate.id}`); setShowResults(false); }}
-                          className="w-full p-3 flex items-center gap-3 hover:bg-slate-50 transition-colors border-b border-slate-100/50 last:border-0 text-left group/result"
-                        >
-                          <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-[10px] font-bold text-blue-600 group-hover/result:bg-blue-50 transition-colors">
-                            {candidate.name?.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2) || "??"}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs font-bold text-slate-800 truncate group-hover/result:text-blue-600 transition-colors">{candidate.name}</p>
-                            <div className="flex items-center gap-2 mt-0.5">
-                              <span className="text-[9px] text-slate-400 flex items-center gap-1">
-                                <Mail className="w-2.5 h-2.5" /> {candidate.email || "No email"}
-                              </span>
-                              <span className="text-[9px] text-blue-600/50 font-bold uppercase tracking-wider">• {candidate.experience_years}y Exp</span>
+                  <div className="max-h-80 overflow-y-auto divide-y divide-slate-100">
+
+                    {/* Companies section */}
+                    {filteredCompaniesSearch.length > 0 && (
+                      <div>
+                        <div className="p-2 bg-slate-50/50 text-[9px] font-black uppercase text-slate-400 tracking-wider">Companies</div>
+                        {filteredCompaniesSearch.map(c => (
+                          <button
+                            key={`comp-${c.id}`}
+                            onClick={() => { navigate(`/companies?id=${c.id}`); setShowResults(false); }}
+                            className="w-full p-2.5 flex items-center gap-3 hover:bg-slate-50 transition-colors text-left"
+                          >
+                            <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-xs">
+                              {c.name.charAt(0).toUpperCase()}
                             </div>
-                          </div>
-                        </button>
-                      ))
+                            <div>
+                              <p className="text-xs font-bold text-slate-800">{c.name}</p>
+                              <p className="text-[9px] text-slate-400 font-semibold">Company</p>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Job Roles section */}
+                    {filteredJobRolesSearch.length > 0 && (
+                      <div>
+                        <div className="p-2 bg-slate-50/50 text-[9px] font-black uppercase text-slate-400 tracking-wider">Jobs</div>
+                        {filteredJobRolesSearch.map(r => (
+                          <button
+                            key={`role-${r.id}`}
+                            onClick={() => { navigate(`/job-roles/${r.id}`); setShowResults(false); }}
+                            className="w-full p-2.5 flex items-center gap-3 hover:bg-slate-50 transition-colors text-left"
+                          >
+                            <div className="w-8 h-8 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center font-bold text-xs">
+                              J
+                            </div>
+                            <div>
+                              <p className="text-xs font-bold text-slate-800">{r.title}</p>
+                              <p className="text-[9px] text-slate-400 font-semibold">{r.company_name || "Altzor"}</p>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Candidates section */}
+                    {(searchResults?.items && searchResults.items.length > 0) && (
+                      <div>
+                        <div className="p-2 bg-slate-50/50 text-[9px] font-black uppercase text-slate-400 tracking-wider">Candidates</div>
+                        {searchResults.items.map((candidate) => (
+                          <button
+                            key={`cand-${candidate.id}`}
+                            onClick={() => { navigate(`/candidates/${candidate.id}`); setShowResults(false); }}
+                            className="w-full p-3 flex items-center gap-3 hover:bg-slate-50 transition-colors text-left group/result"
+                          >
+                            <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-[10px] font-bold text-blue-600 group-hover/result:bg-blue-50 transition-colors">
+                              {candidate.name?.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2) || "??"}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-bold text-slate-800 truncate group-hover/result:text-blue-600 transition-colors">{candidate.name}</p>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                <span className="text-[9px] text-slate-400 flex items-center gap-1">
+                                  <Mail className="w-2.5 h-2.5" /> {candidate.email || "No email"}
+                                </span>
+                                <span className="text-[9px] text-blue-600/50 font-bold uppercase tracking-wider">• {candidate.experience_years}y Exp</span>
+                              </div>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* No results state */}
+                    {!isSearching &&
+                      filteredCompaniesSearch.length === 0 &&
+                      filteredJobRolesSearch.length === 0 &&
+                      (searchResults?.items?.length === 0 || !searchResults) && (
+                      <div className="flex flex-col items-center justify-center py-8 text-slate-400 gap-1.5">
+                        <Search className="w-5 h-5 opacity-40" />
+                        <span className="text-[11px] font-bold">No results for "{debouncedQuery}"</span>
+                        <span className="text-[9px] text-slate-400">Try a different keyword</span>
+                      </div>
                     )}
                   </div>
                   {searchResults?.items && searchResults.items.length > 0 && (
@@ -987,7 +1060,7 @@ const Dashboard = () => {
                       onClick={() => { navigate(`/candidates?search=${debouncedQuery}`); setShowResults(false); }}
                       className="w-full py-2 bg-slate-50 text-center text-[10px] font-bold text-blue-600 hover:bg-slate-100 transition-colors border-t border-slate-100"
                     >
-                      View all results ({searchResults.total})
+                      View all candidate results ({searchResults.total})
                     </button>
                   )}
                 </div>
@@ -1420,12 +1493,6 @@ const Dashboard = () => {
           <div>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-black text-slate-800 tracking-tight">Activity Feed</h3>
-              <button
-                onClick={() => navigate("/candidates")}
-                className="text-xs font-black text-blue-600 hover:text-blue-700"
-              >
-                View All
-              </button>
             </div>
 
             <div className="space-y-4 max-h-[280px] overflow-y-auto pr-1 custom-scrollbar">
