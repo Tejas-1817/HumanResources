@@ -253,19 +253,21 @@ const MetricCard = ({
   icon: Icon,
   iconBg = "bg-blue-50 text-blue-600",
   onClick,
+  valueClassName,
 }: {
   label: string;
   value: ReactNode;
   icon: any;
   iconBg?: string;
   onClick?: () => void;
+  valueClassName?: string;
 }) => {
   return (
     <motion.div
       variants={item}
       onClick={onClick}
-      className={`bg-white border border-slate-100 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all duration-200 flex items-center justify-between ${
-        onClick ? "cursor-pointer hover:border-primary/20" : ""
+      className={`bg-white border border-blue-200/80 hover:border-blue-400 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all duration-200 flex items-center justify-between ${
+        onClick ? "cursor-pointer" : ""
       }`}
     >
       <div className="flex items-center gap-4">
@@ -276,7 +278,7 @@ const MetricCard = ({
           <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{label}</span>
           <div className="mt-0.5">
             {typeof value === "string" || typeof value === "number" ? (
-              <h3 className="text-2xl font-black text-slate-800">{value}</h3>
+              <h3 className={`text-2xl font-black text-slate-800 ${valueClassName || ""}`}>{value}</h3>
             ) : (
               value
             )}
@@ -324,12 +326,25 @@ const Dashboard = () => {
 
   // Calendar date communication state
   const [selectedCalendarDate, setSelectedCalendarDate] = useState<Date>(new Date());
+  const [highlightTodaysInterviews, setHighlightTodaysInterviews] = useState(false);
+
+  const handleInterviewsTodayClick = () => {
+    const el = document.getElementById("todays-interviews");
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth" });
+    }
+    setHighlightTodaysInterviews(true);
+    setTimeout(() => {
+      setHighlightTodaysInterviews(false);
+    }, 4000);
+  };
 
   // ── Data queries ──────────────────────────────────────
   const { data: statsData } = useQuery({ queryKey: ["dashboard-stats"], queryFn: () => getDashboardStats() });
   const { data: companiesData } = useQuery({ queryKey: ["companies", { include_internal: true }], queryFn: () => getCompanies({ include_internal: true }) });
   const { data: jobRolesData } = useQuery({ queryKey: ["job-roles"], queryFn: () => getJobRoles() });
-  const { data: pipeline = {} } = useQuery({ queryKey: ["pipeline"], queryFn: () => getPipeline() });
+  const { data: rawPipeline = {} } = useQuery({ queryKey: ["pipeline"], queryFn: () => getPipeline() });
+  const pipeline = rawPipeline || {};
   const { data: schedules = [] } = useQuery({ queryKey: ["interview-schedules"], queryFn: () => getInterviewSchedules() });
   const { data: benchData } = useQuery({ queryKey: ["bench-candidates-count"], queryFn: () => getCandidates({ page_size: 1, unassigned_only: true }) });
 
@@ -1191,7 +1206,7 @@ const Dashboard = () => {
                     </div>
                     <div className="h-px bg-slate-100 mb-3" />
                     <button
-                      onClick={() => { setShowProfile(false); logout && logout(); }}
+                      onClick={() => { setShowProfile(false); if (logout) logout(); }}
                       className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-red-600 hover:bg-red-50 transition-all font-black text-xs group text-left"
                     >
                       Sign Out
@@ -1246,11 +1261,11 @@ const Dashboard = () => {
           iconBg="bg-blue-50 text-blue-600"
         />
         <MetricCard
-          label="Interviews Today(Internal)"
+          label="Interviews Today"
           value={todayInterviewsRealCount}
           icon={Calendar}
           iconBg="bg-amber-50 text-amber-600"
-          onClick={() => navigate("/internal-hiring")}
+          onClick={handleInterviewsTodayClick}
         />
         <MetricCard
           label="On Bench"
@@ -1265,7 +1280,7 @@ const Dashboard = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         
         {/* Recruitment Statistics */}
-        <motion.div variants={item} className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm flex flex-col h-[390px] overflow-hidden">
+        <motion.div variants={item} className="bg-white border border-blue-200/80 hover:border-blue-300 transition-colors rounded-2xl p-5 shadow-sm flex flex-col h-[390px] overflow-hidden">
           <h3 className="text-sm font-black text-slate-800 tracking-tight mb-4 shrink-0">Recruitment Statistics</h3>
           
           <div className="flex flex-col w-full h-full justify-center">
@@ -1309,7 +1324,7 @@ const Dashboard = () => {
         </motion.div>
 
         {/* Upcoming Interviews */}
-        <motion.div variants={item} className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm flex flex-col justify-between h-[390px]">
+        <motion.div variants={item} className="bg-white border border-blue-200/80 hover:border-blue-300 transition-colors rounded-2xl p-6 shadow-sm flex flex-col justify-between h-[390px]">
           <div>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-black text-slate-800 tracking-tight">Upcoming Interviews</h3>
@@ -1446,7 +1461,7 @@ const Dashboard = () => {
         </motion.div>
 
         {/* Open Positions */}
-        <motion.div variants={item} className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm flex flex-col justify-between h-[390px]">
+        <motion.div variants={item} className="bg-white border border-blue-200/80 hover:border-blue-300 transition-colors rounded-2xl p-6 shadow-sm flex flex-col justify-between h-[390px]">
           <div>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-black text-slate-800 tracking-tight">Open Positions</h3>
@@ -1489,7 +1504,7 @@ const Dashboard = () => {
         </motion.div>
 
         {/* Activity Feed */}
-        <motion.div variants={item} className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm flex flex-col justify-between h-[390px]">
+        <motion.div variants={item} className="bg-white border border-blue-200/80 hover:border-blue-300 transition-colors rounded-2xl p-6 shadow-sm flex flex-col justify-between h-[390px]">
           <div>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-black text-slate-800 tracking-tight">Activity Feed</h3>
@@ -1522,7 +1537,7 @@ const Dashboard = () => {
         </motion.div>
 
         {/* Interview Schedule Calendar */}
-        <motion.div variants={item} className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm flex flex-col justify-between h-[390px]">
+        <motion.div variants={item} className="bg-white border border-blue-200/80 hover:border-blue-300 transition-colors rounded-2xl p-6 shadow-sm flex flex-col justify-between h-[390px]">
           <DashboardCalendar
             selectedDate={selectedCalendarDate}
             onSelectDate={setSelectedCalendarDate}
@@ -1537,12 +1552,26 @@ const Dashboard = () => {
         </motion.div>
 
         {/* Today's Interviews */}
-        <motion.div variants={item} className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm flex flex-col justify-between h-[390px]">
+        <motion.div
+          id="todays-interviews"
+          variants={item}
+          className={`bg-white border rounded-2xl p-6 shadow-sm flex flex-col justify-between h-[390px] transition-all duration-500 ${
+            highlightTodaysInterviews
+              ? "border-amber-400 ring-4 ring-amber-400/30 shadow-xl shadow-amber-500/10 scale-[1.02]"
+              : "border-blue-200/80 hover:border-blue-300"
+          }`}
+        >
           <div>
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <h3 className="text-sm font-black text-slate-800 tracking-tight">{selectedDateInterviewsLabel}</h3>
-                <span className="text-[10px] font-black text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-full shrink-0">
+                <span
+                  className={`text-[10px] font-black px-1.5 py-0.5 rounded-full shrink-0 transition-all ${
+                    highlightTodaysInterviews
+                      ? "bg-amber-500 text-white animate-bounce shadow-md"
+                      : "text-blue-600 bg-blue-50"
+                  }`}
+                >
                   {todayInterviewsCount}
                 </span>
               </div>
@@ -1550,13 +1579,28 @@ const Dashboard = () => {
 
             <div className="space-y-3.5 max-h-[265px] overflow-y-auto pr-1 custom-scrollbar">
               {formattedToday.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-10 text-slate-400 gap-1.5">
-                  <Calendar className="w-8 h-8 opacity-30 text-slate-500" />
-                  <span className="text-[11px] font-bold">No interviews scheduled</span>
+                <div
+                  className={`flex flex-col items-center justify-center py-10 gap-1.5 transition-all rounded-xl ${
+                    highlightTodaysInterviews ? "bg-amber-50/60 text-amber-600 p-4 animate-pulse" : "text-slate-400"
+                  }`}
+                >
+                  <Calendar
+                    className={`w-8 h-8 transition-all ${
+                      highlightTodaysInterviews ? "text-amber-500 animate-bounce scale-125" : "opacity-30 text-slate-500"
+                    }`}
+                  />
+                  <span className={`text-[11px] font-bold ${highlightTodaysInterviews ? "text-amber-700 font-black" : ""}`}>
+                    No interviews scheduled
+                  </span>
                 </div>
               ) : (
                 formattedToday.map((interview, idx) => (
-                  <div key={idx} className="flex items-center gap-3.5">
+                  <div
+                    key={idx}
+                    className={`flex items-center gap-3.5 p-2 rounded-xl transition-all ${
+                      highlightTodaysInterviews ? "bg-amber-50/80 border border-amber-200 animate-pulse" : ""
+                    }`}
+                  >
                     <div className="px-2.5 py-1 rounded-lg text-[10px] font-black uppercase text-center border shrink-0 text-blue-600 bg-blue-50 border-blue-100">
                       {interview.time.split(" ")[0]}
                       <span className="block text-[8px] font-bold leading-none">{interview.time.split(" ")[1]}</span>
@@ -1585,3 +1629,4 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
+// HMR trigger

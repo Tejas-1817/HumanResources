@@ -355,6 +355,58 @@ const Companies = () => {
     return new Map([...m].map(([k, v]) => [k, v.size]));
   }, [pipeline, roleById]);
 
+  // ─── Pipeline status per candidate (for selected company) ────────────────
+  // Priority order: later stages override earlier ones
+  const PIPELINE_STAGE_PRIORITY: Record<string, number> = {
+    pending: 1,
+    shortlisted: 2,
+    interview_scheduled: 3,
+    interviewed: 4,
+    on_hold: 5,
+    selected: 6,
+    joined: 7,
+    dropped: 8,
+    rejected: 9,
+  };
+
+  const PIPELINE_STAGE_LABEL: Record<string, string> = {
+    pending: "Pending",
+    shortlisted: "Shortlisted",
+    interview_scheduled: "Interview Scheduled",
+    interviewed: "Interviewed",
+    on_hold: "On Hold",
+    selected: "Selected",
+    joined: "Joined",
+    dropped: "Dropped",
+    rejected: "Rejected",
+  };
+
+  const candidatePipelineStatus = useMemo(() => {
+    // map: candidate_id -> highest-priority stage label for the selected company
+    const statusMap = new Map<number, string>();
+    if (!selectedCompanyId) return statusMap;
+
+    Object.entries(pipeline).forEach(([stageId, apps]: [string, any]) => {
+      (apps as any[]).forEach((app) => {
+        const role = roleById.get(app.job_role_id);
+        if (role?.company_id !== selectedCompanyId) return;
+
+        const candidateId: number = app.candidate_id;
+        const currentStage = statusMap.get(candidateId);
+        const currentPriority = currentStage
+          ? (PIPELINE_STAGE_PRIORITY[Object.keys(PIPELINE_STAGE_LABEL).find(k => PIPELINE_STAGE_LABEL[k] === currentStage) || ""] ?? 0)
+          : 0;
+        const newPriority = PIPELINE_STAGE_PRIORITY[stageId] ?? 0;
+
+        if (newPriority > currentPriority) {
+          statusMap.set(candidateId, PIPELINE_STAGE_LABEL[stageId] || stageId);
+        }
+      });
+    });
+
+    return statusMap;
+  }, [pipeline, roleById, selectedCompanyId]);
+
   // Total positions filled and required per company
   const positionsFilledByCompany = useMemo(() => {
     const m = new Map<number, { filled: number, required: number }>();
@@ -1537,7 +1589,6 @@ const Companies = () => {
                                 </div>
                               </th>
                               <th className="p-4">Job Role</th>
-                              <th className="p-4">Department</th>
                               <th className="p-4 text-center">Openings</th>
                               <th className="p-4">Status</th>
                               <th className="p-4 text-right">Actions</th>
@@ -1599,11 +1650,6 @@ const Companies = () => {
                                         )}
                                       </div>
                                     </div>
-                                  </td>
-                                  <td className="p-4">
-                                    <span className="font-semibold text-muted-foreground dark:text-muted-foreground/80 text-xs">
-                                      {r.department || "Operations"}
-                                    </span>
                                   </td>
                                   <td className="p-4 text-center font-bold text-foreground">
                                     {openingsCount}
@@ -1728,7 +1774,7 @@ const Companies = () => {
                               <h4 className="text-sm font-medium text-foreground truncate">{displayName}</h4>
                               <p className="text-xs text-muted-foreground truncate">{c.email || "No email"} · {c.experience_years || 0} yrs</p>
                             </div>
-                            <StatusBadge status={getStatusFromAge(c)} />
+                            <StatusBadge status={candidatePipelineStatus.get(c.id) ?? "Pending"} />
                           </motion.div>
                         );
                       })}
