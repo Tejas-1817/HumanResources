@@ -8,6 +8,7 @@ from app.core.security import get_current_user, require_role
 from app.database.session import get_db
 from app.schemas.candidate import (
     CandidateDetailResponse,
+    CandidateManualCreate,
     CandidateResponse,
     CandidateStatsResponse,
     CandidateUpdate,
@@ -17,6 +18,41 @@ from app.services.candidate_service import CandidateService
 from app.storage.local_storage import storage_service
 
 router = APIRouter(prefix="/candidates", tags=["Candidates"])
+
+
+@router.post(
+    "",
+    response_model=CandidateResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_role("admin", "hr"))],
+)
+def create_candidate(
+    payload: CandidateManualCreate,
+    db: Session = Depends(get_db),
+) -> CandidateResponse:
+    from app.models.candidate import Candidate as CandidateModel
+    from app.core.exceptions import DuplicateException
+
+    # Guard against duplicate email
+    existing = db.query(CandidateModel).filter(
+        CandidateModel.email == payload.email.strip().lower()
+    ).first()
+    if existing:
+        raise DuplicateException(message=f"A candidate with email '{payload.email}' already exists.")
+
+    new_candidate = CandidateModel(
+        name=payload.name.strip(),
+        email=payload.email.strip().lower(),
+        phone=payload.phone.strip() if payload.phone else None,
+        skills=payload.skills.strip() if payload.skills else None,
+        experience_years=payload.experience_years,
+        source=payload.source,
+        original_filename="manual",
+    )
+    db.add(new_candidate)
+    db.commit()
+    db.refresh(new_candidate)
+    return CandidateResponse.model_validate(new_candidate)
 
 
 @router.get(

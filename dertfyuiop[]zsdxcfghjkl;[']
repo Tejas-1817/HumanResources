@@ -1,0 +1,305 @@
+[1mdiff --git a/README.md b/README.md[m
+[1mindex d82c58c..b239778 100644[m
+[1m--- a/README.md[m
+[1m+++ b/README.md[m
+[36m@@ -60,8 +60,7 @@[m [mresumeiq/[m
+    ```[m
+ 2. Create and activate a virtual environment:[m
+    ```bash[m
+[31m-   python -m venv venv[m
+[31m-   source venv/bin/activate  # On Windows: venv\Scripts\activate[m
+[32m+[m[32m  python -m venv venv  # On Windows: venv\Scripts\activate[m
+    ```[m
+ 3. Install dependencies:[m
+    ```bash[m
+[1mdiff --git a/frontend/src/pages/Companies.tsx b/frontend/src/pages/Companies.tsx[m
+[1mindex d67832b..3e87315 100644[m
+[1m--- a/frontend/src/pages/Companies.tsx[m
+[1m+++ b/frontend/src/pages/Companies.tsx[m
+[36m@@ -355,6 +355,58 @@[m [mconst Companies = () => {[m
+     return new Map([...m].map(([k, v]) => [k, v.size]));[m
+   }, [pipeline, roleById]);[m
+ [m
+[32m+[m[32m  // ─── Pipeline status per candidate (for selected company) ────────────────[m
+[32m+[m[32m  // Priority order: later stages override earlier ones[m
+[32m+[m[32m  const PIPELINE_STAGE_PRIORITY: Record<string, number> = {[m
+[32m+[m[32m    pending: 1,[m
+[32m+[m[32m    shortlisted: 2,[m
+[32m+[m[32m    interview_scheduled: 3,[m
+[32m+[m[32m    interviewed: 4,[m
+[32m+[m[32m    on_hold: 5,[m
+[32m+[m[32m    selected: 6,[m
+[32m+[m[32m    joined: 7,[m
+[32m+[m[32m    dropped: 8,[m
+[32m+[m[32m    rejected: 9,[m
+[32m+[m[32m  };[m
+[32m+[m
+[32m+[m[32m  const PIPELINE_STAGE_LABEL: Record<string, string> = {[m
+[32m+[m[32m    pending: "Pending",[m
+[32m+[m[32m    shortlisted: "Shortlisted",[m
+[32m+[m[32m    interview_scheduled: "Interview Scheduled",[m
+[32m+[m[32m    interviewed: "Interviewed",[m
+[32m+[m[32m    on_hold: "On Hold",[m
+[32m+[m[32m    selected: "Selected",[m
+[32m+[m[32m    joined: "Joined",[m
+[32m+[m[32m    dropped: "Dropped",[m
+[32m+[m[32m    rejected: "Rejected",[m
+[32m+[m[32m  };[m
+[32m+[m
+[32m+[m[32m  const candidatePipelineStatus = useMemo(() => {[m
+[32m+[m[32m    // map: candidate_id -> highest-priority stage label for the selected company[m
+[32m+[m[32m    const statusMap = new Map<number, string>();[m
+[32m+[m[32m    if (!selectedCompanyId) return statusMap;[m
+[32m+[m
+[32m+[m[32m    Object.entries(pipeline).forEach(([stageId, apps]: [string, any]) => {[m
+[32m+[m[32m      (apps as any[]).forEach((app) => {[m
+[32m+[m[32m        const role = roleById.get(app.job_role_id);[m
+[32m+[m[32m        if (role?.company_id !== selectedCompanyId) return;[m
+[32m+[m
+[32m+[m[32m        const candidateId: number = app.candidate_id;[m
+[32m+[m[32m        const currentStage = statusMap.get(candidateId);[m
+[32m+[m[32m        const currentPriority = currentStage[m
+[32m+[m[32m          ? (PIPELINE_STAGE_PRIORITY[Object.keys(PIPELINE_STAGE_LABEL).find(k => PIPELINE_STAGE_LABEL[k] === currentStage) || ""] ?? 0)[m
+[32m+[m[32m          : 0;[m
+[32m+[m[32m        const newPriority = PIPELINE_STAGE_PRIORITY[stageId] ?? 0;[m
+[32m+[m
+[32m+[m[32m        if (newPriority > currentPriority) {[m
+[32m+[m[32m          statusMap.set(candidateId, PIPELINE_STAGE_LABEL[stageId] || stageId);[m
+[32m+[m[32m        }[m
+[32m+[m[32m      });[m
+[32m+[m[32m    });[m
+[32m+[m
+[32m+[m[32m    return statusMap;[m
+[32m+[m[32m  }, [pipeline, roleById, selectedCompanyId]);[m
+[32m+[m
+   // Total positions filled and required per company[m
+   const positionsFilledByCompany = useMemo(() => {[m
+     const m = new Map<number, { filled: number, required: number }>();[m
+[36m@@ -1537,7 +1589,6 @@[m [mconst Companies = () => {[m
+                                 </div>[m
+                               </th>[m
+                               <th className="p-4">Job Role</th>[m
+[31m-                              <th className="p-4">Department</th>[m
+                               <th className="p-4 text-center">Openings</th>[m
+                               <th className="p-4">Status</th>[m
+                               <th className="p-4 text-right">Actions</th>[m
+[36m@@ -1600,11 +1651,6 @@[m [mconst Companies = () => {[m
+                                       </div>[m
+                                     </div>[m
+                                   </td>[m
+[31m-                                  <td className="p-4">[m
+[31m-                                    <span className="font-semibold text-muted-foreground dark:text-muted-foreground/80 text-xs">[m
+[31m-                                      {r.department || "Operations"}[m
+[31m-                                    </span>[m
+[31m-                                  </td>[m
+                                   <td className="p-4 text-center font-bold text-foreground">[m
+                                     {openingsCount}[m
+                                   </td>[m
+[36m@@ -1728,7 +1774,7 @@[m [mconst Companies = () => {[m
+                               <h4 className="text-sm font-medium text-foreground truncate">{displayName}</h4>[m
+                               <p className="text-xs text-muted-foreground truncate">{c.email || "No email"} · {c.experience_years || 0} yrs</p>[m
+                             </div>[m
+[31m-                            <StatusBadge status={getStatusFromAge(c)} />[m
+[32m+[m[32m                            <StatusBadge status={candidatePipelineStatus.get(c.id) ?? "Pending"} />[m
+                           </motion.div>[m
+                         );[m
+                       })}[m
+[1mdiff --git a/frontend/src/pages/Dashboard.tsx b/frontend/src/pages/Dashboard.tsx[m
+[1mindex bd4a97d..a8ec15b 100644[m
+[1m--- a/frontend/src/pages/Dashboard.tsx[m
+[1m+++ b/frontend/src/pages/Dashboard.tsx[m
+[36m@@ -253,19 +253,21 @@[m [mconst MetricCard = ({[m
+   icon: Icon,[m
+   iconBg = "bg-blue-50 text-blue-600",[m
+   onClick,[m
+[32m+[m[32m  valueClassName,[m
+ }: {[m
+   label: string;[m
+   value: ReactNode;[m
+   icon: any;[m
+   iconBg?: string;[m
+   onClick?: () => void;[m
+[32m+[m[32m  valueClassName?: string;[m
+ }) => {[m
+   return ([m
+     <motion.div[m
+       variants={item}[m
+       onClick={onClick}[m
+[31m-      className={`bg-white border border-slate-100 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all duration-200 flex items-center justify-between ${[m
+[31m-        onClick ? "cursor-pointer hover:border-primary/20" : ""[m
+[32m+[m[32m      className={`bg-white border border-blue-200/80 hover:border-blue-400 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all duration-200 flex items-center justify-between ${[m
+[32m+[m[32m        onClick ? "cursor-pointer" : ""[m
+       }`}[m
+     >[m
+       <div className="flex items-center gap-4">[m
+[36m@@ -276,7 +278,7 @@[m [mconst MetricCard = ({[m
+           <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{label}</span>[m
+           <div className="mt-0.5">[m
+             {typeof value === "string" || typeof value === "number" ? ([m
+[31m-              <h3 className="text-2xl font-black text-slate-800">{value}</h3>[m
+[32m+[m[32m              <h3 className={`text-2xl font-black text-slate-800 ${valueClassName || ""}`}>{value}</h3>[m
+             ) : ([m
+               value[m
+             )}[m
+[36m@@ -324,12 +326,25 @@[m [mconst Dashboard = () => {[m
+ [m
+   // Calendar date communication state[m
+   const [selectedCalendarDate, setSelectedCalendarDate] = useState<Date>(new Date());[m
+[32m+[m[32m  const [highlightTodaysInterviews, setHighlightTodaysInterviews] = useState(false);[m
+[32m+[m
+[32m+[m[32m  const handleInterviewsTodayClick = () => {[m
+[32m+[m[32m    const el = document.getElementById("todays-interviews");[m
+[32m+[m[32m    if (el) {[m
+[32m+[m[32m      el.scrollIntoView({ behavior: "smooth" });[m
+[32m+[m[32m    }[m
+[32m+[m[32m    setHighlightTodaysInterviews(true);[m
+[32m+[m[32m    setTimeout(() => {[m
+[32m+[m[32m      setHighlightTodaysInterviews(false);[m
+[32m+[m[32m    }, 4000);[m
+[32m+[m[32m  };[m
+ [m
+   // ── Data queries ──────────────────────────────────────[m
+   const { data: statsData } = useQuery({ queryKey: ["dashboard-stats"], queryFn: () => getDashboardStats() });[m
+   const { data: companiesData } = useQuery({ queryKey: ["companies", { include_internal: true }], queryFn: () => getCompanies({ include_internal: true }) });[m
+   const { data: jobRolesData } = useQuery({ queryKey: ["job-roles"], queryFn: () => getJobRoles() });[m
+[31m-  const { data: pipeline = {} } = useQuery({ queryKey: ["pipeline"], queryFn: () => getPipeline() });[m
+[32m+[m[32m  const { data: rawPipeline = {} } = useQuery({ queryKey: ["pipeline"], queryFn: () => getPipeline() });[m
+[32m+[m[32m  const pipeline = rawPipeline || {};[m
+   const { data: schedules = [] } = useQuery({ queryKey: ["interview-schedules"], queryFn: () => getInterviewSchedules() });[m
+   const { data: benchData } = useQuery({ queryKey: ["bench-candidates-count"], queryFn: () => getCandidates({ page_size: 1, unassigned_only: true }) });[m
+ [m
+[36m@@ -1191,7 +1206,7 @@[m [mconst Dashboard = () => {[m
+                     </div>[m
+                     <div className="h-px bg-slate-100 mb-3" />[m
+                     <button[m
+[31m-                      onClick={() => { setShowProfile(false); logout && logout(); }}[m
+[32m+[m[32m                      onClick={() => { setShowProfile(false); if (logout) logout(); }}[m
+                       className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-red-600 hover:bg-red-50 transition-all font-black text-xs group text-left"[m
+                     >[m
+                       Sign Out[m
+[36m@@ -1246,11 +1261,11 @@[m [mconst Dashboard = () => {[m
+           iconBg="bg-blue-50 text-blue-600"[m
+         />[m
+         <MetricCard[m
+[31m-          label="Interviews Today(Internal)"[m
+[32m+[m[32m          label="Interviews Today"[m
+           value={todayInterviewsRealCount}[m
+           icon={Calendar}[m
+           iconBg="bg-amber-50 text-amber-600"[m
+[31m-          onClick={() => navigate("/internal-hiring")}[m
+[32m+[m[32m          onClick={handleInterviewsTodayClick}[m
+         />[m
+         <MetricCard[m
+           label="On Bench"[m
+[36m@@ -1265,7 +1280,7 @@[m [mconst Dashboard = () => {[m
+       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">[m
+         [m
+         {/* Recruitment Statistics */}[m
+[31m-        <motion.div variants={item} className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm flex flex-col h-[390px] overflow-hidden">[m
+[32m+[m[32m        <motion.div variants={item} className="bg-white border border-blue-200/80 hover:border-blue-300 transition-colors rounded-2xl p-5 shadow-sm flex flex-col h-[390px] overflow-hidden">[m
+           <h3 className="text-sm font-black text-slate-800 tracking-tight mb-4 shrink-0">Recruitment Statistics</h3>[m
+           [m
+           <div className="flex flex-col w-full h-full justify-center">[m
+[36m@@ -1309,7 +1324,7 @@[m [mconst Dashboard = () => {[m
+         </motion.div>[m
+ [m
+         {/* Upcoming Interviews */}[m
+[31m-        <motion.div variants={item} className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm flex flex-col justify-between h-[390px]">[m
+[32m+[m[32m        <motion.div variants={item} className="bg-white border border-blue-200/80 hover:border-blue-300 transition-colors rounded-2xl p-6 shadow-sm flex flex-col justify-between h-[390px]">[m
+           <div>[m
+             <div className="flex items-center justify-between mb-4">[m
+               <h3 className="text-sm font-black text-slate-800 tracking-tight">Upcoming Interviews</h3>[m
+[36m@@ -1446,7 +1461,7 @@[m [mconst Dashboard = () => {[m
+         </motion.div>[m
+ [m
+         {/* Open Positions */}[m
+[31m-        <motion.div variants={item} className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm flex flex-col justify-between h-[390px]">[m
+[32m+[m[32m        <motion.div variants={item} className="bg-white border border-blue-200/80 hover:border-blue-300 transition-colors rounded-2xl p-6 shadow-sm flex flex-col justify-between h-[390px]">[m
+           <div>[m
+             <div className="flex items-center justify-between mb-4">[m
+               <h3 className="text-sm font-black text-slate-800 tracking-tight">Open Positions</h3>[m
+[36m@@ -1489,7 +1504,7 @@[m [mconst Dashboard = () => {[m
+         </motion.div>[m
+ [m
+         {/* Activity Feed */}[m
+[31m-        <motion.div variants={item} className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm flex flex-col justify-between h-[390px]">[m
+[32m+[m[32m        <motion.div variants={item} className="bg-white border border-blue-200/80 hover:border-blue-300 transition-colors rounded-2xl p-6 shadow-sm flex flex-col justify-between h-[390px]">[m
+           <div>[m
+             <div className="flex items-center justify-between mb-4">[m
+               <h3 className="text-sm font-black text-slate-800 tracking-tight">Activity Feed</h3>[m
+[36m@@ -1522,7 +1537,7 @@[m [mconst Dashboard = () => {[m
+         </motion.div>[m
+ [m
+         {/* Interview Schedule Calendar */}[m
+[31m-        <motion.div variants={item} className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm flex flex-col justify-between h-[390px]">[m
+[32m+[m[32m        <motion.div variants={item} className="bg-white border border-blue-200/80 hover:border-blue-300 transition-colors rounded-2xl p-6 shadow-sm flex flex-col justify-between h-[390px]">[m
+           <DashboardCalendar[m
+             selectedDate={selectedCalendarDate}[m
+             onSelectDate={setSelectedCalendarDate}[m
+[36m@@ -1537,12 +1552,26 @@[m [mconst Dashboard = () => {[m
+         </motion.div>[m
+ [m
+         {/* Today's Interviews */}[m
+[31m-        <motion.div variants={item} className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm flex flex-col justify-between h-[390px]">[m
+[32m+[m[32m        <motion.div[m
+[32m+[m[32m          id="todays-interviews"[m
+[32m+[m[32m          variants={item}[m
+[32m+[m[32m          className={`bg-white border rounded-2xl p-6 shadow-sm flex flex-col justify-between h-[390px] transition-all duration-500 ${[m
+[32m+[m[32m            highlightTodaysInterviews[m
+[32m+[m[32m              ? "border-amber-400 ring-4 ring-amber-400/30 shadow-xl shadow-amber-500/10 scale-[1.02]"[m
+[32m+[m[32m              : "border-blue-200/80 hover:border-blue-300"[m
+[32m+[m[32m          }`}[m
+[32m+[m[32m        >[m
+           <div>[m
+             <div className="flex items-center justify-between mb-4">[m
+               <div className="flex items-center gap-2">[m
+                 <h3 className="text-sm font-black text-slate-800 tracking-tight">{selectedDateInterviewsLabel}</h3>[m
+[31m-                <span className="text-[10px] font-black text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-full shrink-0">[m
+[32m+[m[32m                <span[m
+[32m+[m[32m                  className={`text-[10px] font-black px-1.5 py-0.5 rounded-full shrink-0 transition-all ${[m
+[32m+[m[32m                    highlightTodaysInterviews[m
+[32m+[m[32m                      ? "bg-amber-500 text-white animate-bounce shadow-md"[m
+[32m+[m[32m                      : "text-blue-600 bg-blue-50"[m
+[32m+[m[32m                  }`}[m
+[32m+[m[32m                >[m
+                   {todayInterviewsCount}[m
+                 </span>[m
+               </div>[m
+[36m@@ -1550,13 +1579,28 @@[m [mconst Dashboard = () => {[m
+ [m
+             <div className="space-y-3.5 max-h-[265px] overflow-y-auto pr-1 custom-scrollbar">[m
+               {formattedToday.length === 0 ? ([m
+[31m-                <div className="flex flex-col items-center justify-center py-10 text-slate-400 gap-1.5">[m
+[31m-                  <Calendar className="w-8 h-8 opacity-30 text-slate-500" />[m
+[31m-                  <span className="text-[11px] font-bold">No interviews scheduled</span>[m
+[32m+[m[32m                <div[m
+[32m+[m[32m                  className={`flex flex-col items-center justify-center py-10 gap-1.5 transition-all rounded-xl ${[m
+[32m+[m[32m                    highlightTodaysInterviews ? "bg-amber-50/60 text-amber-600 p-4 animate-pulse" : "text-slate-400"[m
+[32m+[m[32m                  }`}[m
+[32m+[m[32m                >[m
+[32m+[m[32m                  <Calendar[m
+[32m+[m[32m                    className={`w-8 h-8 transition-all ${[m
+[32m+[m[32m                      highlightTodaysInterviews ? "text-amber-500 animate-bounce scale-125" : "opacity-30 text-slate-500"[m
+[32m+[m[32m                    }`}[m
+[32m+[m[32m                  />[m
+[32m+[m[32m                  <span className={`text-[11px] font-bold ${highlightTodaysInterviews ? "text-amber-700 font-black" : ""}`}>[m
+[32m+[m[32m                    No interviews scheduled[m
+[32m+[m[32m                  </span>[m
+                 </div>[m
+               ) : ([m
+                 formattedToday.map((interview, idx) => ([m
+[31m-                  <div key={idx} className="flex items-center gap-3.5">[m
+[32m+[m[32m                  <div[m
+[32m+[m[32m                    key={idx}[m
+[32m+[m[32m                    className={`flex items-center gap-3.5 p-2 rounded-xl transition-all ${[m
+[32m+[m[32m                      highlightTodaysInterviews ? "bg-amber-50/80 border border-amber-200 animate-pulse" : ""[m
+[32m+[m[32m                    }`}[m
+[32m+[m[32m                  >[m
+                     <div className="px-2.5 py-1 rounded-lg text-[10px] font-black uppercase text-center border shrink-0 text-blue-600 bg-blue-50 border-blue-100">[m
+                       {interview.time.split(" ")[0]}[m
+                       <span className="block text-[8px] font-bold leading-none">{interview.time.split(" ")[1]}</span>[m
+[36m@@ -1585,3 +1629,4 @@[m [mconst Dashboard = () => {[m
+ };[m
+ [m
+ export default Dashboard;[m
+[32m+[m[32m// HMR trigger[m

@@ -13,6 +13,16 @@ class CandidateCreate(BaseModel):
     original_filename: str = Field(min_length=1, max_length=500)
 
 
+class CandidateManualCreate(BaseModel):
+    """Payload for manually adding a candidate via the dashboard form."""
+    name: str = Field(min_length=1, max_length=255)
+    email: str = Field(min_length=1, max_length=255)
+    phone: str | None = Field(default=None, max_length=50)
+    skills: str | None = None
+    experience_years: float = Field(default=0.0, ge=0)
+    source: str = Field(default="Direct", max_length=50)
+
+
 class CandidateUpdate(BaseModel):
     name: str | None = Field(default=None, max_length=255)
     email: str | None = Field(default=None, max_length=255)
