@@ -1224,7 +1224,7 @@ const Dashboard = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard
           label="Total Candidates"
-          value={data?.total_candidates ?? 356}
+          value={data?.total_candidates ?? 0}
           icon={Users}
           iconBg="bg-blue-50 text-blue-600"
           onClick={() => navigate("/candidates")}
