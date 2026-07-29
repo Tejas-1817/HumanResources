@@ -169,7 +169,17 @@ export const Topbar = ({
 
     pathnames.slice(startIndex).forEach((name, index) => {
       const path = `/${pathnames.slice(0, index + startIndex + 1).join("/")}`;
-      const label = routeLabels[name] || (isNaN(Number(name)) ? name.charAt(0).toUpperCase() + name.slice(1) : null);
+      let label = routeLabels[name] || (isNaN(Number(name)) ? name.charAt(0).toUpperCase() + name.slice(1) : null);
+
+      if (name === "vendors") {
+        const searchParams = new URLSearchParams(location.search);
+        const view = searchParams.get("view");
+        if (view === "partners") {
+          label = "Vendors";
+        } else {
+          label = "On Bench Talent";
+        }
+      }
 
       if (label) {
         breadcrumbs.push({

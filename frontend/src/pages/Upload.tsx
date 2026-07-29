@@ -38,8 +38,8 @@ const UploadPage = ({ prefilledRole, prefilledCompanyId, onSuccess }: UploadProp
   const [progress, setProgress] = useState(0);
 
   const { data: companiesData } = useQuery<Company[]>({
-    queryKey: ["companies", { include_internal: true }],
-    queryFn: () => getCompanies({ include_internal: true }),
+    queryKey: ["companies"],
+    queryFn: () => getCompanies(),
   });
   const companies = companiesData ?? [];
 
@@ -49,16 +49,6 @@ const UploadPage = ({ prefilledRole, prefilledCompanyId, onSuccess }: UploadProp
       setHasDefaultBeenSet(true);
     }
   }, [prefilledCompanyId]);
-
-  useEffect(() => {
-    if (!prefilledCompanyId && !hasDefaultBeenSet && companies.length > 0) {
-      const internalCompany = companies.find(c => c.is_internal || c.name === "Altzor Digital Solutions");
-      if (internalCompany) {
-        setSelectedCompanyId(internalCompany.id);
-      }
-      setHasDefaultBeenSet(true);
-    }
-  }, [companies, prefilledCompanyId, hasDefaultBeenSet]);
 
   const { data: jobRolesData } = useQuery<JobRole[]>({
     queryKey: ["job-roles", selectedCompanyId],
@@ -232,7 +222,7 @@ const UploadPage = ({ prefilledRole, prefilledCompanyId, onSuccess }: UploadProp
                       <option value="">Select Company (Optional)</option>
                       {companies.map((c) => (
                         <option key={c.id} value={c.id}>
-                          {c.is_internal || c.name === "Altzor Digital Solutions" ? "Internal Hiring" : c.name}
+                          {c.name}
                         </option>
                       ))}
                     </select>

@@ -70,7 +70,7 @@ const Vendors = () => {
     is_active: true
   });
 
-  // Default to 'talent' view as requested
+  // Default view is 'talent' for On Bench page, but defaults to 'partners' if view query param specifies partners.
   const [activeView, setActiveView] = useState<"partners" | "talent">(
     viewParam === "partners" ? "partners" : "talent"
   );
@@ -78,7 +78,7 @@ const Vendors = () => {
   useEffect(() => {
     if (viewParam === "partners") {
       setActiveView("partners");
-    } else if (viewParam === "talent" || !viewParam) {
+    } else {
       setActiveView("talent");
     }
   }, [viewParam]);
@@ -340,43 +340,32 @@ const Vendors = () => {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="On Bench Talent Management"
-        description="Collaborate with external On Bench Talent"
+        title={activeView === "talent" ? "On Bench Talent" : "Vendor Management"}
+        description={activeView === "talent" ? "Collaborate with external On Bench Talent candidates" : "Configure and manage recruitment partner vendors"}
         actions={
-          <button
-            onClick={() => setIsCreateModalOpen(true)}
-            className="group relative px-6 py-2.5 bg-primary text-primary-foreground font-bold text-sm rounded-xl transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-primary/25 overflow-hidden"
-          >
-            <div className="absolute inset-0 bg-gradient-to-tr from-white/10 to-transparent pointer-none" />
-            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent" />
-            <div className="relative flex items-center gap-2">
-              <div className="w-5 h-5 rounded-lg bg-white/20 flex items-center justify-center group-hover:rotate-90 transition-transform duration-500">
-                <Plus className="w-3.5 h-3.5" />
+          activeView === "partners" ? (
+            <button
+              onClick={() => setIsCreateModalOpen(true)}
+              className="group relative px-6 py-2.5 bg-primary text-primary-foreground font-bold text-sm rounded-xl transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-primary/25 overflow-hidden"
+            >
+              <div className="absolute inset-0 bg-gradient-to-tr from-white/10 to-transparent pointer-none" />
+              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent" />
+              <div className="relative flex items-center gap-2">
+                <div className="w-5 h-5 rounded-lg bg-white/20 flex items-center justify-center group-hover:rotate-90 transition-transform duration-500">
+                  <Plus className="w-3.5 h-3.5" />
+                </div>
+                <span>Add New Partner</span>
               </div>
-              <span>Add New Partner</span>
-            </div>
-            <div className="absolute inset-0 bg-primary/40 blur-xl opacity-0 group-hover:opacity-100 transition-opacity -z-10" />
-          </button>
+              <div className="absolute inset-0 bg-primary/40 blur-xl opacity-0 group-hover:opacity-100 transition-opacity -z-10" />
+            </button>
+          ) : null
         }
       />
 
       {/* Tabs & Search Bar Container */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        {/* Tabs - Swapped so Talent Hub is first */}
-        <div className="flex items-center gap-1 bg-secondary/30 p-1 rounded-xl w-fit border border-border/50">
-          <button
-            onClick={() => setActiveView("talent")}
-            className={`flex items-center gap-2 px-6 py-2 rounded-lg text-sm font-bold transition-all ${activeView === "talent" ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20" : "text-muted-foreground hover:text-foreground"}`}
-          >
-            <Users className="w-4 h-4" /> Talent Hub
-          </button>
-          <button
-            onClick={() => setActiveView("partners")}
-            className={`flex items-center gap-2 px-6 py-2 rounded-lg text-sm font-bold transition-all ${activeView === "partners" ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20" : "text-muted-foreground hover:text-foreground"}`}
-          >
-            <Handshake className="w-4 h-4" /> Partner Management
-          </button>
-        </div>
+        {/* Toggle tabs hidden as requested - On Bench Talent view stands alone, Vendor view stands alone */}
+        <div></div>
 
         {/* Search Bar next to tabs */}
         {activeView === "talent" && (
@@ -492,61 +481,9 @@ const Vendors = () => {
             </div>
           )}
 
-          {/* Sidebar and candidates list layout, aligned at top */}
+          {/* Candidates list layout */}
           <div className="flex flex-col lg:flex-row gap-6 items-start">
-            {/* Inner Left Sidebar (Navigation Bar) */}
-            <div className="w-full lg:w-60 shrink-0 glass-card p-4 rounded-2xl border border-border/50 space-y-4">
-              <div className="text-[10px] font-black text-muted-foreground uppercase tracking-widest pl-1">
-                Sources
-              </div>
-              <div className="space-y-1 max-h-[600px] overflow-y-auto custom-scrollbar">
-                {/* Option 1: All */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setVendorFilterId("");
-                  }}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all text-left ${
-                    vendorFilterId === ""
-                      ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
-                      : "text-muted-foreground hover:bg-secondary/80 hover:text-foreground"
-                  }`}
-                >
-                  <span>All</span>
-                  <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black ${
-                    vendorFilterId === "" ? "bg-white/20 text-white" : "bg-secondary text-muted-foreground"
-                  }`}>
-                    All
-                  </span>
-                </button>
-
-                {/* Other Options: Partners */}
-                {vendors.map((vendor) => {
-                  const isActive = vendorFilterId === vendor.id;
-                  return (
-                    <button
-                      key={vendor.id}
-                      type="button"
-                      onClick={() => {
-                        setVendorFilterId(vendor.id);
-                      }}
-                      className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all text-left ${
-                        isActive
-                          ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
-                          : "text-muted-foreground hover:bg-secondary/80 hover:text-foreground"
-                      }`}
-                    >
-                      <span className="truncate flex-1 pr-2">{vendor.name}</span>
-                      <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black shrink-0 ${
-                        isActive ? "bg-white/20 text-white" : "bg-secondary text-muted-foreground"
-                      }`}>
-                        {vendor.company_name?.charAt(0).toUpperCase() || "P"}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+            {/* No Sources sidebar here — moved to Vendors tab */}
 
             {/* Candidates List Column */}
             <div className="flex-1 min-w-0">
@@ -667,6 +604,54 @@ const Vendors = () => {
       ) : (
         /* Partner Management View (Vendors) */
         <div className="space-y-6">
+          <div className="flex flex-col lg:flex-row gap-6 items-start">
+            {/* Sources Sidebar */}
+            <div className="w-full lg:w-60 shrink-0 glass-card p-4 rounded-2xl border border-border/50 space-y-4">
+              <div className="text-[10px] font-black text-muted-foreground uppercase tracking-widest pl-1">
+                Sources
+              </div>
+              <div className="space-y-1 max-h-[600px] overflow-y-auto custom-scrollbar">
+                <button
+                  type="button"
+                  onClick={() => setVendorFilterId("")}
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all text-left ${
+                    vendorFilterId === ""
+                      ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
+                      : "text-muted-foreground hover:bg-secondary/80 hover:text-foreground"
+                  }`}
+                >
+                  <span>All</span>
+                  <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black ${
+                    vendorFilterId === "" ? "bg-white/20 text-white" : "bg-secondary text-muted-foreground"
+                  }`}>All</span>
+                </button>
+                {vendors.map((vendor) => {
+                  const isActive = vendorFilterId === vendor.id;
+                  return (
+                    <button
+                      key={vendor.id}
+                      type="button"
+                      onClick={() => setVendorFilterId(vendor.id)}
+                      className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all text-left ${
+                        isActive
+                          ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
+                          : "text-muted-foreground hover:bg-secondary/80 hover:text-foreground"
+                      }`}
+                    >
+                      <span className="truncate flex-1 pr-2">{vendor.name}</span>
+                      <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black shrink-0 ${
+                        isActive ? "bg-white/20 text-white" : "bg-secondary text-muted-foreground"
+                      }`}>
+                        {vendor.company_name?.charAt(0).toUpperCase() || "P"}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Main Content: Search + Partners Table */}
+            <div className="flex-1 min-w-0 space-y-4">
           <div className="relative max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <input
@@ -776,6 +761,8 @@ const Vendors = () => {
               )}
             </div>
           </div>
+            </div>{/* end flex-1 main content */}
+          </div>{/* end flex row with sidebar */}
         </div>
       )}
 

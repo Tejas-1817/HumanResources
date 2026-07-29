@@ -33,6 +33,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Modal } from "@/components/ui/Modal";
 import { AssignVendorDropdown } from "@/components/modals/AssignVendorDropdown";
+import { AddOpenPositionModal } from "@/components/modals/AddOpenPositionModal";
 import { toast } from "sonner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -300,6 +301,7 @@ const Companies = () => {
   const [updatingRole, setUpdatingRole] = useState(false);
   const [selectedRoleIds, setSelectedRoleIds] = useState<number[]>([]);
   const [isAssignVendorOpen, setIsAssignVendorOpen] = useState(false);
+  const [addPositionModalOpen, setAddPositionModalOpen] = useState(false);
 
   // ─── Candidates state ─────────────────────────────────
   const [candSearch, setCandSearch] = useState("");
@@ -337,9 +339,29 @@ const Companies = () => {
   }, [jobRoles]);
   const openRoleCountByCompany = useMemo(() => {
     const m = new Map<number, number>();
-    for (const r of jobRoles) if (r.status === "open") m.set(r.company_id, (m.get(r.company_id) || 0) + 1);
+    for (const r of jobRoles) {
+      const filledCount = (pipeline["selected"] || []).filter((app: any) => app.job_role_id === r.id).length +
+                          (pipeline["joined"] || []).filter((app: any) => app.job_role_id === r.id).length;
+      const isOpen = r.status.toLowerCase() === "open" && filledCount < (r.positions_required || 1);
+      if (isOpen) {
+        m.set(r.company_id, (m.get(r.company_id) || 0) + 1);
+      }
+    }
     return m;
-  }, [jobRoles]);
+  }, [jobRoles, pipeline]);
+
+  const closedRoleCountByCompany = useMemo(() => {
+    const m = new Map<number, number>();
+    for (const r of jobRoles) {
+      const filledCount = (pipeline["selected"] || []).filter((app: any) => app.job_role_id === r.id).length +
+                          (pipeline["joined"] || []).filter((app: any) => app.job_role_id === r.id).length;
+      const isClosed = r.status.toLowerCase() === "closed" || filledCount >= (r.positions_required || 1);
+      if (isClosed) {
+        m.set(r.company_id, (m.get(r.company_id) || 0) + 1);
+      }
+    }
+    return m;
+  }, [jobRoles, pipeline]);
 
   // Candidates count per company (from pipeline/applications)
   const candidateCountByCompany = useMemo(() => {
@@ -450,7 +472,17 @@ const Companies = () => {
 
   // ─── KPI Cards Calculations ──────────────────────────────
   const activePositionsCount = useMemo(() => {
-    return jobRoles.filter(r => r.status.toLowerCase() === "open").length;
+    return jobRoles.reduce((sum, r) => {
+      if (r.status.toLowerCase() !== "open") return sum;
+      const filledCount = (pipeline["selected"] || []).filter((app: any) => app.job_role_id === r.id).length +
+                          (pipeline["joined"] || []).filter((app: any) => app.job_role_id === r.id).length;
+      const remaining = Math.max(0, (r.positions_required || 1) - filledCount);
+      return sum + remaining;
+    }, 0);
+  }, [jobRoles, pipeline]);
+
+  const totalPositionsCount = useMemo(() => {
+    return jobRoles.reduce((sum, r) => sum + (r.positions_required || 1), 0);
   }, [jobRoles]);
 
   const totalCandidatesCount = useMemo(() => {
@@ -500,7 +532,9 @@ const Companies = () => {
           return role?.company_id === c.id;
         });
       } else if (mainTab === "Closed Positions") {
-        matchesTab = jobRoles.some(r => r.company_id === c.id && r.status.toLowerCase() === "closed");
+        const totalRoles = roleCountByCompany.get(c.id) || 0;
+        const openRoles = openRoleCountByCompany.get(c.id) || 0;
+        matchesTab = totalRoles > 0 && openRoles === 0;
       } else if (mainTab === "Recently Added") {
         const daysAgo = (Date.now() - new Date(c.created_at).getTime()) / 86400000;
         matchesTab = daysAgo <= 30;
@@ -515,9 +549,12 @@ const Companies = () => {
       let matchesStatus = true;
       if (statusFilter && statusFilter !== "All" && statusFilter !== "Status") {
         const openRoles = openRoleCountByCompany.get(c.id) || 0;
+        const totalRoles = roleCountByCompany.get(c.id) || 0;
+        const isClosed = openRoles === 0 && totalRoles > 0;
         const isActive = openRoles > 0;
         if (statusFilter === "Active") matchesStatus = isActive;
-        if (statusFilter === "Inactive") matchesStatus = !isActive;
+        if (statusFilter === "Inactive") matchesStatus = (openRoles === 0 && totalRoles === 0);
+        if (statusFilter === "Closed") matchesStatus = isClosed;
       }
 
       return matchesGlobal && matchesCompanySearch && matchesTab && matchesCompanyFilter && matchesStatus;
@@ -566,7 +603,7 @@ const Companies = () => {
                           (pipeline["joined"] || []).filter((app: any) => app.job_role_id === r.id).length;
 
       let computedStatus = "open";
-      if (r.status.toLowerCase() === "closed") {
+      if (r.status.toLowerCase() === "closed" || filledCount >= (r.positions_required || 1)) {
         computedStatus = "closed";
       } else {
         const inProgressStages = ["pending", "shortlisted", "interview_scheduled", "interviewed", "on_hold"];
@@ -801,10 +838,7 @@ const Companies = () => {
   };
 
   const openAddRole = () => {
-    setEditRoleId(null);
-    setSelectedVendorIds([]);
-    setRoleForm({ title: "", description: "", deadline: "", estimated_budget: "", currency: "INR", positions_required: "", pipeline_stages: [...DEFAULT_STAGES], location: "", work_mode: "onsite", experience_required: "", project_time_period: "" });
-    setRoleModalOpen(true);
+    setAddPositionModalOpen(true);
   };
 
   const openEditRole = (r: any) => {
@@ -1134,7 +1168,7 @@ const Companies = () => {
 
       {/* ─── KPI Cards (Only for List View) ─────────────────── */}
       {!selectedCompanyId && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
           <div className="bg-card border border-border/50 rounded-xl p-4 flex items-center gap-4 shadow-sm">
             <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 border border-blue-100 dark:border-blue-900/50">
               <Building2 className="w-6 h-6" />
@@ -1152,6 +1186,16 @@ const Companies = () => {
             <div>
               <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Active Positions</p>
               <p className="text-xl font-bold text-foreground mt-0.5">{activePositionsCount}</p>
+            </div>
+          </div>
+
+          <div className="bg-card border border-border/50 rounded-xl p-4 flex items-center gap-4 shadow-sm">
+            <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-100 dark:border-emerald-900/50">
+              <Users className="w-6 h-6" />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Total Positions</p>
+              <p className="text-xl font-bold text-foreground mt-0.5">{totalPositionsCount}</p>
             </div>
           </div>
         </div>
@@ -1222,7 +1266,7 @@ const Companies = () => {
                 onChange={(e) => setStatusFilter(e.target.value)}
                 className="w-full pl-3 pr-8 py-2 rounded-xl bg-card border border-border/50 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all shadow-sm appearance-none cursor-pointer"
               >
-                {["Status", "All", "Active", "Inactive"].map((st) => (
+                {["Status", "All", "Active", "Inactive", "Closed"].map((st) => (
                   <option key={st} value={st}>
                     {st === "Status" ? "Status" : st === "All" ? "All Statuses" : st}
                   </option>
@@ -1277,10 +1321,25 @@ const Companies = () => {
 
                   // Status
                   const hasOnHold = (pipeline["on_hold"] || []).some((app: any) => jobRoles.filter(r => r.company_id === c.id).some(r => r.id === app.job_role_id));
-                  const companyStatus = hasOnHold ? "On Hold" : (openRoles > 0 ? "Active" : "Inactive");
+                  const totalRoles = roleCountByCompany.get(c.id) || 0;
+                  const allFilled = totalRoles > 0 && filled >= required && required > 0;
+                  const companyStatus = hasOnHold
+                    ? "On Hold"
+                    : allFilled
+                      ? "Closed"
+                      : (openRoles > 0
+                          ? "Active"
+                          : (totalRoles > 0 ? "Closed" : "Inactive")
+                        );
                   const companyStatusStyle = companyStatus === "On Hold"
                     ? "bg-orange-500/10 text-orange-600 border-orange-500/20"
-                    : (companyStatus === "Active" ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" : "bg-muted text-muted-foreground border-border");
+                    : (companyStatus === "Active"
+                        ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
+                        : (companyStatus === "Closed"
+                            ? "bg-red-500/10 text-red-600 border-red-500/20"
+                            : "bg-muted text-muted-foreground border-border"
+                          )
+                      );
 
                   return (
                     <tr
@@ -1552,7 +1611,7 @@ const Companies = () => {
                           <ChevronDown className="w-3.5 h-3.5 opacity-60" />
                         </button>
                         <button
-                          onClick={() => { setRoleForm({ title: "", description: "", deadline: "", estimated_budget: "", currency: "INR", positions_required: 1, pipeline_stages: [...DEFAULT_STAGES], location: "", work_mode: "onsite", experience_required: "", project_time_period: "" }); setRoleModalOpen(true); }}
+                          onClick={() => setAddPositionModalOpen(true)}
                           className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition-all flex items-center gap-2 shadow-md shadow-blue-600/10"
                         >
                           <Plus className="w-4 h-4" /> Add Position
@@ -1563,7 +1622,7 @@ const Companies = () => {
                       <div className="text-center py-16 text-muted-foreground glass-card border-dashed">
                         <Briefcase className="w-10 h-10 mx-auto mb-4 opacity-20" />
                         <p className="text-sm font-medium">No job roles yet for {selectedCompany?.name || "the company"}</p>
-                        <button onClick={() => { setRoleForm({ title: "", description: "", deadline: "", estimated_budget: "", currency: "INR", positions_required: 1, pipeline_stages: [...DEFAULT_STAGES], location: "", work_mode: "onsite", experience_required: "", project_time_period: "" }); setRoleModalOpen(true); }} className="mt-4 text-xs text-primary font-bold hover:underline underline-offset-4">
+                        <button onClick={() => setAddPositionModalOpen(true)} className="mt-4 text-xs text-primary font-bold hover:underline underline-offset-4">
                           + Initialize Active Recruitment
                         </button>
                       </div>
@@ -1628,8 +1687,14 @@ const Companies = () => {
                                       <div className="min-w-0">
                                         <div className="flex items-center gap-2">
                                           <h4 className="font-bold text-foreground hover:text-primary transition-colors truncate max-w-[220px]">{r.title}</h4>
-                                          <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 uppercase tracking-wider">
-                                            Open
+                                          <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border ${
+                                            r.computedStatus === "closed"
+                                              ? "bg-red-500/10 text-red-500 border-red-500/20"
+                                              : r.computedStatus === "in progress"
+                                                ? "bg-amber-500/10 text-amber-500 border-amber-500/20"
+                                                : "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
+                                          }`}>
+                                            {r.computedStatus === "closed" ? "Closed" : r.computedStatus === "in progress" ? "In Progress" : "Open"}
                                           </span>
                                         </div>
                                         <p className="text-[11px] text-muted-foreground mt-0.5">
@@ -2063,7 +2128,8 @@ const Companies = () => {
       </Modal>
 
       {/* Create/Edit Job Role */}
-      <Modal open={roleModalOpen} onClose={() => setRoleModalOpen(false)} title={editRoleId ? "Edit Job Position" : "Create Job Position"}>
+      {/* Create/Edit Job Role */}
+      <Modal open={roleModalOpen && editRoleId !== null} onClose={() => setRoleModalOpen(false)} title="Edit Job Position">
         <div className="space-y-4">
           <div>
             <label className="label-text mb-2 block">Company</label>
@@ -2275,15 +2341,17 @@ const Companies = () => {
             </select>
           </div>
           <button
-            onClick={editRoleId ? handleUpdateRole : handleCreateRole}
+            onClick={handleUpdateRole}
             disabled={updatingRole}
             className="w-full py-4 rounded-lg bg-primary text-primary-foreground font-bold text-sm hover:bg-primary/90 transition-all glow-primary mt-2 flex items-center justify-center gap-2"
           >
             {updatingRole && <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
-            {editRoleId ? "Update Job Position" : "Create Job Position"}
+            Update Job Position
           </button>
         </div>
       </Modal>
+
+      <AddOpenPositionModal open={addPositionModalOpen} onClose={() => setAddPositionModalOpen(false)} />
 
       {/* Close/Reopen Role Confirmation */}
       <Modal open={confirmRoleId !== null} onClose={() => setConfirmRoleId(null)} title={confirmAction === "close" ? "Close Job Position" : "Reopen Job Position"}>

@@ -115,7 +115,6 @@ export interface Company {
   id: number;
   name: string;
   location?: string | null;
-  is_internal?: boolean;
   created_at: string;
   description?: string;
 }
@@ -332,7 +331,7 @@ export const deleteJobRole = async (id: number): Promise<void> => {
   await client.delete(`/job-roles/${id}`);
 };
 
-export const getCompanies = async (params?: { include_internal?: boolean }): Promise<Company[]> => {
+export const getCompanies = async (params?: { search?: string }): Promise<Company[]> => {
   const { data } = await client.get<Company[]>("/companies", { params });
   return data;
 };

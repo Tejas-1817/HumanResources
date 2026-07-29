@@ -323,7 +323,7 @@ export const CreateJobPostForm = ({ onSuccess }: { onSuccess: () => void }) => {
 
   const { data: companiesData, isLoading: loadingCompanies } = useQuery({
     queryKey: ["all-companies-select"],
-    queryFn: () => getCompanies({ include_internal: true }),
+    queryFn: () => getCompanies(),
   });
   const companies = companiesData ?? [];
 

@@ -2,7 +2,7 @@
 const statusStyles: Record<string, string> = {
   // Job role statuses
   open: "bg-success/10 text-success border-success/20",
-  closed: "bg-muted text-muted-foreground border-border",
+  closed: "bg-red-500/10 text-red-600 border-red-500/20",
 
   // Generic candidate statuses
   active: "bg-success/10 text-success border-success/20",

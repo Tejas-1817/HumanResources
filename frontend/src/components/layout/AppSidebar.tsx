@@ -29,13 +29,13 @@ import {
 const navItems = [
   { label: "Dashboard", icon: LayoutDashboard, path: "/" },
   { label: "Analytics", icon: BarChart3, path: "/analytics" },
-  { label: "Internal Hiring", icon: Building, path: "/internal-hiring" },
   { label: "Total Candidates", icon: Users, path: "/candidates" },
   { label: "Open Positions", icon: Briefcase, path: "/open-positions" },
   { label: "Selected", icon: UserCheck, path: "/selected" },
   { label: "Replacements", icon: RefreshCcw, path: "/replacements" },
   { label: "Companies", icon: Building2, path: "/companies" },
   { label: "On Bench Talent", icon: Handshake, path: "/vendors" },
+  { label: "Vendors", icon: Handshake, path: "/vendors?view=partners" },
   { label: "Archives", icon: Archive, path: "/archives" },
 ];
 
@@ -104,11 +104,16 @@ export const AppSidebar = ({ onMobileClose, onQuickAction }: { onMobileClose?: (
         {/* Navigation Items */}
         {navItems.map((item) => {
           const queryParams = new URLSearchParams(location.search);
+          const viewParam = queryParams.get("view");
           const isVendorCandidates = location.pathname === "/candidates" && queryParams.has("vendor_id");
-          
+
           let isActive = false;
-          if (item.path === "/vendors") {
-            isActive = location.pathname === "/vendors" || isVendorCandidates;
+          if (item.path === "/vendors?view=partners") {
+            // Vendors tab: active when on /vendors with view=partners
+            isActive = location.pathname === "/vendors" && viewParam === "partners";
+          } else if (item.path === "/vendors") {
+            // On Bench Talent tab: active when on /vendors WITHOUT view=partners, or vendor candidate drill-down
+            isActive = (location.pathname === "/vendors" && viewParam !== "partners") || isVendorCandidates;
           } else if (item.path === "/candidates") {
             isActive = location.pathname === "/candidates" && !isVendorCandidates;
           } else {

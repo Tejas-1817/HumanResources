@@ -19,7 +19,6 @@ import ForgotPassword from "@/pages/ForgotPassword";
 import ResetPassword from "@/pages/ResetPassword";
 import JobRoles from "@/pages/JobRoles";
 import NotFound from "@/pages/NotFound";
-import InternalHiring from "@/pages/InternalHiring";
 import InterviewerDashboard from "@/pages/InterviewerDashboard";
 import Archives from "@/pages/Archives";
 import Analytics from "@/pages/Analytics";
@@ -109,7 +108,6 @@ const AppRoutes = () => {
       >
         <Route path="/" element={<Dashboard />} />
         <Route path="/analytics" element={<Analytics />} />
-        <Route path="/internal-hiring" element={<InternalHiring />} />
         <Route path="/companies" element={<Companies />} />
         <Route path="/candidates/:id" element={<CandidateDetail />} />
         <Route path="/job-roles/:id" element={<JobRoleDetail />} />

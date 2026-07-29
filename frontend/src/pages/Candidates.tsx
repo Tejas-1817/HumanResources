@@ -10,7 +10,7 @@ import { Candidate, deleteCandidate, getCandidates, getCompanies, getVendors, ge
 import UploadPage from "./Upload";
 import { toast } from "sonner";
 
-const PAGE_SIZE = 15;
+const PAGE_SIZE = 50;
 
 const experienceRanges = [
   { label: "All", min: 0, max: Infinity },

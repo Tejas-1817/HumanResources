@@ -93,8 +93,8 @@ const InterviewerDashboard = () => {
 
   // ─── Company context (Altzor Digital Solutions) ──────────────────────────
   const { data: companiesData } = useQuery({
-    queryKey: ["companies", { include_internal: true }],
-    queryFn: () => getCompanies({ include_internal: true }),
+    queryKey: ["companies"],
+    queryFn: () => getCompanies(),
   });
   const selectedCompany = useMemo(() => {
     return (companiesData ?? []).find((c) => c.name === "Altzor Digital Solutions") ?? null;

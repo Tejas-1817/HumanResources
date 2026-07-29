@@ -27,6 +27,8 @@ import {
   CheckCircle2,
   CalendarDays,
   UserPlus,
+  BarChart3,
+  BadgeCheck,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
@@ -116,16 +118,40 @@ const DashboardCalendar = ({
   // Helper to check if a day has interviews
   const hasInterviewsOnDay = (day: number) => {
     const dayStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-    
+
     if (!schedules || schedules.length === 0) {
       return false;
     }
-    
+
     return schedules.some((s) => {
       if (!s.date) return false;
       const sDate = s.date.includes("T") ? s.date.split("T")[0] : s.date;
       return sDate === dayStr;
     });
+  };
+
+  // Helper to check if a day is a holiday
+  const getHolidayName = (day: number) => {
+    const mmDd = `${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    const holidayList = [
+      { date: "01-01", name: "New Year's Day" },
+      { date: "01-14", name: "Makar Sankranti" },
+      { date: "01-26", name: "Republic Day" },
+      { date: "03-14", name: "Holi" },
+      { date: "04-14", name: "Ambedkar Jayanti" },
+      { date: "04-18", name: "Good Friday" },
+      { date: "05-01", name: "Maharashtra Day" },
+      { date: "08-15", name: "Independence Day" },
+      { date: "08-27", name: "Ganesh Chaturthi" },
+      { date: "10-02", name: "Gandhi Jayanti" },
+      { date: "10-24", name: "Dussehra" },
+      { date: "10-20", name: "Diwali" },
+      { date: "10-21", name: "Diwali (Lakshmi Puja)" },
+      { date: "11-05", name: "Guru Nanak Jayanti" },
+      { date: "12-25", name: "Christmas Day" },
+    ];
+    const h = holidayList.find(item => item.date === mmDd);
+    return h ? h.name : null;
   };
 
   // Close popover when clicking anywhere else
@@ -160,13 +186,13 @@ const DashboardCalendar = ({
       </div>
 
       <div className="flex items-center justify-between mb-4">
-        <span className="text-xs font-black text-slate-700 uppercase tracking-wider w-8 text-center">SUN</span>
+        <span className="text-xs font-black text-red-500 uppercase tracking-wider w-8 text-center">SUN</span>
         <span className="text-xs font-black text-slate-700 uppercase tracking-wider w-8 text-center">MON</span>
         <span className="text-xs font-black text-slate-700 uppercase tracking-wider w-8 text-center">TUE</span>
         <span className="text-xs font-black text-slate-700 uppercase tracking-wider w-8 text-center">WED</span>
         <span className="text-xs font-black text-slate-700 uppercase tracking-wider w-8 text-center">THU</span>
         <span className="text-xs font-black text-slate-700 uppercase tracking-wider w-8 text-center">FRI</span>
-        <span className="text-xs font-black text-slate-700 uppercase tracking-wider w-8 text-center">SAT</span>
+        <span className="text-xs font-black text-red-500 uppercase tracking-wider w-8 text-center">SAT</span>
       </div>
 
       <div className="grid grid-cols-7 gap-y-2 gap-x-1 justify-items-center flex-1">
@@ -178,11 +204,17 @@ const DashboardCalendar = ({
         {/* Days */}
         {Array.from({ length: daysInMonth }).map((_, idx) => {
           const dayNum = idx + 1;
+          const dateObj = new Date(year, month, dayNum);
+          const dayOfWeek = dateObj.getDay();
+          const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+          const holidayName = getHolidayName(dayNum);
+          const isHoliday = !!holidayName;
+
           const isToday =
             dayNum === new Date().getDate() &&
             month === new Date().getMonth() &&
             year === new Date().getFullYear();
-            
+
           const isSelected =
             dayNum === selectedDate.getDate() &&
             month === selectedDate.getMonth() &&
@@ -198,13 +230,15 @@ const DashboardCalendar = ({
                   onSelectDate(new Date(year, month, dayNum));
                   setPopoverDay(popoverDay === dayNum ? null : dayNum);
                 }}
+                title={holidayName || undefined}
                 className={`w-8 h-8 rounded-full flex flex-col items-center justify-center text-xs font-bold transition-all cursor-pointer
-                  ${
-                    isSelected
-                      ? "bg-blue-600 text-white shadow-sm font-extrabold"
-                      : isToday
+                  ${isSelected
+                    ? "bg-blue-600 text-white shadow-sm font-extrabold"
+                    : isToday
                       ? "bg-blue-50 text-blue-600 border border-blue-200"
-                      : "text-slate-800 hover:bg-slate-100"
+                      : (isHoliday || isWeekend)
+                        ? "text-red-500 hover:bg-red-50 font-bold"
+                        : "text-slate-800 hover:bg-slate-100"
                   }`}
               >
                 <span>{dayNum}</span>
@@ -213,7 +247,7 @@ const DashboardCalendar = ({
                   <span className={`w-1 h-1 rounded-full absolute bottom-1 ${isToday ? "bg-blue-600" : "bg-blue-500"}`} />
                 )}
               </button>
-              
+
               <AnimatePresence>
                 {popoverDay === dayNum && onScheduleInterview && (
                   <motion.div
@@ -224,17 +258,17 @@ const DashboardCalendar = ({
                     className="absolute top-10 left-1/2 -translate-x-1/2 z-[100] bg-white shadow-xl border border-slate-100 rounded-xl p-2 min-w-[160px]"
                     onClick={(e) => e.stopPropagation()}
                   >
-                     <p className="text-[10px] text-slate-500 font-bold mb-2 text-center uppercase tracking-wider">Options</p>
-                     <button 
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            setPopoverDay(null);
-                            onScheduleInterview(new Date(year, month, dayNum));
-                        }} 
-                        className="text-[11px] w-full bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg py-2 transition-colors flex items-center justify-center gap-1.5 shadow-sm shadow-blue-600/20"
-                     >
-                        <Plus className="w-3 h-3" /> Schedule Interview
-                     </button>
+                    <p className="text-[10px] text-slate-500 font-bold mb-2 text-center uppercase tracking-wider">Options</p>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setPopoverDay(null);
+                        onScheduleInterview(new Date(year, month, dayNum));
+                      }}
+                      className="text-[11px] w-full bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg py-2 transition-colors flex items-center justify-center gap-1.5 shadow-sm shadow-blue-600/20"
+                    >
+                      <Plus className="w-3 h-3" /> Schedule Interview
+                    </button>
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -266,9 +300,8 @@ const MetricCard = ({
     <motion.div
       variants={item}
       onClick={onClick}
-      className={`bg-white border border-blue-200/80 hover:border-blue-400 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all duration-200 flex items-center justify-between ${
-        onClick ? "cursor-pointer" : ""
-      }`}
+      className={`bg-white border border-blue-200/80 hover:border-blue-400 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all duration-200 flex items-center justify-between ${onClick ? "cursor-pointer" : ""
+        }`}
     >
       <div className="flex items-center gap-4">
         <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${iconBg}`}>
@@ -303,8 +336,8 @@ const Dashboard = () => {
   const [timeframe, setTimeframe] = useState("This Week");
   const [upcomingView, setUpcomingView] = useState("View");
   const [upcomingWeek, setUpcomingWeek] = useState("Week");
-  
-  const [upcomingMonth, setUpcomingMonth] = useState(() => 
+
+  const [upcomingMonth, setUpcomingMonth] = useState(() =>
     new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" })
   );
 
@@ -323,6 +356,11 @@ const Dashboard = () => {
   const [showViewDropdown, setShowViewDropdown] = useState(false);
   const [showWeekDropdown, setShowWeekDropdown] = useState(false);
   const [showMonthDropdown, setShowMonthDropdown] = useState(false);
+  const [showStatsDropdown, setShowStatsDropdown] = useState(false);
+
+  // Recruitment Statistics timeframe filter
+  type StatsTimeframe = "This Week" | "This Month" | "Last 3 Months" | "All Time";
+  const [statsTimeframe, setStatsTimeframe] = useState<StatsTimeframe>("This Month");
 
   // Calendar date communication state
   const [selectedCalendarDate, setSelectedCalendarDate] = useState<Date>(new Date());
@@ -341,7 +379,7 @@ const Dashboard = () => {
 
   // ── Data queries ──────────────────────────────────────
   const { data: statsData } = useQuery({ queryKey: ["dashboard-stats"], queryFn: () => getDashboardStats() });
-  const { data: companiesData } = useQuery({ queryKey: ["companies", { include_internal: true }], queryFn: () => getCompanies({ include_internal: true }) });
+  const { data: companiesData } = useQuery({ queryKey: ["companies"], queryFn: () => getCompanies() });
   const { data: jobRolesData } = useQuery({ queryKey: ["job-roles"], queryFn: () => getJobRoles() });
   const { data: rawPipeline = {} } = useQuery({ queryKey: ["pipeline"], queryFn: () => getPipeline() });
   const pipeline = rawPipeline || {};
@@ -352,23 +390,16 @@ const Dashboard = () => {
   const companies = companiesData ?? [];
   const jobRoles = jobRolesData ?? [];
 
-  // ── Open positions counts for internal and client ───────
-  const internalCompanyId = useMemo(() => {
-    const internal = companies.find(c => c.name === "Altzor Digital Solutions");
-    return internal?.id ?? null;
-  }, [companies]);
+  const totalActivePositionsCount = useMemo(() => {
+    return jobRoles.reduce((sum, r) => {
+      const filledCount = Object.values(pipeline).flat().filter((app: any) => app.job_role_id === r.id && (app.status === "selected" || app.status === "joined")).length;
+      const isClosed = r.status?.toLowerCase() === "closed" || (r.positions_required > 0 && filledCount >= r.positions_required);
+      if (isClosed) return sum;
 
-  const internalOpenRolesCount = useMemo(() => {
-    if (!internalCompanyId) return 0;
-    return jobRoles.filter(r => r.status === "open" && r.company_id === internalCompanyId).length;
-  }, [jobRoles, internalCompanyId]);
-
-  const clientOpenRolesCount = useMemo(() => {
-    if (!internalCompanyId) {
-      return jobRoles.filter(r => r.status !== "closed").length;
-    }
-    return jobRoles.filter(r => r.status !== "closed" && r.company_id !== internalCompanyId).length;
-  }, [jobRoles, internalCompanyId]);
+      const remaining = Math.max(0, (r.positions_required || 1) - filledCount);
+      return sum + remaining;
+    }, 0);
+  }, [jobRoles, pipeline]);
 
   // ── Notification API handlers ────────────────────────
   const fetchNotifications = async () => {
@@ -514,59 +545,54 @@ const Dashboard = () => {
     () => Object.values(pipeline).reduce((sum: number, apps: any) => sum + (apps?.length || 0), 0),
     [pipeline]
   );
+  
   const selectedCount = data?.pipeline_summary?.selected ?? 0;
-  const interviewCount = (data?.pipeline_summary?.interview_scheduled ?? 0) + (data?.pipeline_summary?.interviewed ?? 0);
-
-  const getApplicantCount = (roleId: number) => {
-    let count = 0;
-    for (const apps of Object.values(pipeline)) {
-      if (Array.isArray(apps)) {
-        count += apps.filter((app: any) => app.job_role_id === roleId).length;
-      }
-    }
-    return count;
-  };
-
   const conversionRate = totalPipeline > 0 ? Math.round((selectedCount / totalPipeline) * 100) : 0;
 
-  const internalStats = useMemo(() => {
-    let internalPendingCount = 0;
-    let internalShortlistedCount = 0;
-    let internalInterviewCount = 0;
-    let internalSelectedCount = 0;
-    let internalJoinedCount = 0;
-    const hasPipelineData = Object.keys(pipeline).length > 0;
-    if (internalCompanyId && hasPipelineData) {
-      internalPendingCount = (pipeline["pending"] || []).filter((app: any) => {
-        const role = jobRoles.find((r: any) => r.id === app.job_role_id);
-        return role?.company_id === internalCompanyId;
-      }).length;
-      internalShortlistedCount = (pipeline["shortlisted"] || []).filter((app: any) => {
-        const role = jobRoles.find((r: any) => r.id === app.job_role_id);
-        return role?.company_id === internalCompanyId;
-      }).length;
-      internalInterviewCount = (pipeline["interview_scheduled"] || []).filter((app: any) => {
-        const role = jobRoles.find((r: any) => r.id === app.job_role_id);
-        return role?.company_id === internalCompanyId;
-      }).length + (pipeline["interviewed"] || []).filter((app: any) => {
-        const role = jobRoles.find((r: any) => r.id === app.job_role_id);
-        return role?.company_id === internalCompanyId;
-      }).length;
-      internalSelectedCount = (pipeline["selected"] || []).filter((app: any) => {
-        const role = jobRoles.find((r: any) => r.id === app.job_role_id);
-        return role?.company_id === internalCompanyId;
-      }).length;
-      internalJoinedCount = (pipeline["joined"] || []).filter((app: any) => {
-        const role = jobRoles.find((r: any) => r.id === app.job_role_id);
-        return role?.company_id === internalCompanyId;
-      }).length;
+  // ── Filtered pipeline for Recruitment Statistics ─────
+  const filteredPipeline = useMemo(() => {
+    const now = new Date();
+    let cutoff: Date | null = null;
+    if (statsTimeframe === "This Week") {
+      cutoff = new Date(now);
+      cutoff.setDate(now.getDate() - 7);
+    } else if (statsTimeframe === "This Month") {
+      cutoff = new Date(now.getFullYear(), now.getMonth(), 1);
+    } else if (statsTimeframe === "Last 3 Months") {
+      cutoff = new Date(now);
+      cutoff.setMonth(now.getMonth() - 3);
+    }
+    if (!cutoff) return pipeline; // "All Time"
+    const result: typeof pipeline = {};
+    for (const [status, apps] of Object.entries(pipeline)) {
+      result[status] = (apps as any[]).filter((app: any) => {
+        if (!app.created_at) return true;
+        return new Date(app.created_at) >= cutoff!;
+      });
+    }
+    return result;
+  }, [pipeline, statsTimeframe]);
+
+  const overallStats = useMemo(() => {
+    let pendingCount = 0;
+    let shortlistedCount = 0;
+    let interviewCountVal = 0;
+    let selectedCountVal = 0;
+    let joinedCount = 0;
+    const hasPipelineData = Object.keys(filteredPipeline).length > 0;
+    if (hasPipelineData) {
+      pendingCount = (filteredPipeline["pending"] || []).length;
+      shortlistedCount = (filteredPipeline["shortlisted"] || []).length;
+      interviewCountVal = (filteredPipeline["interview_scheduled"] || []).length + (filteredPipeline["interviewed"] || []).length;
+      selectedCountVal = (filteredPipeline["selected"] || []).length;
+      joinedCount = (filteredPipeline["joined"] || []).length;
     }
 
-    const appliedVal = internalPendingCount;
-    const shortlistedVal = internalShortlistedCount;
-    const interviewVal = internalInterviewCount;
-    const selectedVal = internalSelectedCount;
-    const joinedVal = internalJoinedCount;
+    const appliedVal = pendingCount;
+    const shortlistedVal = shortlistedCount;
+    const interviewVal = interviewCountVal;
+    const selectedVal = selectedCountVal;
+    const joinedVal = joinedCount;
 
     const totalStats = appliedVal + shortlistedVal + interviewVal + selectedVal + joinedVal;
 
@@ -577,57 +603,20 @@ const Dashboard = () => {
       { name: "Selected", value: selectedVal, pct: `${totalStats > 0 ? Math.round((selectedVal / totalStats) * 100) : 0}%`, bg: "bg-emerald-50", textColor: "text-emerald-500", icon: CheckCircle2 },
       { name: "Joined", value: joinedVal, pct: `${totalStats > 0 ? Math.round((joinedVal / totalStats) * 100) : 0}%`, bg: "bg-cyan-50", textColor: "text-cyan-500", icon: Users },
     ];
-  }, [data, interviewCount, selectedCount, pipeline, jobRoles, internalCompanyId]);
+  }, [filteredPipeline]);
 
-  const clientStats = useMemo(() => {
-    let clientPendingCount = 0;
-    let clientShortlistedCount = 0;
-    let clientInterviewCount = 0;
-    let clientSelectedCount = 0;
-    let clientJoinedCount = 0;
-    const hasPipelineData = Object.keys(pipeline).length > 0;
-    if (internalCompanyId && hasPipelineData) {
-      clientPendingCount = (pipeline["pending"] || []).filter((app: any) => {
-        const role = jobRoles.find((r: any) => r.id === app.job_role_id);
-        return role && role.company_id !== internalCompanyId;
-      }).length;
-      clientShortlistedCount = (pipeline["shortlisted"] || []).filter((app: any) => {
-        const role = jobRoles.find((r: any) => r.id === app.job_role_id);
-        return role && role.company_id !== internalCompanyId;
-      }).length;
-      clientInterviewCount = (pipeline["interview_scheduled"] || []).filter((app: any) => {
-        const role = jobRoles.find((r: any) => r.id === app.job_role_id);
-        return role && role.company_id !== internalCompanyId;
-      }).length + (pipeline["interviewed"] || []).filter((app: any) => {
-        const role = jobRoles.find((r: any) => r.id === app.job_role_id);
-        return role && role.company_id !== internalCompanyId;
-      }).length;
-      clientSelectedCount = (pipeline["selected"] || []).filter((app: any) => {
-        const role = jobRoles.find((r: any) => r.id === app.job_role_id);
-        return role && role.company_id !== internalCompanyId;
-      }).length;
-      clientJoinedCount = (pipeline["joined"] || []).filter((app: any) => {
-        const role = jobRoles.find((r: any) => r.id === app.job_role_id);
-        return role && role.company_id !== internalCompanyId;
-      }).length;
-    }
+  const totalActiveCount = useMemo(() => {
+    let total = 0;
+    const activeStatuses = ["pending", "shortlisted", "interview_scheduled", "interviewed", "on_hold"];
+    activeStatuses.forEach((status) => {
+      if (pipeline[status]) {
+        total += pipeline[status].length;
+      }
+    });
+    return total;
+  }, [pipeline]);
 
-    const appliedVal = clientPendingCount;
-    const shortlistedVal = clientShortlistedCount;
-    const interviewVal = clientInterviewCount;
-    const selectedVal = clientSelectedCount;
-    const joinedVal = clientJoinedCount;
 
-    const totalStats = appliedVal + shortlistedVal + interviewVal + selectedVal + joinedVal;
-
-    return [
-      { name: "Applied", value: appliedVal, pct: `${totalStats > 0 ? Math.round((appliedVal / totalStats) * 100) : 0}%` },
-      { name: "Shortlisted", value: shortlistedVal, pct: `${totalStats > 0 ? Math.round((shortlistedVal / totalStats) * 100) : 0}%` },
-      { name: "Interview", value: interviewVal, pct: `${totalStats > 0 ? Math.round((interviewVal / totalStats) * 100) : 0}%` },
-      { name: "Selected", value: selectedVal, pct: `${totalStats > 0 ? Math.round((selectedVal / totalStats) * 100) : 0}%` },
-      { name: "Joined", value: joinedVal, pct: `${totalStats > 0 ? Math.round((joinedVal / totalStats) * 100) : 0}%` },
-    ];
-  }, [pipeline, jobRoles, internalCompanyId]);
 
   // ── Upcoming Interviews Mapper ────────────────────────
   const mockUpcomingInterviews = [
@@ -642,7 +631,7 @@ const Dashboard = () => {
       ...(pipeline["interview_scheduled"] || []),
       ...(pipeline["interviewed"] || [])
     ];
-    
+
     let combined: any[] = [];
     const seenCandidates = new Set<string>();
 
@@ -674,10 +663,10 @@ const Dashboard = () => {
       const dStr = app.interview_date || app.status_date;
       if (!dStr) return;
       const d = new Date(dStr);
-      
+
       const role = jobRoles.find((r: any) => r.id === app.job_role_id);
       const timeString = new Date(dStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      
+
       const year = d.getFullYear();
       const month = String(d.getMonth() + 1).padStart(2, '0');
       const day = String(d.getDate()).padStart(2, '0');
@@ -701,7 +690,7 @@ const Dashboard = () => {
   const formattedUpcoming = useMemo(() => {
     const now = new Date();
     now.setHours(0, 0, 0, 0);
-    
+
     const upcoming = allCombinedInterviews.filter((item: any) => {
       if (!item.date) return false;
       const d = new Date(item.date);
@@ -721,7 +710,7 @@ const Dashboard = () => {
         { color: "text-emerald-600 bg-emerald-50 border-emerald-100", badgeColor: "bg-purple-100 text-purple-800" },
       ];
       const style = colors[i % colors.length];
-      
+
       return {
         ...item,
         color: style.color,
@@ -748,10 +737,10 @@ const Dashboard = () => {
           const d = new Date(item.date);
           const start = new Date(now);
           start.setDate(now.getDate() - now.getDay());
-          start.setHours(0,0,0,0);
+          start.setHours(0, 0, 0, 0);
           const end = new Date(start);
           end.setDate(start.getDate() + 6);
-          end.setHours(23,59,59,999);
+          end.setHours(23, 59, 59, 999);
           return d >= start && d <= end;
         });
       } else if (upcomingWeek === "Next Week") {
@@ -760,10 +749,10 @@ const Dashboard = () => {
           const d = new Date(item.date);
           const start = new Date(now);
           start.setDate(now.getDate() - now.getDay() + 7);
-          start.setHours(0,0,0,0);
+          start.setHours(0, 0, 0, 0);
           const end = new Date(start);
           end.setDate(start.getDate() + 6);
-          end.setHours(23,59,59,999);
+          end.setHours(23, 59, 59, 999);
           return d >= start && d <= end;
         });
       }
@@ -787,21 +776,27 @@ const Dashboard = () => {
 
   // ── Open Positions Mapper ─────────────────────────────
   const openPositionsList = useMemo(() => {
-    // Prefer the accurate counts returned by the dashboard stats API
-    if (data?.open_positions && data.open_positions.length > 0) {
-      return data.open_positions;
-    }
-    // Fallback: derive from jobRoles (counts will be 0 until pipeline loads)
-    const openRoles = jobRoles.filter((r) => r.status === "open");
-    return openRoles.map((r) => ({
-      id: r.id,
-      company: r.company_name || "Unknown",
-      role: r.title,
-      positions: r.positions_required || 1,
-      count: getApplicantCount(r.id),
-      status: "Active",
-    }));
-  }, [data, jobRoles, pipeline]);
+    const allApps = Object.values(pipeline).flat();
+    const openRoles = jobRoles.filter((r) => {
+      const filledCount = allApps.filter((app: any) => app.job_role_id === r.id && (app.status === "selected" || app.status === "joined")).length;
+      const isClosed = r.status?.toLowerCase() === "closed" || (r.positions_required > 0 && filledCount >= r.positions_required);
+      return !isClosed;
+    });
+
+    return openRoles.map((r) => {
+      const companyObj = companies.find((c) => c.id === r.company_id);
+      const companyName = r.company_name || companyObj?.name || "Unknown";
+      const totalApps = allApps.filter((app: any) => app.job_role_id === r.id).length;
+      return {
+        id: r.id,
+        company: companyName,
+        role: r.title,
+        positions: r.positions_required || 1,
+        count: totalApps,
+        status: "Active",
+      };
+    });
+  }, [jobRoles, pipeline, companies]);
 
   // ── Time helper function ──────────────────────────────
   const formatTimeAgo = (dateStr: string) => {
@@ -890,11 +885,11 @@ const Dashboard = () => {
   const weekInterviewsCount = useMemo(() => {
     const now = new Date();
     const start = new Date(now.setDate(now.getDate() - now.getDay()));
-    start.setHours(0,0,0,0);
+    start.setHours(0, 0, 0, 0);
     const end = new Date(start);
     end.setDate(start.getDate() + 6);
-    end.setHours(23,59,59,999);
-    
+    end.setHours(23, 59, 59, 999);
+
     const count = allCombinedInterviews.filter((s: any) => {
       if (!s.date) return false;
       const d = new Date(s.date);
@@ -922,6 +917,79 @@ const Dashboard = () => {
     if (timeframe === "This Month") return "Interviews This Month";
     return "Total Interviews";
   }, [timeframe]);
+
+  // ── Upcoming Holidays Logic ───────────────────────────
+  const upcomingHolidays = useMemo(() => {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    const currentYear = now.getFullYear();
+
+    const baseHolidays = [
+      { date: "01-01", name: "New Year's Day", type: "Regional" },
+      { date: "01-14", name: "Makar Sankranti", type: "Regional" },
+      { date: "01-26", name: "Republic Day", type: "National" },
+      { date: "03-14", name: "Holi", type: "Regional" },
+      { date: "04-14", name: "Ambedkar Jayanti", type: "Regional" },
+      { date: "04-18", name: "Good Friday", type: "National" },
+      { date: "05-01", name: "Maharashtra Day", type: "Regional" },
+      { date: "08-15", name: "Independence Day", type: "National" },
+      { date: "08-27", name: "Ganesh Chaturthi", type: "Regional" },
+      { date: "10-02", name: "Gandhi Jayanti", type: "National" },
+      { date: "10-24", name: "Dussehra", type: "Regional" },
+      { date: "10-20", name: "Diwali", type: "National" },
+      { date: "10-21", name: "Diwali (Lakshmi Puja)", type: "Regional" },
+      { date: "11-05", name: "Guru Nanak Jayanti", type: "Regional" },
+      { date: "12-25", name: "Christmas Day", type: "National" },
+    ];
+
+    const processed = baseHolidays.map(h => {
+      const [m, d] = h.date.split("-").map(Number);
+      let year = currentYear;
+      let holidayDate = new Date(year, m - 1, d);
+      holidayDate.setHours(0, 0, 0, 0);
+
+      if (holidayDate < now) {
+        year = currentYear + 1;
+        holidayDate = new Date(year, m - 1, d);
+        holidayDate.setHours(0, 0, 0, 0);
+      }
+
+      const diffTime = holidayDate.getTime() - now.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+      return {
+        ...h,
+        dateObj: holidayDate,
+        diffDays,
+      };
+    });
+
+    processed.sort((a, b) => a.diffDays - b.diffDays);
+    return processed.slice(0, 8);
+  }, []);
+
+  const getBadgeStyles = (diffDays: number) => {
+    if (diffDays === 0) {
+      return {
+        bg: "bg-orange-50 text-orange-600 border-orange-200",
+        dot: "bg-orange-500",
+        label: "Today",
+      };
+    }
+    if (diffDays <= 7) {
+      return {
+        bg: "bg-amber-50 text-amber-600 border-amber-200",
+        dot: "bg-amber-500",
+        label: diffDays === 1 ? "Tomorrow" : `In ${diffDays} days`,
+      };
+    }
+    return {
+      bg: "bg-slate-100 text-slate-600 border-slate-200",
+      dot: "bg-slate-400",
+      label: `In ${diffDays} days`,
+    };
+  };
+
 
   // ── Quick Action Helpers ──────────────────────────────
   const handleAddCandidate = () => {
@@ -958,7 +1026,7 @@ const Dashboard = () => {
 
         {/* Action Widgets */}
         <div className="flex flex-wrap items-center gap-3 relative">
-          
+
           {/* Global Search Bar */}
           <div className="relative group w-full sm:w-64 md:w-80">
             <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
@@ -1063,12 +1131,12 @@ const Dashboard = () => {
                       filteredCompaniesSearch.length === 0 &&
                       filteredJobRolesSearch.length === 0 &&
                       (searchResults?.items?.length === 0 || !searchResults) && (
-                      <div className="flex flex-col items-center justify-center py-8 text-slate-400 gap-1.5">
-                        <Search className="w-5 h-5 opacity-40" />
-                        <span className="text-[11px] font-bold">No results for "{debouncedQuery}"</span>
-                        <span className="text-[9px] text-slate-400">Try a different keyword</span>
-                      </div>
-                    )}
+                        <div className="flex flex-col items-center justify-center py-8 text-slate-400 gap-1.5">
+                          <Search className="w-5 h-5 opacity-40" />
+                          <span className="text-[11px] font-bold">No results for "{debouncedQuery}"</span>
+                          <span className="text-[9px] text-slate-400">Try a different keyword</span>
+                        </div>
+                      )}
                   </div>
                   {searchResults?.items && searchResults.items.length > 0 && (
                     <button
@@ -1097,9 +1165,8 @@ const Dashboard = () => {
           <div className="relative">
             <button
               onClick={() => setShowNotifications(!showNotifications)}
-              className={`p-2 border border-slate-200 rounded-xl bg-white text-slate-600 hover:text-slate-800 hover:bg-slate-50 transition-all shadow-sm flex items-center justify-center shrink-0 cursor-pointer ${
-                showNotifications ? "bg-slate-50 text-slate-800" : ""
-              }`}
+              className={`p-2 border border-slate-200 rounded-xl bg-white text-slate-600 hover:text-slate-800 hover:bg-slate-50 transition-all shadow-sm flex items-center justify-center shrink-0 cursor-pointer ${showNotifications ? "bg-slate-50 text-slate-800" : ""
+                }`}
             >
               <Bell className="w-4 h-4" />
               {unreadCount > 0 && (
@@ -1143,11 +1210,10 @@ const Dashboard = () => {
                           <div
                             key={notif.id}
                             onClick={() => { if (!notif.is_read) handleMarkAsRead(notif.id); }}
-                            className={`p-2.5 rounded-xl border transition-all text-left flex gap-3 ${
-                              notif.is_read
+                            className={`p-2.5 rounded-xl border transition-all text-left flex gap-3 ${notif.is_read
                                 ? "bg-slate-50/50 border-slate-100 text-slate-400"
                                 : "bg-blue-50/30 border-blue-100 text-slate-800 hover:border-blue-200 cursor-pointer"
-                            }`}
+                              }`}
                           >
                             <div className="flex-1 min-w-0">
                               <div className="flex items-start justify-between gap-2">
@@ -1221,7 +1287,7 @@ const Dashboard = () => {
       </div>
 
       {/* ─── Row 1: Metrics Cards ─────────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         <MetricCard
           label="Total Candidates"
           value={data?.total_candidates ?? 0}
@@ -1231,34 +1297,17 @@ const Dashboard = () => {
         />
         <MetricCard
           label="Open Positions"
-          value={
-            <div className="flex gap-3.5 items-center mt-1">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  sessionStorage.setItem("internal_hiring_active_tab", "roles");
-                  navigate("/internal-hiring");
-                }}
-                className="flex flex-col items-start text-left hover:bg-slate-50 p-1.5 rounded-lg border border-slate-100/30 transition-all cursor-pointer"
-              >
-                <span className="text-[9px] text-slate-400 font-black uppercase tracking-wider block">Internal</span>
-                <span className="text-xl font-black text-slate-800">{internalOpenRolesCount}</span>
-              </button>
-              <div className="w-px h-6 bg-slate-200 mt-1" />
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  navigate("/open-positions");
-                }}
-                className="flex flex-col items-start text-left hover:bg-slate-50 p-1.5 rounded-lg border border-slate-100/30 transition-all cursor-pointer"
-              >
-                <span className="text-[9px] text-slate-400 font-black uppercase tracking-wider block">Client Side</span>
-                <span className="text-xl font-black text-slate-800">{clientOpenRolesCount}</span>
-              </button>
-            </div>
-          }
+          value={totalActivePositionsCount}
           icon={Briefcase}
           iconBg="bg-blue-50 text-blue-600"
+          onClick={() => navigate("/open-positions")}
+        />
+        <MetricCard
+          label="Active Applicants"
+          value={totalActiveCount}
+          icon={User}
+          iconBg="bg-blue-50 text-blue-600"
+          onClick={() => navigate("/candidates")}
         />
         <MetricCard
           label="Interviews Today"
@@ -1278,50 +1327,108 @@ const Dashboard = () => {
 
       {/* ─── Rows 2 & 3: Primary grid components ─────── */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        
+
         {/* Recruitment Statistics */}
-        <motion.div variants={item} className="bg-white border border-blue-200/80 hover:border-blue-300 transition-colors rounded-2xl p-5 shadow-sm flex flex-col h-[390px] overflow-hidden">
-          <h3 className="text-sm font-black text-slate-800 tracking-tight mb-4 shrink-0">Recruitment Statistics</h3>
-          
-          <div className="flex flex-col w-full h-full justify-center">
-            {/* Headers with Icons */}
-            <div className="flex justify-between items-center px-1">
-              <div className="w-[72px] shrink-0"></div>
-              {internalStats.map((stat) => (
-                <div key={stat.name} className="flex flex-col items-center flex-1 min-w-0">
-                  <div className={`w-9 h-9 rounded-xl ${stat.bg} flex items-center justify-center mb-2 shadow-sm border border-slate-100/50`}>
-                    <stat.icon className={`w-4 h-4 ${stat.textColor}`} />
+        <motion.div variants={item} className="bg-white border border-blue-200/80 hover:border-blue-300 transition-colors rounded-2xl p-5 shadow-sm flex flex-col h-[390px] overflow-hidden justify-between">
+          {/* Header */}
+          <div className="flex justify-between items-center mb-3">
+             <h3 className="text-sm font-black text-slate-800 tracking-tight">Recruitment Statistics</h3>
+             <div className="relative">
+               <div
+                 className="flex items-center gap-1.5 px-2 py-1 bg-slate-50 border border-slate-200 rounded-md cursor-pointer hover:bg-slate-100 transition-colors select-none"
+                 onClick={() => setShowStatsDropdown(prev => !prev)}
+               >
+                 <Calendar className="w-3 h-3 text-slate-500" />
+                 <span className="text-[10px] font-bold text-slate-600">{statsTimeframe}</span>
+                 <ChevronDown className={`w-3 h-3 text-slate-500 transition-transform duration-200 ${showStatsDropdown ? 'rotate-180' : ''}`} />
+               </div>
+               <AnimatePresence>
+                 {showStatsDropdown && (
+                   <motion.div
+                     initial={{ opacity: 0, y: -6, scale: 0.97 }}
+                     animate={{ opacity: 1, y: 0, scale: 1 }}
+                     exit={{ opacity: 0, y: -6, scale: 0.97 }}
+                     transition={{ duration: 0.15 }}
+                     className="absolute right-0 top-full mt-1 w-36 bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden"
+                   >
+                     {(["This Week", "This Month", "Last 3 Months", "All Time"] as const).map(opt => (
+                       <button
+                         key={opt}
+                         onClick={() => { setStatsTimeframe(opt); setShowStatsDropdown(false); }}
+                         className={`w-full text-left px-3 py-2 text-[11px] font-semibold transition-colors ${
+                           statsTimeframe === opt
+                             ? "bg-blue-50 text-blue-600"
+                             : "text-slate-600 hover:bg-slate-50"
+                         }`}
+                       >
+                         {opt}
+                       </button>
+                     ))}
+                   </motion.div>
+                 )}
+               </AnimatePresence>
+             </div>
+          </div>
+
+          {/* Top 5 Cards */}
+          <div className="grid grid-cols-5 gap-4 mb-2 flex-1">
+            {overallStats.map((stat, i) => (
+              <div key={stat.name} className="relative overflow-hidden bg-white rounded-xl p-4 flex flex-col items-center justify-center border border-slate-100 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] hover:shadow-md transition-all h-full min-h-[120px]">
+                 <div className={`w-10 h-10 rounded-full flex items-center justify-center ${stat.bg} mb-2.5`}>
+                   <stat.icon className={`w-5 h-5 ${stat.textColor}`} />
+                 </div>
+                 <h3 className={`text-[11px] font-bold ${stat.textColor} z-10`}>{stat.name}</h3>
+                 <span className={`text-2xl font-black ${stat.textColor} leading-none mt-2.5`}>{stat.value}</span>
+                 <span className={`text-[10px] font-bold mt-1 ${stat.textColor} opacity-70`}>{stat.pct}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Bottom Large Card */}
+          <div className="bg-slate-50/50 rounded-xl pt-3 pb-3 px-5 border border-slate-100">
+
+            {/* Bottom Metrics */}
+            <div className="flex items-center justify-between pt-3 border-t border-slate-200/60">
+               <div className="flex items-center gap-3 flex-1">
+                  <div className="w-8 h-8 rounded-lg bg-indigo-500 flex items-center justify-center shadow-md shadow-indigo-200">
+                     <BarChart3 className="w-4 h-4 text-white" />
                   </div>
-                  <span className="text-[8px] xl:text-[9px] font-bold text-slate-400 uppercase tracking-wider text-center w-full">{stat.name}</span>
-                </div>
-              ))}
-            </div>
+                  <div>
+                    <p className="text-[9px] font-bold text-slate-400">Total Candidates</p>
+                    <p className="text-sm font-black text-slate-800 leading-tight">{totalPipeline}</p>
+                  </div>
+               </div>
 
-            {/* Internal Row */}
-            <div className="flex justify-between items-center bg-slate-50/70 rounded-xl py-3 px-2 border border-slate-100 mt-5 shadow-sm">
-              <span className="w-[72px] text-xs sm:text-sm font-black text-slate-800 leading-tight shrink-0">Internal</span>
-              {internalStats.map((stat, i) => (
-                <div key={i} className="flex flex-col items-center flex-1 min-w-0">
-                  <span className="text-base lg:text-lg font-black text-slate-800 tracking-tight">{stat.value}</span>
-                  <span className="text-[9px] xl:text-[10px] font-bold text-slate-400/80">{stat.pct}</span>
-                </div>
-              ))}
-            </div>
+               <div className="w-px h-6 bg-slate-200" />
 
-            {/* Client Side Row */}
-            <div className="flex justify-between items-center bg-white rounded-xl py-3 px-2 border border-slate-100 mt-4 shadow-sm">
-              <span className="w-[72px] text-xs sm:text-sm font-black text-slate-800 leading-tight shrink-0">Client Side</span>
-              {clientStats.map((stat, i) => (
-                <div key={i} className="flex flex-col items-center flex-1 min-w-0">
-                  <span className="text-base lg:text-lg font-black text-slate-800 tracking-tight">{stat.value}</span>
-                  <span className="text-[9px] xl:text-[10px] font-bold text-slate-400/80">{stat.pct}</span>
-                </div>
-              ))}
+               <div className="flex items-center gap-3 flex-1 justify-center">
+                  <div className="w-8 h-8 rounded-full bg-purple-50 flex items-center justify-center">
+                     <TrendingUp className="w-4 h-4 text-purple-600" />
+                  </div>
+                  <div>
+                    <p className="text-[9px] font-bold text-slate-400">Overall Progress</p>
+                    <p className="text-sm font-black text-purple-600 leading-tight">{conversionRate}%</p>
+                  </div>
+               </div>
+
+               <div className="w-px h-6 bg-slate-200" />
+
+               <div className="flex items-center gap-3 flex-1 justify-end">
+                  <div className="bg-emerald-50 rounded-xl flex items-center gap-2 px-3 py-1.5 border border-emerald-100/60">
+                     <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center">
+                       <BadgeCheck className="w-3.5 h-3.5 text-emerald-600" />
+                     </div>
+                     <div>
+                       <p className="text-[9px] font-bold text-emerald-600">Conversion</p>
+                       <p className="text-[13px] font-black text-emerald-700 leading-tight">{conversionRate}%</p>
+                     </div>
+                  </div>
+               </div>
             </div>
-            
-            <div className="flex-1"></div>
           </div>
         </motion.div>
+
+
 
         {/* Upcoming Interviews */}
         <motion.div variants={item} className="bg-white border border-blue-200/80 hover:border-blue-300 transition-colors rounded-2xl p-6 shadow-sm flex flex-col justify-between h-[390px]">
@@ -1348,9 +1455,8 @@ const Dashboard = () => {
                               setUpcomingView(option);
                               setShowViewDropdown(false);
                             }}
-                            className={`w-full px-2 py-1 text-left text-[10px] font-bold transition-colors ${
-                              upcomingView === option ? "text-blue-600 bg-blue-50/50" : "text-slate-600 hover:bg-slate-50"
-                            }`}
+                            className={`w-full px-2 py-1 text-left text-[10px] font-bold transition-colors ${upcomingView === option ? "text-blue-600 bg-blue-50/50" : "text-slate-600 hover:bg-slate-50"
+                              }`}
                           >
                             {option}
                           </button>
@@ -1379,9 +1485,8 @@ const Dashboard = () => {
                               setUpcomingWeek(option);
                               setShowWeekDropdown(false);
                             }}
-                            className={`w-full px-2 py-1 text-left text-[10px] font-bold transition-colors ${
-                              upcomingWeek === option ? "text-blue-600 bg-blue-50/50" : "text-slate-600 hover:bg-slate-50"
-                            }`}
+                            className={`w-full px-2 py-1 text-left text-[10px] font-bold transition-colors ${upcomingWeek === option ? "text-blue-600 bg-blue-50/50" : "text-slate-600 hover:bg-slate-50"
+                              }`}
                           >
                             {option}
                           </button>
@@ -1410,9 +1515,8 @@ const Dashboard = () => {
                               setUpcomingMonth(option);
                               setShowMonthDropdown(false);
                             }}
-                            className={`w-full px-2 py-1 text-left text-[10px] font-bold transition-colors ${
-                              upcomingMonth === option ? "text-blue-600 bg-blue-50/50" : "text-slate-600 hover:bg-slate-50"
-                            }`}
+                            className={`w-full px-2 py-1 text-left text-[10px] font-bold transition-colors ${upcomingMonth === option ? "text-blue-600 bg-blue-50/50" : "text-slate-600 hover:bg-slate-50"
+                              }`}
                           >
                             {option}
                           </button>
@@ -1426,29 +1530,39 @@ const Dashboard = () => {
 
             {/* List */}
             <div className="space-y-3 max-h-[260px] overflow-y-auto pr-1 custom-scrollbar">
-              {filteredUpcoming.map((interview) => (
-                <div key={interview.id} className="flex items-center justify-between p-3 rounded-xl border border-slate-100 hover:border-slate-200 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <div className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase text-center border shrink-0 ${interview.color}`}>
-                      {interview.time.split(" ")[0]}
-                      <span className="block text-[8px] font-bold leading-none">{interview.time.split(" ")[1]}</span>
-                    </div>
-                    <div>
-                      <h4 className="text-xs font-black text-slate-800">{interview.name}</h4>
-                      <p className="text-[10px] text-slate-400 font-bold mt-0.5">{interview.role}</p>
-                      <div className="flex items-center gap-1.5 mt-1.5">
-                        <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded ${interview.badgeColor}`}>
-                          {interview.round}
-                        </span>
-                        <span className="text-[9px] text-slate-400 font-medium">Interviewer: {interview.interviewer}</span>
+              {filteredUpcoming.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-10 text-slate-400 gap-1.5 h-full">
+                  <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center mb-2">
+                    <Calendar className="w-4 h-4 text-slate-400" />
+                  </div>
+                  <span className="text-[11px] font-bold">No upcoming interviews</span>
+                  <span className="text-[9px] text-slate-400 text-center px-4 mt-1">Scheduled interviews will appear here</span>
+                </div>
+              ) : (
+                filteredUpcoming.map((interview) => (
+                  <div key={interview.id} className="flex items-center justify-between p-3 rounded-xl border border-slate-100 hover:border-slate-200 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase text-center border shrink-0 ${interview.color}`}>
+                        {interview.time.split(" ")[0]}
+                        <span className="block text-[8px] font-bold leading-none">{interview.time.split(" ")[1]}</span>
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-black text-slate-800">{interview.name}</h4>
+                        <p className="text-[10px] text-slate-400 font-bold mt-0.5">{interview.role}</p>
+                        <div className="flex items-center gap-1.5 mt-1.5">
+                          <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded ${interview.badgeColor}`}>
+                            {interview.round}
+                          </span>
+                          <span className="text-[9px] text-slate-400 font-medium">Interviewer: {interview.interviewer}</span>
+                        </div>
                       </div>
                     </div>
+                    <button className="p-1.5 rounded-lg border border-slate-100 text-slate-400 hover:bg-slate-50 transition-colors">
+                      <Calendar className="w-3.5 h-3.5" />
+                    </button>
                   </div>
-                  <button className="p-1.5 rounded-lg border border-slate-100 text-slate-400 hover:bg-slate-50 transition-colors">
-                    <Calendar className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </div>
 
@@ -1546,7 +1660,7 @@ const Dashboard = () => {
               const yyyy = date.getFullYear();
               const mm = String(date.getMonth() + 1).padStart(2, '0');
               const dd = String(date.getDate()).padStart(2, '0');
-              navigate(`/internal-hiring?scheduleDate=${yyyy}-${mm}-${dd}`);
+              navigate(`/companies?scheduleDate=${yyyy}-${mm}-${dd}`);
             }}
           />
         </motion.div>
@@ -1555,22 +1669,20 @@ const Dashboard = () => {
         <motion.div
           id="todays-interviews"
           variants={item}
-          className={`bg-white border rounded-2xl p-6 shadow-sm flex flex-col justify-between h-[390px] transition-all duration-500 ${
-            highlightTodaysInterviews
+          className={`bg-white border rounded-2xl p-6 shadow-sm flex flex-col justify-between h-[390px] transition-all duration-500 ${highlightTodaysInterviews
               ? "border-amber-400 ring-4 ring-amber-400/30 shadow-xl shadow-amber-500/10 scale-[1.02]"
               : "border-blue-200/80 hover:border-blue-300"
-          }`}
+            }`}
         >
           <div>
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <h3 className="text-sm font-black text-slate-800 tracking-tight">{selectedDateInterviewsLabel}</h3>
                 <span
-                  className={`text-[10px] font-black px-1.5 py-0.5 rounded-full shrink-0 transition-all ${
-                    highlightTodaysInterviews
+                  className={`text-[10px] font-black px-1.5 py-0.5 rounded-full shrink-0 transition-all ${highlightTodaysInterviews
                       ? "bg-amber-500 text-white animate-bounce shadow-md"
                       : "text-blue-600 bg-blue-50"
-                  }`}
+                    }`}
                 >
                   {todayInterviewsCount}
                 </span>
@@ -1580,14 +1692,12 @@ const Dashboard = () => {
             <div className="space-y-3.5 max-h-[265px] overflow-y-auto pr-1 custom-scrollbar">
               {formattedToday.length === 0 ? (
                 <div
-                  className={`flex flex-col items-center justify-center py-10 gap-1.5 transition-all rounded-xl ${
-                    highlightTodaysInterviews ? "bg-amber-50/60 text-amber-600 p-4 animate-pulse" : "text-slate-400"
-                  }`}
+                  className={`flex flex-col items-center justify-center py-10 gap-1.5 transition-all rounded-xl ${highlightTodaysInterviews ? "bg-amber-50/60 text-amber-600 p-4 animate-pulse" : "text-slate-400"
+                    }`}
                 >
                   <Calendar
-                    className={`w-8 h-8 transition-all ${
-                      highlightTodaysInterviews ? "text-amber-500 animate-bounce scale-125" : "opacity-30 text-slate-500"
-                    }`}
+                    className={`w-8 h-8 transition-all ${highlightTodaysInterviews ? "text-amber-500 animate-bounce scale-125" : "opacity-30 text-slate-500"
+                      }`}
                   />
                   <span className={`text-[11px] font-bold ${highlightTodaysInterviews ? "text-amber-700 font-black" : ""}`}>
                     No interviews scheduled
@@ -1597,9 +1707,8 @@ const Dashboard = () => {
                 formattedToday.map((interview, idx) => (
                   <div
                     key={idx}
-                    className={`flex items-center gap-3.5 p-2 rounded-xl transition-all ${
-                      highlightTodaysInterviews ? "bg-amber-50/80 border border-amber-200 animate-pulse" : ""
-                    }`}
+                    className={`flex items-center gap-3.5 p-2 rounded-xl transition-all ${highlightTodaysInterviews ? "bg-amber-50/80 border border-amber-200 animate-pulse" : ""
+                      }`}
                   >
                     <div className="px-2.5 py-1 rounded-lg text-[10px] font-black uppercase text-center border shrink-0 text-blue-600 bg-blue-50 border-blue-100">
                       {interview.time.split(" ")[0]}
@@ -1622,6 +1731,62 @@ const Dashboard = () => {
             View Full Schedule
           </button>
         </motion.div>
+
+        {/* Upcoming Holidays */}
+        <motion.div
+          variants={item}
+          className="bg-white border border-blue-200/80 hover:border-blue-300 transition-colors rounded-2xl p-6 shadow-sm flex flex-col justify-between h-[390px]"
+        >
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-black text-slate-800 tracking-tight">Upcoming Holidays</h3>
+              <span className="text-[10px] font-black px-1.5 py-0.5 rounded-full text-blue-600 bg-blue-50">
+                Indian Public Holidays
+              </span>
+            </div>
+
+            <div className="space-y-3.5 max-h-[280px] overflow-y-auto pr-1 custom-scrollbar">
+              {upcomingHolidays.map((holiday, idx) => {
+                const badge = getBadgeStyles(holiday.diffDays);
+                return (
+                  <div
+                    key={idx}
+                    className="flex items-center justify-between pb-3.5 border-b border-slate-100 last:border-0 last:pb-0"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`w-2 h-2 rounded-full ${badge.dot}`} />
+                      <div>
+                        <h4 className="text-xs font-black text-slate-800">{holiday.name}</h4>
+                        <p className="text-[10px] text-slate-400 font-bold mt-0.5">
+                          {holiday.dateObj.toLocaleDateString(undefined, {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                          })}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`text-[8px] font-black uppercase px-2 py-0.5 rounded border ${
+                          holiday.type === "National"
+                            ? "bg-blue-50 text-blue-600 border-blue-100"
+                            : "bg-purple-50 text-purple-600 border-purple-100"
+                        }`}
+                      >
+                        {holiday.type}
+                      </span>
+                      <span className={`text-[9px] font-black px-2 py-0.5 rounded-full border ${badge.bg}`}>
+                        {badge.label}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </motion.div>
+
 
       </div>
     </motion.div>

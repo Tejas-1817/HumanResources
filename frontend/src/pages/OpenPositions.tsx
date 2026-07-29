@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+import { useNavigate, useLocation } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Briefcase,
   Building2,
@@ -19,6 +19,10 @@ import {
   Calendar,
   Edit,
   Trash2,
+  X,
+  UserCheck,
+  DollarSign,
+  FileText
 } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { AddOpenPositionModal } from "@/components/modals/AddOpenPositionModal";
@@ -28,7 +32,7 @@ import {
   getCompanies,
   getJobRoles,
   getPipeline,
-  deleteCompany,
+  deleteJobRole,
 } from "@/api/resumeiq";
 
 const container = {
@@ -40,310 +44,226 @@ const item = {
   show: { opacity: 1, y: 0 },
 };
 
-const CompanyLogo = ({ name }: { name: string }) => {
-  const n = name.toLowerCase();
-  if (n.includes("accenture")) {
-    return (
-      <div className="w-10 h-10 bg-purple-50 dark:bg-purple-950/20 border border-purple-100 dark:border-purple-900/50 rounded-lg flex items-center justify-center font-black text-[9px] text-purple-600 tracking-tighter shrink-0 select-none">
-        accenture
-      </div>
-    );
-  }
-  if (n.includes("cognizant")) {
-    return (
-      <div className="w-10 h-10 bg-blue-50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/50 rounded-lg flex items-center justify-center font-bold text-[9px] text-blue-800 shrink-0 select-none">
-        Cognizant
-      </div>
-    );
-  }
-  if (n.includes("ibm")) {
-    return (
-      <div className="w-10 h-10 bg-blue-50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/50 rounded-lg flex items-center justify-center font-extrabold text-sm text-blue-600 italic tracking-wider shrink-0 select-none">
-        IBM
-      </div>
-    );
-  }
-  if (n.includes("microsoft")) {
-    return (
-      <div className="w-10 h-10 bg-slate-50 dark:bg-slate-950/20 border border-slate-100 dark:border-slate-900/50 rounded-lg flex items-center justify-center p-1.5 gap-[2.5px] flex-wrap w-[40px] shrink-0 select-none">
-        <div className="w-3.5 h-3.5 bg-[#f25022]" />
-        <div className="w-3.5 h-3.5 bg-[#7fba00]" />
-        <div className="w-3.5 h-3.5 bg-[#01a4ef]" />
-        <div className="w-3.5 h-3.5 bg-[#ffb900]" />
-      </div>
-    );
-  }
-  if (n.includes("tata consultancy") || n.includes("tcs")) {
-    return (
-      <div className="w-10 h-10 bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/50 rounded-lg flex items-center justify-center font-extrabold text-[12px] text-red-600 shrink-0 select-none">
-        tcs
-      </div>
-    );
-  }
-  if (n.includes("wipro")) {
-    return (
-      <div className="w-10 h-10 bg-slate-50 dark:bg-slate-950/20 border border-slate-100 dark:border-slate-900/50 rounded-lg flex items-center justify-center shrink-0 select-none">
-        <div className="w-6 h-6 rounded-full border border-dashed border-cyan-500 flex items-center justify-center">
-          <div className="w-3 h-3 rounded-full bg-blue-500" />
-        </div>
-      </div>
-    );
-  }
-  return (
-    <div className="w-10 h-10 bg-primary/10 border border-primary/20 rounded-lg flex items-center justify-center text-primary font-bold shrink-0 select-none">
-      <Building2 className="w-5 h-5" />
-    </div>
-  );
-};
-
 const OpenPositions = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const queryClient = useQueryClient();
   const [activeDropdown, setActiveDropdown] = useState<number | null>(null);
+  const [selectedPosition, setSelectedPosition] = useState<any | null>(null);
 
+  // Read initial tab from URL query param (e.g. ?tab=active)
+  const initialTab = useMemo(() => {
+    const params = new URLSearchParams(location.search);
+    const tab = params.get("tab");
+    if (tab === "active" || tab === "closed" || tab === "on_hold" || tab === "recent") return tab;
+    return "all";
+  }, []);
+
+  // Delete Job Role mutation
   const deleteMutation = useMutation({
-    mutationFn: (id: number) => deleteCompany(id),
+    mutationFn: (id: number) => deleteJobRole(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["companies"] });
-      toast.success("Company deleted successfully");
+      queryClient.invalidateQueries({ queryKey: ["job-roles"] });
+      toast.success("Position deleted successfully");
       setActiveDropdown(null);
+      if (selectedPosition?.id === activeDropdown) {
+        setSelectedPosition(null);
+      }
     },
     onError: () => {
-      toast.error("Failed to delete company");
+      toast.error("Failed to delete position");
     }
   });
 
   const handleDelete = (id: number, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (window.confirm("Are you sure you want to delete this company? All associated job roles and applications will be deleted.")) {
+    if (window.confirm("Are you sure you want to delete this position? All associated applications will be lost.")) {
       deleteMutation.mutate(id);
     }
   };
 
-  // ── Data queries ──────────────────────────────────────
+  // Data queries
   const { data: companies = [] } = useQuery({
     queryKey: ["companies"],
     queryFn: () => getCompanies()
   });
-  const { data: jobRoles = [] } = useQuery({ queryKey: ["job-roles"], queryFn: () => getJobRoles() });
-  const { data: pipeline = {} as any } = useQuery({ queryKey: ["pipeline"], queryFn: () => getPipeline() });
+  const { data: jobRoles = [] } = useQuery({ 
+    queryKey: ["job-roles"], 
+    queryFn: () => getJobRoles() 
+  });
+  const { data: pipeline = {} as any } = useQuery({ 
+    queryKey: ["pipeline"], 
+    queryFn: () => getPipeline() 
+  });
 
-  const [activeTabFilter, setActiveTabFilter] = useState<"all" | "active" | "on_hold" | "closed" | "recent">("all");
+  const [activeTabFilter, setActiveTabFilter] = useState<"all" | "active" | "on_hold" | "closed" | "recent">(initialTab as any);
   const [selectedCompany, setSelectedCompany] = useState("Company");
   const [selectedStatus, setSelectedStatus] = useState("Status");
 
+  // Summary Metrics
   const statsSummary = useMemo(() => {
-    const partnerCompanyIds = companies.map(c => c.id);
     const totalPartners = companies.length;
-    
-    const activePositions = jobRoles.filter(
-      r => r.status !== "closed" && partnerCompanyIds.includes(r.company_id)
-    ).length;
+    const totalPositions = jobRoles.reduce((sum, r) => sum + (r.positions_required || 1), 0);
+    const activePositions = jobRoles.reduce((sum, r) => {
+      if (r.status.toLowerCase() !== "open") return sum;
+      const filledCount = Object.values(pipeline).flat().filter((app: any) => app.job_role_id === r.id && (app.status === "selected" || app.status === "joined")).length;
+      const remaining = Math.max(0, (r.positions_required || 1) - filledCount);
+      return sum + remaining;
+    }, 0);
     
     const uniqueCands = new Set<number>();
-    Object.values(pipeline).forEach((apps: any) => {
-      apps.forEach((app: any) => {
-        const role = jobRoles.find(r => r.id === app.job_role_id);
-        if (role && partnerCompanyIds.includes(role.company_id)) {
-          uniqueCands.add(app.candidate_id);
-        }
-      });
+    Object.values(pipeline).flat().forEach((app: any) => {
+      uniqueCands.add(app.candidate_id);
     });
     const totalCandidates = uniqueCands.size;
     
-    const successfulHires = (pipeline["selected"] || []).filter((app: any) => {
-      const role = jobRoles.find(r => r.id === app.job_role_id);
-      return role && partnerCompanyIds.includes(role.company_id);
-    }).length;
+    const successfulHires = Object.values(pipeline).flat().filter((app: any) => app.status === "selected").length;
     
     return {
       totalPartners,
+      totalPositions,
       activePositions,
       totalCandidates,
       successfulHires
     };
   }, [companies, jobRoles, pipeline]);
 
-  const enrichedCompanies = useMemo(() => {
-    const map = new Map<number, { id: number; name: string; location: string; roles: any[]; totalApps: number; created_at: string }>();
-
-    // Initialize map with companies
-    companies.forEach(c => {
-      map.set(c.id, { id: c.id, name: c.name, location: c.location, roles: [], totalApps: 0, created_at: c.created_at });
-    });
-
-    // Add open roles to companies
-    (jobRoles as any[]).forEach(role => {
-      if (role.status === "open") {
-        const entry = map.get(role.company_id);
-        if (entry) {
-          entry.roles.push(role);
-        }
-      }
-    });
-
-    // Count applications in pipeline for these roles
-    Object.values(pipeline).flat().forEach((app: any) => {
-      const role = (jobRoles as any[]).find(r => r.id === app.job_role_id);
-      if (role && role.status === "open") {
-        const entry = map.get(role.company_id);
-        if (entry) {
-          entry.totalApps++;
-        }
-      }
-    });
-
-    let list = Array.from(map.values());
-
-    // Enrich with computed status and details
-    return list.map(c => {
-      const nameKey = c.name.toLowerCase().trim();
-      
-      // Look up well-known info or fallback
-      let details = {
-        industry: "IT Services & Consulting",
-        location: c.location || "Bengaluru, Karnataka",
-        verified: false,
-        status: "Active" as const
-      };
-
-      if (nameKey.includes("accenture")) {
-        details = { industry: "IT Services & Consulting", location: "Bengaluru, Karnataka", verified: true, status: "Active" };
-      } else if (nameKey.includes("cognizant")) {
-        details = { industry: "IT Services & Consulting", location: "Teaneck, New Jersey, USA", verified: false, status: "Active" };
-      } else if (nameKey.includes("ibm")) {
-        details = { industry: "Technology & Consulting", location: "Armonk, New York, USA", verified: true, status: "Active" };
-      } else if (nameKey.includes("microsoft")) {
-        details = { industry: "Software Development", location: "Redmond, Washington, USA", verified: true, status: "Active" };
-      } else if (nameKey.includes("tata consultancy") || nameKey.includes("tcs")) {
-        details = { industry: "IT Services & Consulting", location: "Mumbai, Maharashtra", verified: true, status: "On Hold" };
-      } else if (nameKey.includes("wipro")) {
-        details = { industry: "IT Services & Consulting", location: "Bengaluru, Karnataka", verified: true, status: "Active" };
-      } else {
-        // dynamic values for custom companies
-        details.verified = c.name.length % 2 === 0;
-        details.status = "Active";
-      }
-
-      // Determine status dynamically based on open roles and candidates in progress
-      const hasOnHold = (pipeline["on_hold"] || []).some((app: any) => c.roles.some((r: any) => r.id === app.job_role_id));
-      const hasOpenRoles = c.roles.length > 0;
-      details.status = hasOnHold ? "On Hold" as const : hasOpenRoles ? "Active" as const : "Inactive" as const;
-
-      // Aggregate positions filled
-      let totalFilled = 0;
-      let totalRequired = 0;
-      c.roles.forEach(r => {
-        const filled = (pipeline["selected"] || []).filter((app: any) => app.job_role_id === r.id).length +
-                       (pipeline["joined"] || []).filter((app: any) => app.job_role_id === r.id).length;
-        totalFilled += filled;
-        totalRequired += (r.positions_required || 1);
-      });
-
-      return {
-        ...c,
-        ...details,
-        totalFilled,
-        totalRequired
-      };
-    });
-  }, [companies, jobRoles, pipeline]);
-
+  // Client name filter list
   const companyNames = useMemo(() => {
     return companies.map(c => c.name);
   }, [companies]);
 
-  const statuses = ["Active", "On Hold", "Inactive"];
+  // Status option mapping
+  const statuses = ["Open", "Closed"];
 
-  const companyWithRoles = useMemo(() => {
-    // Apply tab filters
-    let filteredList = enrichedCompanies;
+  // Enrich and filter Job Roles
+  const filteredPositions = useMemo(() => {
+    let list = jobRoles.map((role) => {
+      const client = companies.find(c => c.id === role.company_id);
+      
+      // Parse Requisition Metadata from serialized description if present
+      let projectName = "N/A";
+      let projectStartDate = "N/A";
+      let projectDuration = "N/A";
+      let raisedBy = "N/A";
+      let budget = "N/A";
+      let responsibilities = role.description || "";
+
+      if (role.description && role.description.includes("=== REQUISITION METADATA ===")) {
+        const parts = role.description.split("=============================\n\n");
+        responsibilities = parts[1] || role.description;
+        const metaSection = parts[0] || "";
+        
+        const projMatch = metaSection.match(/Project:\s*(.*)/);
+        const startMatch = metaSection.match(/Project Start Date:\s*(.*)/);
+        const durationMatch = metaSection.match(/Project Duration:\s*(.*)/);
+        const raisedMatch = metaSection.match(/Request Raised By:\s*(.*)/);
+        const budgetMatch = metaSection.match(/Budget Range:\s*(.*)/);
+
+        if (projMatch) projectName = projMatch[1].trim();
+        if (startMatch) projectStartDate = startMatch[1].trim();
+        if (durationMatch) projectDuration = durationMatch[1].trim();
+        if (raisedMatch) raisedBy = raisedMatch[1].trim();
+        if (budgetMatch) budget = budgetMatch[1].trim();
+      }
+
+      // Count candidate applications for this specific position
+      const totalCandidates = Object.values(pipeline).flat().filter((app: any) => app.job_role_id === role.id).length;
+      const hiredCandidates = Object.values(pipeline).flat().filter((app: any) => app.job_role_id === role.id && (app.status === "selected" || app.status === "joined")).length;
+      const positionsReq = role.positions_required || 1;
+      const isFilled = hiredCandidates >= positionsReq && positionsReq > 0;
+      const computedStatus = isFilled ? "closed" : (role.status || "open").toLowerCase();
+
+      return {
+        ...role,
+        status: computedStatus,
+        clientName: client ? client.name : "Unknown Client",
+        projectName,
+        projectStartDate,
+        projectDuration,
+        raisedBy,
+        budget,
+        responsibilities,
+        totalCandidates,
+        hiredCandidates
+      };
+    });
+
+    // Apply Tab Filters
     if (activeTabFilter === "active") {
-      filteredList = enrichedCompanies.filter(c => c.roles.length > 0);
+      list = list.filter(r => r.status === "open");
     } else if (activeTabFilter === "on_hold") {
-      filteredList = enrichedCompanies.filter(c => c.status === "On Hold");
+      list = list.filter(r => r.status === "on-hold" || r.status === "on_hold");
     } else if (activeTabFilter === "closed") {
-      filteredList = enrichedCompanies.filter(c => c.roles.length === 0);
+      list = list.filter(r => r.status === "closed");
     } else if (activeTabFilter === "recent") {
-      filteredList = [...enrichedCompanies].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      list = [...list].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     }
 
-    // Apply select filters
+    // Apply Client Dropdown Filter
     if (selectedCompany !== "Company") {
-      filteredList = filteredList.filter(c => c.name === selectedCompany);
+      list = list.filter(r => r.clientName === selectedCompany);
     }
+
+    // Apply Status Dropdown Filter
     if (selectedStatus !== "Status") {
-      filteredList = filteredList.filter(c => c.status === selectedStatus);
+      const targetStatus = selectedStatus.toLowerCase();
+      list = list.filter(r => r.status.toLowerCase() === targetStatus);
     }
 
-    // Apply search filter (if any)
-    if (!searchQuery.trim()) return filteredList;
-    const lower = searchQuery.toLowerCase();
-    return filteredList.filter(c =>
-      c.name.toLowerCase().includes(lower) ||
-      c.roles.some(r => r.title.toLowerCase().includes(lower))
-    );
-  }, [enrichedCompanies, activeTabFilter, selectedCompany, selectedStatus, searchQuery]);
-
-  // Pagination Configuration
-  const ITEMS_PER_PAGE = 5;
-  const [currentPage, setCurrentPage] = useState(1);
-
-  // Reset to page 1 on filter changes
-  useMemo(() => {
-    setCurrentPage(1);
-  }, [activeTabFilter, selectedCompany, selectedStatus, searchQuery]);
-
-  const totalPages = Math.ceil(companyWithRoles.length / ITEMS_PER_PAGE);
-
-  const paginatedCompanies = useMemo(() => {
-    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-    return companyWithRoles.slice(startIndex, startIndex + ITEMS_PER_PAGE);
-  }, [companyWithRoles, currentPage]);
-
-  const handleViewCompanyTab = (e: React.MouseEvent, companyId: number, tab: "roles" | "candidates") => {
-    e.stopPropagation();
-    sessionStorage.setItem("companies_active_tab", tab);
-    navigate(`/companies?id=${companyId}`);
-  };
-
-  const renderStatusBadge = (status: "Active" | "On Hold" | "Inactive") => {
-    if (status === "Active") {
-      return (
-        <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
-          Active
-        </span>
+    // Apply Search Filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      list = list.filter(r =>
+        r.title.toLowerCase().includes(query) ||
+        r.clientName.toLowerCase().includes(query) ||
+        r.projectName.toLowerCase().includes(query)
       );
     }
-    if (status === "On Hold") {
+
+    return list;
+  }, [jobRoles, companies, pipeline, activeTabFilter, selectedCompany, selectedStatus, searchQuery]);
+
+  // Pagination Configuration
+  const ITEMS_PER_PAGE = 8;
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const totalPages = Math.ceil(filteredPositions.length / ITEMS_PER_PAGE);
+  const paginatedPositions = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredPositions.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [filteredPositions, currentPage]);
+
+  const renderStatusBadge = (status: string) => {
+    if (status.toLowerCase() === "open") {
       return (
-        <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-600 border border-amber-500/20">
-          On Hold
+        <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
+          Open
         </span>
       );
     }
     return (
-      <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-500/10 text-slate-600 border border-slate-500/20">
-        Inactive
+      <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-red-500/10 text-red-600 border border-red-500/20">
+        Closed
       </span>
     );
   };
 
   return (
-    <motion.div variants={container} initial="hidden" animate="show" className="space-y-6">
+    <motion.div variants={container} initial="hidden" animate="show" className="space-y-6 relative">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <PageHeader
-          title="Clients"
-          description="Manage all partner companies and their open positions"
+          title="Open Positions"
+          description="Track and manage position requisitions and candidate hiring funnels"
           actions={
             <div className="flex flex-col md:flex-row items-center gap-3 w-full md:w-auto">
               <div className="relative group w-full md:w-64">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
                 <input
                   type="text"
-                  placeholder="Search companies or roles..."
+                  placeholder="Search positions or clients..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-card border border-border text-sm focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all shadow-sm"
@@ -361,23 +281,21 @@ const OpenPositions = () => {
         />
       </div>
 
-      {/* ─── Stats Summary Cards ───────────────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Card 1 */}
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <div className="glass-card p-5 rounded-2xl border border-border/50 flex items-center gap-4 hover:shadow-md transition-all">
           <div className="w-12 h-12 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0">
-            <Building2 className="w-6 h-6" />
+            <Briefcase className="w-6 h-6" />
           </div>
           <div>
-            <h3 className="text-2xl font-bold text-foreground leading-none">{statsSummary.totalPartners ?? 0}</h3>
-            <p className="text-[11px] text-muted-foreground font-semibold mt-1">Total Partner Companies</p>
+            <h3 className="text-2xl font-bold text-foreground leading-none">{statsSummary.totalPositions ?? 0}</h3>
+            <p className="text-[11px] text-muted-foreground font-semibold mt-1">Total Positions</p>
           </div>
         </div>
 
-        {/* Card 2 */}
         <div className="glass-card p-5 rounded-2xl border border-border/50 flex items-center gap-4 hover:shadow-md transition-all">
-          <div className="w-12 h-12 rounded-xl bg-violet-500/10 text-violet-500 flex items-center justify-center shrink-0">
-            <Briefcase className="w-6 h-6" />
+          <div className="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
+            <Clock className="w-6 h-6" />
           </div>
           <div>
             <h3 className="text-2xl font-bold text-foreground leading-none">{statsSummary.activePositions ?? 0}</h3>
@@ -385,7 +303,16 @@ const OpenPositions = () => {
           </div>
         </div>
 
-        {/* Card 3 */}
+        <div className="glass-card p-5 rounded-2xl border border-border/50 flex items-center gap-4 hover:shadow-md transition-all">
+          <div className="w-12 h-12 rounded-xl bg-violet-500/10 text-violet-500 flex items-center justify-center shrink-0">
+            <Building2 className="w-6 h-6" />
+          </div>
+          <div>
+            <h3 className="text-2xl font-bold text-foreground leading-none">{statsSummary.totalPartners ?? 0}</h3>
+            <p className="text-[11px] text-muted-foreground font-semibold mt-1">Partner Clients</p>
+          </div>
+        </div>
+
         <div className="glass-card p-5 rounded-2xl border border-border/50 flex items-center gap-4 hover:shadow-md transition-all">
           <div className="w-12 h-12 rounded-xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center shrink-0">
             <Users className="w-6 h-6" />
@@ -396,24 +323,22 @@ const OpenPositions = () => {
           </div>
         </div>
 
-        {/* Card 4 */}
         <div className="glass-card p-5 rounded-2xl border border-border/50 flex items-center gap-4 hover:shadow-md transition-all">
           <div className="w-12 h-12 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0">
             <Star className="w-6 h-6 fill-amber-500/20" />
           </div>
           <div>
             <h3 className="text-2xl font-bold text-foreground leading-none">{statsSummary.successfulHires ?? 0}</h3>
-            <p className="text-[11px] text-muted-foreground font-semibold mt-1">Successful Hires</p>
+            <p className="text-[11px] text-muted-foreground font-semibold mt-1">Hired Candidates</p>
           </div>
         </div>
       </div>
 
-      {/* ─── Tab Filters ────────────────────────────────────── */}
+      {/* Filter Tabs */}
       <div className="flex flex-wrap items-center gap-6 border-b border-border/40 pb-px text-sm">
         {[
-          { id: "all", label: "All Companies", icon: Building2 },
-          { id: "active", label: "Active Positions", icon: Briefcase },
-          { id: "on_hold", label: "On Hold", icon: Clock },
+          { id: "all", label: "All Positions", icon: Briefcase },
+          { id: "active", label: "Open Only", icon: Check },
           { id: "closed", label: "Closed Positions", icon: Calendar },
           { id: "recent", label: "Recently Added", icon: Clock }
         ].map((tab) => {
@@ -435,26 +360,15 @@ const OpenPositions = () => {
         })}
       </div>
 
-      {/* ─── Search and Dropdowns Filter Bar ────────────────── */}
+      {/* Secondary filter selectors */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-3 flex-1">
-          <div className="relative group w-full md:w-64">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-            <input
-              type="text"
-              placeholder="Search company name..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-card border border-border text-xs focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all shadow-sm font-medium"
-            />
-          </div>
-
           <select 
             value={selectedCompany}
             onChange={(e) => setSelectedCompany(e.target.value)}
             className="bg-card border border-border text-muted-foreground text-xs rounded-xl px-4 py-2.5 focus:outline-none focus:ring-1 focus:ring-primary/50 font-semibold cursor-pointer"
           >
-            <option value="Company">Company</option>
+            <option value="Company">Client</option>
             {companyNames.map(name => (
               <option key={name} value={name}>{name}</option>
             ))}
@@ -472,281 +386,261 @@ const OpenPositions = () => {
           </select>
         </div>
 
-        <div className="flex items-center gap-2">
-          <button 
-            onClick={() => {
-              setSelectedCompany("Company");
-              setSelectedStatus("Status");
-              setSearchQuery("");
-              setActiveTabFilter("all");
-            }}
-            className="px-4 py-2.5 rounded-xl bg-card border border-border text-muted-foreground text-xs font-semibold hover:bg-secondary/40 hover:text-foreground transition-all flex items-center gap-2"
-          >
-            <Filter className="w-3.5 h-3.5" />
-            Clear Filters
-          </button>
-          <button className="px-4 py-2.5 rounded-xl bg-card border border-border text-muted-foreground text-xs font-semibold hover:bg-secondary/40 hover:text-foreground transition-all flex items-center gap-2">
-            <Download className="w-3.5 h-3.5" />
-            Export
-          </button>
-        </div>
+        <button 
+          onClick={() => {
+            setSelectedCompany("Company");
+            setSelectedStatus("Status");
+            setSearchQuery("");
+            setActiveTabFilter("all");
+          }}
+          className="px-4 py-2.5 rounded-xl bg-card border border-border text-muted-foreground text-xs font-semibold hover:bg-secondary/40 hover:text-foreground transition-all flex items-center gap-2 self-start"
+        >
+          <Filter className="w-3.5 h-3.5" />
+          Clear Filters
+        </button>
       </div>
 
-      {companyWithRoles.length === 0 ? (
+      {/* Main Table view */}
+      {filteredPositions.length === 0 ? (
         <div className="p-20 text-center glass-card">
           <div className="w-20 h-20 rounded-3xl bg-secondary flex items-center justify-center text-muted-foreground/30 mx-auto mb-6">
             <Briefcase className="w-10 h-10" />
           </div>
-          <h3 className="text-xl font-bold text-foreground mb-2">No companies or roles found</h3>
+          <h3 className="text-xl font-bold text-foreground mb-2">No positions found</h3>
           <p className="text-sm text-muted-foreground max-w-sm mx-auto">
-            {searchQuery
-              ? `No results match "${searchQuery}". Try a different search term.`
-              : "There are currently no active job roles across all companies."}
+            Try adjusting your search query or filter tags to locate specific open roles.
           </p>
         </div>
       ) : (
-        <div className="space-y-4">
-          {/* Mobile View (Cards) */}
-          <div className="grid grid-cols-1 gap-4 md:hidden">
-            {paginatedCompanies.map((c) => {
-              const totalActiveRoles = c.roles.length;
-              const percent = c.totalRequired > 0 ? Math.min(100, Math.round((c.totalFilled / c.totalRequired) * 100)) : 0;
-
-              return (
-                <motion.div
-                  key={c.id}
-                  variants={item}
-                  className="glass-card p-5 rounded-2xl border border-border/50 relative overflow-hidden group active:scale-[0.98] transition-all flex flex-col gap-4 cursor-pointer"
-                  onClick={() => navigate(`/companies?id=${c.id}`)}
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-3">
-                      <CompanyLogo name={c.name} />
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <h3 className="font-bold text-foreground group-hover:text-primary transition-colors truncate">{c.name}</h3>
-                          {c.verified && (
-                            <span className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-blue-600 text-white shrink-0 shadow-sm">
-                              <Check className="w-2.5 h-2.5 stroke-[4]" />
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    {renderStatusBadge(c.status)}
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-2 py-3 border-y border-border/30">
-                    <div className="flex flex-col">
-                      <span className="text-xs text-muted-foreground font-semibold">Active Roles</span>
-                      <span className="text-sm font-bold text-foreground mt-0.5">{totalActiveRoles}</span>
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="text-xs text-muted-foreground font-semibold">Filled</span>
-                      <span className="text-sm font-bold text-foreground mt-0.5">{c.totalFilled} / {c.totalRequired}</span>
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="text-xs text-muted-foreground font-semibold">Candidates</span>
-                      <span className="text-sm font-bold text-foreground mt-0.5">{c.totalApps}</span>
-                    </div>
-                  </div>
-
-                  <div className="w-full">
-                    <div className="flex justify-between text-[10px] font-bold text-muted-foreground mb-1.5 uppercase">
-                      <span>Fulfillment</span>
-                      <span>{percent}%</span>
-                    </div>
-                    <div className="w-full bg-secondary border border-border/30 rounded-full h-1.5 overflow-hidden">
-                      <div className="bg-blue-600 h-full rounded-full" style={{ width: `${percent}%` }} />
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between mt-1">
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={(e) => handleViewCompanyTab(e, c.id, "roles")}
-                        className="text-xs font-semibold text-blue-600 hover:underline"
-                      >
-                        Roles
-                      </button>
-                      <span className="text-muted-foreground/40 text-xs px-1">•</span>
-                      <button
-                        onClick={(e) => handleViewCompanyTab(e, c.id, "candidates")}
-                        className="text-xs font-semibold text-blue-600 hover:underline"
-                      >
-                        Candidates
-                      </button>
-                    </div>
-                    <ExternalLink className="w-4 h-4 text-muted-foreground opacity-45 group-hover:text-primary transition-colors" />
-                  </div>
-                </motion.div>
-              );
-            })}
+        <div className="glass-card overflow-hidden">
+          <div className="p-4 border-b border-border/50 bg-secondary/20">
+            <div className="grid grid-cols-12 gap-4 px-4 text-[10px] font-bold text-muted-foreground uppercase tracking-widest items-center">
+              <div className="col-span-3">Position Name</div>
+              <div className="col-span-2">Client</div>
+              <div className="col-span-2">Project</div>
+              <div className="col-span-2 text-center">Openings</div>
+              <div className="col-span-2 text-center">Status</div>
+              <div className="col-span-1 text-right">Action</div>
+            </div>
           </div>
 
-          {/* Desktop View */}
-          <div className="hidden md:block glass-card overflow-hidden">
-            <div className="p-4 border-b border-border/50 bg-secondary/20">
-              <div className="grid grid-cols-12 gap-4 px-4 text-[10px] font-bold text-muted-foreground uppercase tracking-widest items-center">
-                <div className="col-span-3">Company</div>
-                <div className="col-span-2">Active Positions</div>
-                <div className="col-span-2">Positions Filled</div>
-                <div className="col-span-2">Total Candidates</div>
-                <div className="col-span-1.5">Status</div>
-                <div className="col-span-1.5 text-right">Actions</div>
-              </div>
-            </div>
-
-            <div className="divide-y divide-border/50">
-              {paginatedCompanies.map((c) => {
-                const totalActiveRoles = c.roles.length;
-                const percent = c.totalRequired > 0 ? Math.min(100, Math.round((c.totalFilled / c.totalRequired) * 100)) : 0;
-
-                return (
-                  <motion.div
-                    key={c.id}
-                    variants={item}
-                    className="grid grid-cols-12 gap-4 p-4 px-8 items-center hover:bg-primary/[0.02] transition-colors group cursor-pointer"
-                    onClick={() => navigate(`/companies?id=${c.id}`)}
-                  >
-                    {/* Company info with Logo & verification */}
-                    <div className="col-span-3 flex items-center gap-3">
-                      <CompanyLogo name={c.name} />
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <p className="text-sm font-bold text-foreground group-hover:text-primary transition-colors truncate">
-                            {c.name}
-                          </p>
-                          {c.verified && (
-                            <span className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-blue-600 text-white shrink-0 shadow-sm" title="Verified Client">
-                              <Check className="w-2.5 h-2.5 stroke-[4]" />
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Active Positions */}
-                    <div className="col-span-2 flex flex-col justify-center items-start">
-                      <span className="text-sm font-bold text-foreground">{totalActiveRoles}</span>
-                      <button
-                        onClick={(e) => handleViewCompanyTab(e, c.id, "roles")}
-                        className="text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1 mt-1 transition-all"
-                      >
-                        View Positions &rarr;
-                      </button>
-                    </div>
-
-                    {/* Positions Filled */}
-                    <div className="col-span-2 flex flex-col justify-center items-start pr-4">
-                      <span className="text-sm font-bold text-foreground">{c.totalFilled} / {c.totalRequired}</span>
-                      <div className="w-full bg-secondary border border-border/30 rounded-full h-1.5 overflow-hidden mt-1.5 max-w-[200px]">
-                        <div 
-                          className="bg-blue-600 h-full rounded-full transition-all duration-500" 
-                          style={{ width: `${percent}%` }}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Total Candidates */}
-                    <div className="col-span-2 flex flex-col justify-center items-start">
-                      <span className="text-sm font-bold text-foreground">{c.totalApps}</span>
-                      <button
-                        onClick={(e) => handleViewCompanyTab(e, c.id, "candidates")}
-                        className="text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1 mt-1 transition-all"
-                      >
-                        View Candidates &rarr;
-                      </button>
-                    </div>
-
-                    {/* Status */}
-                    <div className="col-span-1.5 flex items-center">
-                      {renderStatusBadge(c.status)}
-                    </div>
-
-                    {/* Actions */}
-                    <div className="col-span-1.5 flex items-center justify-end gap-1.5">
-                      <button
-                        onClick={(e) => { e.stopPropagation(); navigate(`/companies?id=${c.id}`); }}
-                        className="p-1.5 rounded-lg border border-border/50 bg-card hover:bg-secondary/40 text-muted-foreground hover:text-foreground transition-colors shadow-sm"
-                        title="View Candidates pipeline"
-                      >
-                        <Users className="w-3.5 h-3.5" />
-                      </button>
-                      <div className="relative">
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setActiveDropdown(activeDropdown === c.id ? null : c.id); }}
-                          className="p-1.5 rounded-lg border border-border/50 bg-card hover:bg-secondary/40 text-muted-foreground hover:text-foreground transition-colors shadow-sm"
-                          title="More Actions"
-                        >
-                          <MoreVertical className="w-3.5 h-3.5" />
-                        </button>
-                        {activeDropdown === c.id && (
-                          <div className="absolute right-0 mt-2 w-32 bg-card border border-border rounded-lg shadow-lg overflow-hidden z-10 py-1">
-                            <button
-                              onClick={(e) => { e.stopPropagation(); setActiveDropdown(null); toast.info("Edit feature coming soon"); }}
-                              className="w-full px-4 py-2 text-left text-sm hover:bg-secondary/40 flex items-center gap-2"
-                            >
-                              <Edit className="w-3.5 h-3.5" />
-                              Edit
-                            </button>
-                            <button
-                              onClick={(e) => handleDelete(c.id, e)}
-                              className="w-full px-4 py-2 text-left text-sm hover:bg-secondary/40 text-destructive flex items-center gap-2 disabled:opacity-50"
-                              disabled={deleteMutation.isPending}
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                              Delete
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </div>
-
-            {/* Pagination Footer */}
-            <div className="flex items-center justify-between p-4 border-t border-border/50 bg-secondary/10 rounded-b-xl">
-              <p className="text-xs text-muted-foreground font-medium">
-                Showing {companyWithRoles.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0} to {Math.min(currentPage * ITEMS_PER_PAGE, companyWithRoles.length)} of {companyWithRoles.length} companies
-              </p>
-              {totalPages > 1 && (
-                <div className="flex items-center gap-1">
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); setCurrentPage(prev => Math.max(prev - 1, 1)); }}
-                    className="p-1.5 rounded-lg border border-border bg-card hover:bg-secondary/40 text-muted-foreground disabled:opacity-40" 
-                    disabled={currentPage === 1}
-                  >
-                    &lt;
-                  </button>
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                    <button
-                      key={page}
-                      onClick={(e) => { e.stopPropagation(); setCurrentPage(page); }}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold ${
-                        currentPage === page
-                          ? "bg-blue-600 text-white shadow-sm"
-                          : "bg-card border border-border hover:bg-secondary/40 text-muted-foreground"
-                      }`}
-                    >
-                      {page}
-                    </button>
-                  ))}
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); setCurrentPage(prev => Math.min(prev + 1, totalPages)); }}
-                    className="p-1.5 rounded-lg border border-border bg-card hover:bg-secondary/40 text-muted-foreground hover:text-foreground disabled:opacity-40"
-                    disabled={currentPage === totalPages}
-                  >
-                    &gt;
-                  </button>
+          <div className="divide-y divide-border/50">
+            {paginatedPositions.map((pos) => (
+              <motion.div
+                key={pos.id}
+                variants={item}
+                onClick={() => setSelectedPosition(pos)}
+                className="grid grid-cols-12 gap-4 p-4 px-8 items-center hover:bg-primary/[0.02] transition-colors group cursor-pointer"
+              >
+                <div className="col-span-3 flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center font-bold text-xs shrink-0">
+                    <Briefcase className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-foreground group-hover:text-primary transition-colors truncate">
+                      {pos.title}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground font-semibold mt-0.5">{pos.location || "On-site"}</p>
+                  </div>
                 </div>
-              )}
-            </div>
+
+                <div className="col-span-2 text-xs font-semibold text-foreground truncate">{pos.clientName}</div>
+                <div className="col-span-2 text-xs text-muted-foreground truncate">{pos.projectName || "N/A"}</div>
+                <div className="col-span-2 text-center text-sm font-bold text-foreground">{pos.positions_required}</div>
+                <div className="col-span-2 text-center">{renderStatusBadge(pos.status)}</div>
+
+                <div className="col-span-1 flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
+                  <div className="relative">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveDropdown(activeDropdown === pos.id ? null : pos.id);
+                      }}
+                      className="p-1.5 rounded-lg border border-border hover:bg-secondary/40 text-muted-foreground hover:text-foreground transition-colors shadow-sm"
+                    >
+                      <MoreVertical className="w-3.5 h-3.5" />
+                    </button>
+                    {activeDropdown === pos.id && (
+                      <div className="absolute right-0 mt-2 w-32 bg-card border border-border rounded-lg shadow-lg overflow-hidden z-10 py-1">
+                        <button
+                          onClick={(e) => handleDelete(pos.id, e)}
+                          className="w-full px-4 py-2 text-left text-sm hover:bg-secondary/40 text-destructive flex items-center gap-2"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          Delete
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+
+          {/* Pagination Footer */}
+          <div className="flex items-center justify-between p-4 border-t border-border/50 bg-secondary/10 rounded-b-xl">
+            <p className="text-xs text-muted-foreground font-medium">
+              Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1} to {Math.min(currentPage * ITEMS_PER_PAGE, filteredPositions.length)} of {filteredPositions.length} positions
+            </p>
+            {totalPages > 1 && (
+              <div className="flex items-center gap-1">
+                <button 
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  className="p-1.5 rounded-lg border border-border bg-card hover:bg-secondary/40 text-muted-foreground disabled:opacity-40" 
+                  disabled={currentPage === 1}
+                >
+                  &lt;
+                </button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                  <button
+                    key={page}
+                    onClick={() => setCurrentPage(page)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold ${
+                      currentPage === page
+                        ? "bg-blue-600 text-white shadow-sm"
+                        : "bg-card border border-border hover:bg-secondary/40 text-muted-foreground"
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ))}
+                <button 
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  className="p-1.5 rounded-lg border border-border bg-card hover:bg-secondary/40 text-muted-foreground hover:text-foreground disabled:opacity-40"
+                  disabled={currentPage === totalPages}
+                >
+                  &gt;
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
+
+      {/* Side Details Drawer */}
+      <AnimatePresence>
+        {selectedPosition && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.4 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSelectedPosition(null)}
+              className="fixed inset-0 bg-black z-40 cursor-pointer"
+            />
+            <motion.div
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              transition={{ type: "tween", duration: 0.3 }}
+              className="fixed right-0 top-0 bottom-0 w-full max-w-lg bg-card border-l border-border shadow-2xl z-50 p-6 flex flex-col h-full overflow-y-auto custom-scrollbar"
+            >
+              <div className="flex items-center justify-between border-b border-border pb-4 mb-5">
+                <div className="flex items-center gap-2">
+                  <Briefcase className="w-5 h-5 text-primary" />
+                  <h2 className="text-base font-black text-foreground uppercase tracking-wider">Position Specifications</h2>
+                </div>
+                <button
+                  onClick={() => setSelectedPosition(null)}
+                  className="p-1.5 hover:bg-secondary rounded-lg transition-colors border border-transparent hover:border-border"
+                >
+                  <X className="w-4 h-4 text-muted-foreground" />
+                </button>
+              </div>
+
+              {/* Specification Details List */}
+              <div className="space-y-6 flex-1">
+                <div>
+                  <h3 className="text-xl font-black text-foreground tracking-tight">{selectedPosition.title}</h3>
+                  <p className="text-xs font-bold text-primary mt-1 flex items-center gap-1 uppercase tracking-wider">
+                    <Building2 className="w-3.5 h-3.5" /> {selectedPosition.clientName}
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 bg-secondary/20 p-4 rounded-2xl border border-border/50">
+                  <div>
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Project</p>
+                    <p className="text-xs font-bold text-foreground mt-0.5">{selectedPosition.projectName}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Hiring Status</p>
+                    <div className="mt-1">{renderStatusBadge(selectedPosition.status)}</div>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Openings</p>
+                    <p className="text-xs font-bold text-foreground mt-0.5">{selectedPosition.positions_required}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Location / Mode</p>
+                    <p className="text-xs font-bold text-foreground mt-0.5 capitalize">{selectedPosition.location || "N/A"} ({selectedPosition.work_mode || "On-site"})</p>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-secondary/50 flex items-center justify-center shrink-0">
+                      <Star className="w-4 h-4 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Skills Required</p>
+                      <p className="text-xs font-semibold text-foreground mt-0.5">{selectedPosition.skills || "N/A"}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-secondary/50 flex items-center justify-center shrink-0">
+                      <Clock className="w-4 h-4 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Experience Required</p>
+                      <p className="text-xs font-semibold text-foreground mt-0.5">{selectedPosition.experience_required ? `${selectedPosition.experience_required} Years` : "Fresher / No bar"}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-secondary/50 flex items-center justify-center shrink-0">
+                      <DollarSign className="w-4 h-4 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Budget Details</p>
+                      <p className="text-xs font-semibold text-foreground mt-0.5">{selectedPosition.budget}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-secondary/50 flex items-center justify-center shrink-0">
+                      <Calendar className="w-4 h-4 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Project Timeline</p>
+                      <p className="text-xs font-semibold text-foreground mt-0.5">Starts on {selectedPosition.projectStartDate} (Duration: {selectedPosition.projectDuration})</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-secondary/50 flex items-center justify-center shrink-0">
+                      <UserCheck className="w-4 h-4 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Request Raised By</p>
+                      <p className="text-xs font-semibold text-foreground mt-0.5">{selectedPosition.raisedBy}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="border-t border-border/50 pt-4 space-y-2">
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+                    <FileText className="w-3.5 h-3.5" /> Responsibilities & Job Scope
+                  </p>
+                  <div className="bg-secondary/15 p-4 rounded-xl border border-border/40 text-xs text-foreground leading-relaxed whitespace-pre-wrap font-medium">
+                    {selectedPosition.responsibilities}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       <AddOpenPositionModal
         open={isModalOpen}
