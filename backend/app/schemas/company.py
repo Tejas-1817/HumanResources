@@ -17,7 +17,6 @@ class CompanyResponse(BaseModel):
     id: int
     name: str
     location: str | None = None
-    is_internal: bool = False
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

@@ -33,10 +33,9 @@ def create_company(payload: CompanyCreate, db: Session = Depends(get_db)) -> Com
 )
 def get_companies(
     search: str | None = Query(default=None),
-    include_internal: bool = Query(default=False),
     db: Session = Depends(get_db),
 ) -> list[CompanyResponse]:
-    companies = CompanyService.get_all(db, search=search, include_internal=include_internal)
+    companies = CompanyService.get_all(db, search=search)
     return [CompanyResponse.model_validate(company) for company in companies]
 
 

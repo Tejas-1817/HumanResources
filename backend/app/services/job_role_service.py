@@ -139,8 +139,28 @@ class JobRoleService:
                 db.add(assignment)
 
         db.commit()
+        JobRoleService.sync_status(db, role.id)
         db.refresh(role)
         return role
+
+    @staticmethod
+    def sync_status(db: Session, role_id: int) -> None:
+        from app.models.job_application import JobApplication
+        from sqlalchemy import func
+        role = db.query(JobRole).filter(JobRole.id == role_id).first()
+        if not role:
+            return
+        
+        filled_count = db.query(func.count(JobApplication.id)).filter(
+            JobApplication.job_role_id == role_id,
+            JobApplication.status.in_(["selected", "joined"])
+        ).scalar() or 0
+        
+        if filled_count >= role.positions_required:
+            role.status = "closed"
+        else:
+            role.status = "open"
+        db.commit()
 
     @staticmethod
     def close_role(db: Session, role_id: int) -> JobRole:

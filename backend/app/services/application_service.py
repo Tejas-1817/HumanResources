@@ -59,6 +59,8 @@ class ApplicationService:
         )
         db.add(application)
         db.commit()
+        from app.services.job_role_service import JobRoleService
+        JobRoleService.sync_status(db, application.job_role_id)
         db.refresh(application)
         return application
 
@@ -245,6 +247,8 @@ class ApplicationService:
         # Critical: Ensure both the application update and activity log are committed atomically
         try:
             db.commit()
+            from app.services.job_role_service import JobRoleService
+            JobRoleService.sync_status(db, application.job_role_id)
             db.refresh(application)
             print(f"[APPLICATION_STATUS_UPDATE] SUCCESS: Application {application_id} transitioned "
                   f"{current_status} -> {next_status} (new status_date: {application.status_date})")
@@ -282,10 +286,18 @@ class ApplicationService:
         application = db.query(JobApplication).filter(JobApplication.id == application_id).first()
         if application is None:
             raise NotFoundException(message="Application not found")
+        role_id = application.job_role_id
         db.delete(application)
         db.commit()
+        from app.services.job_role_service import JobRoleService
+        JobRoleService.sync_status(db, role_id)
 
     @staticmethod
     def bulk_delete(db: Session, application_ids: list[int]) -> None:
+        # Get the job role IDs associated with these application IDs before deleting
+        role_ids = [r[0] for r in db.query(JobApplication.job_role_id).filter(JobApplication.id.in_(application_ids)).distinct().all()]
         db.query(JobApplication).filter(JobApplication.id.in_(application_ids)).delete(synchronize_session=False)
         db.commit()
+        from app.services.job_role_service import JobRoleService
+        for r_id in role_ids:
+            JobRoleService.sync_status(db, r_id)

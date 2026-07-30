@@ -35,10 +35,8 @@ class CompanyService:
         return company
 
     @staticmethod
-    def get_all(db: Session, search: str | None = None, include_internal: bool = False) -> list[Company]:
+    def get_all(db: Session, search: str | None = None) -> list[Company]:
         query = db.query(Company)
-        if not include_internal:
-            query = query.filter(Company.is_internal == False)
         if search:
             needle = f"%{search.strip()}%"
             query = query.filter(Company.name.ilike(needle))

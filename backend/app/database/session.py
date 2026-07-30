@@ -62,17 +62,12 @@ def seed_company() -> None:
     with SessionLocal() as db:
         existing = db.query(Company).filter(Company.name == "Altzor Digital Solutions").first()
         if existing is None:
-            company = Company(name="Altzor Digital Solutions", is_internal=True)
+            company = Company(name="Altzor Digital Solutions", location="Pune, India")
             db.add(company)
             db.commit()
-            print("[seed] Company created: Altzor Digital Solutions (internal)")
+            print("[seed] Company created: Altzor Digital Solutions")
         else:
-            if not existing.is_internal:
-                existing.is_internal = True
-                db.commit()
-                print("[seed] Company updated: Altzor Digital Solutions (marked internal)")
-            else:
-                print("[seed] Company Altzor Digital Solutions already exists, skipping.")
+            print("[seed] Company Altzor Digital Solutions already exists, skipping.")
 
 
 def init_db() -> None:

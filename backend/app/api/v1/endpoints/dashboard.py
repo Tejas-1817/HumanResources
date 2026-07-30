@@ -102,13 +102,26 @@ def get_dashboard_stats(db: Session = Depends(get_db)) -> DashboardStatsResponse
     ]
 
     # ── Open Positions with accurate applicant counts ────────────────────
-    open_roles = (
+    raw_open_roles = (
         db.query(JobRole)
         .options(joinedload(JobRole.company))
         .filter(JobRole.status == "open")
         .order_by(JobRole.created_at.desc())
         .all()
     )
+
+    # Count filled applications (selected or joined) per role
+    filled_role_counts: dict[int, int] = dict(
+        db.query(JobApplication.job_role_id, func.count(JobApplication.id))
+        .filter(JobApplication.status.in_(["selected", "joined"]))
+        .group_by(JobApplication.job_role_id)
+        .all()
+    )
+
+    open_roles = [
+        r for r in raw_open_roles
+        if not (r.positions_required and filled_role_counts.get(r.id, 0) >= r.positions_required)
+    ]
 
     # Count ALL applications (across every status) per role in one query
     role_applicant_counts: dict[int, int] = dict(
