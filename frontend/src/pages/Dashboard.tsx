@@ -392,10 +392,8 @@ const Dashboard = () => {
 
   const totalActivePositionsCount = useMemo(() => {
     return jobRoles.reduce((sum, r) => {
+      if ((r.status || "").toLowerCase() !== "open") return sum;
       const filledCount = Object.values(pipeline).flat().filter((app: any) => app.job_role_id === r.id && (app.status === "selected" || app.status === "joined")).length;
-      const isClosed = r.status?.toLowerCase() === "closed" || (r.positions_required > 0 && filledCount >= r.positions_required);
-      if (isClosed) return sum;
-
       const remaining = Math.max(0, (r.positions_required || 1) - filledCount);
       return sum + remaining;
     }, 0);
@@ -778,9 +776,10 @@ const Dashboard = () => {
   const openPositionsList = useMemo(() => {
     const allApps = Object.values(pipeline).flat();
     const openRoles = jobRoles.filter((r) => {
+      if ((r.status || "").toLowerCase() !== "open") return false;
       const filledCount = allApps.filter((app: any) => app.job_role_id === r.id && (app.status === "selected" || app.status === "joined")).length;
-      const isClosed = r.status?.toLowerCase() === "closed" || (r.positions_required > 0 && filledCount >= r.positions_required);
-      return !isClosed;
+      const isFilled = (r.positions_required || 1) > 0 && filledCount >= (r.positions_required || 1);
+      return !isFilled;
     });
 
     return openRoles.map((r) => {
