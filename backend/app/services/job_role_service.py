@@ -108,24 +108,24 @@ class JobRoleService:
                 )
             role.status = next_status
 
-        if payload.pipeline_stages is not None:
-            role.pipeline_stages = [s.model_dump() for s in payload.pipeline_stages]
+        if "pipeline_stages" in payload.model_fields_set:
+            role.pipeline_stages = [s.model_dump() for s in payload.pipeline_stages] if payload.pipeline_stages else None
         
-        if payload.estimated_budget is not None:
+        if "estimated_budget" in payload.model_fields_set:
             role.estimated_budget = payload.estimated_budget
-        if payload.currency is not None:
+        if "currency" in payload.model_fields_set and payload.currency is not None:
             role.currency = payload.currency
-        if payload.positions_required is not None:
+        if "positions_required" in payload.model_fields_set and payload.positions_required is not None:
             role.positions_required = payload.positions_required
-        if payload.department is not None:
+        if "department" in payload.model_fields_set:
             role.department = payload.department
-        if payload.location is not None:
-            role.location = payload.location
-        if payload.work_mode is not None:
+        if "location" in payload.model_fields_set:
+            role.location = payload.location.strip() if payload.location else None
+        if "work_mode" in payload.model_fields_set:
             role.work_mode = payload.work_mode
-        if payload.experience_required is not None:
+        if "experience_required" in payload.model_fields_set:
             role.experience_required = payload.experience_required
-        if payload.project_time_period is not None:
+        if "project_time_period" in payload.model_fields_set:
             role.project_time_period = payload.project_time_period
 
         # Handle vendor assignments
@@ -141,7 +141,8 @@ class JobRoleService:
                 db.add(assignment)
 
         db.commit()
-        JobRoleService.sync_status(db, role.id)
+        if payload.status is None:
+            JobRoleService.sync_status(db, role.id)
         db.refresh(role)
         return role
 
@@ -153,14 +154,18 @@ class JobRoleService:
         if not role:
             return
         
+        # Do not override manual terminal statuses such as 'loss' or 'on_hold'
+        if (role.status or "").lower() in {"loss", "on_hold", "on-hold"}:
+            return
+
         filled_count = db.query(func.count(JobApplication.id)).filter(
             JobApplication.job_role_id == role_id,
             JobApplication.status.in_(["selected", "joined"])
         ).scalar() or 0
         
-        if filled_count >= role.positions_required:
+        if filled_count >= (role.positions_required or 1):
             role.status = "closed"
-        else:
+        elif role.status == "closed" and filled_count < (role.positions_required or 1):
             role.status = "open"
         db.commit()
 
