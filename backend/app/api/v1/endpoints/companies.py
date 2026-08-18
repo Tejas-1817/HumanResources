@@ -18,7 +18,7 @@ router = APIRouter(prefix="/companies", tags=["Companies"])
     "",
     response_model=CompanyResponse,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_role("admin", "hr"))],
+    dependencies=[Depends(require_role("admin", "hr", "recruiter", "manager"))],
 )
 def create_company(payload: CompanyCreate, db: Session = Depends(get_db)) -> CompanyResponse:
     company = CompanyService.create(db, payload)
@@ -60,7 +60,7 @@ def get_company(company_id: int, db: Session = Depends(get_db)) -> CompanyDetail
     "/{company_id}",
     response_model=CompanyResponse,
     status_code=status.HTTP_200_OK,
-    dependencies=[Depends(require_role("admin", "hr"))],
+    dependencies=[Depends(require_role("admin", "hr", "recruiter", "manager"))],
 )
 def update_company(
     company_id: int,
@@ -74,7 +74,7 @@ def update_company(
 @router.delete(
     "/{company_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=[Depends(require_role("admin"))],
+    dependencies=[Depends(require_role("admin", "hr"))],
 )
 def delete_company(company_id: int, db: Session = Depends(get_db)) -> Response:
     CompanyService.delete(db, company_id)

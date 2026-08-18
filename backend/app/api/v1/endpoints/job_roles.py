@@ -79,7 +79,7 @@ def get_job_role(role_id: int, db: Session = Depends(get_db)) -> JobRoleDetailRe
     "/{role_id}",
     response_model=JobRoleResponse,
     status_code=status.HTTP_200_OK,
-    dependencies=[Depends(require_role("admin", "hr"))],
+    dependencies=[Depends(require_role("admin", "hr", "recruiter", "manager"))],
 )
 def update_job_role(
     role_id: int,

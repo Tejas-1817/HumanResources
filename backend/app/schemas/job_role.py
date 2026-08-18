@@ -31,7 +31,8 @@ class JobRoleCreate(BaseModel):
 
 
 class JobRoleUpdate(BaseModel):
-    title: str | None = Field(default=None, min_length=2, max_length=255)
+    company_id: int | None = None
+    title: str | None = Field(default=None, min_length=1, max_length=255)
     description: str | None = None
     deadline: date | None = None
     status: str | None = None

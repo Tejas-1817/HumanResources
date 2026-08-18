@@ -15,10 +15,10 @@ class JobRoleService:
             raise NotFoundException(message="Company not found")
 
         status = payload.status.strip().lower()
-        if status not in {"open", "closed"}:
+        if status not in {"open", "closed", "loss", "on_hold", "on-hold"}:
             raise AppException(
                 message="Invalid job role status",
-                detail="Allowed values are: open, closed",
+                detail="Allowed values are: open, closed, loss, on_hold",
                 status_code=422,
             )
 
@@ -89,6 +89,8 @@ class JobRoleService:
     def update(db: Session, role_id: int, payload: JobRoleUpdate) -> JobRole:
         role = JobRoleService.get_by_id(db, role_id)
 
+        if payload.company_id is not None:
+            role.company_id = payload.company_id
         if payload.title is not None:
             role.title = payload.title.strip()
         if payload.description is not None:
@@ -98,10 +100,10 @@ class JobRoleService:
             role.deadline = payload.deadline
         if payload.status is not None:
             next_status = payload.status.strip().lower()
-            if next_status not in {"open", "closed"}:
+            if next_status not in {"open", "closed", "loss", "on_hold", "on-hold"}:
                 raise AppException(
                     message="Invalid job role status",
-                    detail="Allowed values are: open, closed",
+                    detail="Allowed values are: open, closed, loss, on_hold",
                     status_code=422,
                 )
             role.status = next_status

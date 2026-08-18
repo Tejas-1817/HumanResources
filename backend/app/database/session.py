@@ -85,7 +85,7 @@ def init_db() -> None:
 
     Base.metadata.create_all(bind=engine)
     
-    # Ensure companies table has location column (for MySQL/SQLite migration)
+    # Ensure companies table has location and is_internal default (for MySQL/SQLite migration)
     with engine.connect() as conn:
         try:
             conn.execute(text("ALTER TABLE companies ADD COLUMN location VARCHAR(255)"))
@@ -93,6 +93,11 @@ def init_db() -> None:
             print("[migration] Added location column to companies table")
         except Exception:
             pass  # Already exists or connection issue
+        try:
+            conn.execute(text("ALTER TABLE companies MODIFY COLUMN is_internal TINYINT(1) NOT NULL DEFAULT 0"))
+            conn.commit()
+        except Exception:
+            pass
             
     seed_admin()
     seed_company()
