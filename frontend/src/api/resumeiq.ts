@@ -307,6 +307,7 @@ export const createJobRole = async (payload: {
 export const updateJobRole = async (
   id: number,
   payload: {
+    company_id?: number;
     title?: string;
     description?: string;
     status?: string;

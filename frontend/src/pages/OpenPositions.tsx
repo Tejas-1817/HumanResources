@@ -26,6 +26,7 @@ import {
   Mail,
   Phone,
   ArrowUpRight,
+  PauseCircle,
 } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Modal } from "@/components/ui/Modal";
@@ -124,36 +125,94 @@ const OpenPositions = () => {
     queryFn: () => getPipeline()
   });
 
+  const isWithinTimeline = (createdAtStr?: string | null, timeline: "today" | "this_week" | "this_month" = "this_week"): boolean => {
+    if (!createdAtStr) return false;
+    const createdDate = new Date(createdAtStr);
+    if (isNaN(createdDate.getTime())) return false;
+    const now = new Date();
+
+    if (timeline === "today") {
+      return (
+        createdDate.getFullYear() === now.getFullYear() &&
+        createdDate.getMonth() === now.getMonth() &&
+        createdDate.getDate() === now.getDate()
+      );
+    }
+
+    if (timeline === "this_week") {
+      const startOfWeek = new Date(now);
+      startOfWeek.setHours(0, 0, 0, 0);
+      startOfWeek.setDate(now.getDate() - now.getDay());
+      return createdDate.getTime() >= startOfWeek.getTime();
+    }
+
+    if (timeline === "this_month") {
+      return (
+        createdDate.getFullYear() === now.getFullYear() &&
+        createdDate.getMonth() === now.getMonth()
+      );
+    }
+
+    return true;
+  };
+
   const [activeTabFilter, setActiveTabFilter] = useState<"all" | "active" | "loss" | "on_hold" | "closed" | "recent">(initialTab as any);
+  const [recentTimeline, setRecentTimeline] = useState<"today" | "this_week" | "this_month">("this_week");
   const [selectedCompany, setSelectedCompany] = useState("Company");
 
   // Summary Metrics
   const statsSummary = useMemo(() => {
-    const totalPartners = companies.length;
     const totalPositions = jobRoles.reduce((sum, r) => sum + (r.positions_required || 1), 0);
     const activePositions = jobRoles.reduce((sum, r) => {
-      if (r.status.toLowerCase() !== "open") return sum;
+      if ((r.status || "").toLowerCase() !== "open") return sum;
       const filledCount = Object.values(pipeline).flat().filter((app: any) => app.job_role_id === r.id && (app.status === "selected" || app.status === "joined")).length;
       const remaining = Math.max(0, (r.positions_required || 1) - filledCount);
       return sum + remaining;
     }, 0);
 
-    const uniqueCands = new Set<number>();
-    Object.values(pipeline).flat().forEach((app: any) => {
-      uniqueCands.add(app.candidate_id);
-    });
-    const totalCandidates = uniqueCands.size;
+    const lossPositions = jobRoles.reduce((sum, r) => {
+      const status = (r.status || "").toLowerCase();
+      if (status === "loss") {
+        return sum + (r.positions_required || 1);
+      }
+      return sum;
+    }, 0);
 
-    const successfulHires = Object.values(pipeline).flat().filter((app: any) => app.status === "selected").length;
+    const onHoldPositions = jobRoles.reduce((sum, r) => {
+      const status = (r.status || "").toLowerCase();
+      if (status === "on-hold" || status === "on_hold") {
+        return sum + (r.positions_required || 1);
+      }
+      return sum;
+    }, 0);
+
+    const closedPositions = jobRoles.reduce((sum, r) => {
+      const status = (r.status || "").toLowerCase();
+      const filledCount = Object.values(pipeline).flat().filter((app: any) => app.job_role_id === r.id && (app.status === "selected" || app.status === "joined")).length;
+      const positionsReq = r.positions_required || 1;
+      const isFilled = filledCount >= positionsReq && positionsReq > 0;
+      if (status === "closed" || (isFilled && status === "open")) {
+        return sum + (r.positions_required || 1);
+      }
+      return sum;
+    }, 0);
+
+    const recentlyAdded = jobRoles.reduce((sum, r) => {
+      if (r.created_at && isWithinTimeline(r.created_at, recentTimeline)) {
+        return sum + (r.positions_required || 1);
+      }
+      return sum;
+    }, 0);
 
     return {
-      totalPartners,
       totalPositions,
       activePositions,
-      totalCandidates,
-      successfulHires
+      lossPositions,
+      onHoldPositions,
+      closedPositions,
+      recentlyAdded,
     };
-  }, [companies, jobRoles, pipeline]);
+  }, [jobRoles, pipeline, recentTimeline]);
 
   // Client name filter list
   const companyNames = useMemo(() => {
@@ -234,7 +293,9 @@ const OpenPositions = () => {
     } else if (activeTabFilter === "closed") {
       list = list.filter(r => r.status === "closed");
     } else if (activeTabFilter === "recent") {
-      list = [...list].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      list = list
+        .filter(r => isWithinTimeline(r.created_at, recentTimeline))
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     } else {
       // In "All Positions", show Open status positions first, then Closed / On-hold positions
       list = [...list].sort((a, b) => {
@@ -264,16 +325,16 @@ const OpenPositions = () => {
     }
 
     return list;
-  }, [jobRoles, companies, pipeline, activeTabFilter, selectedCompany, searchQuery]);
+  }, [jobRoles, companies, pipeline, activeTabFilter, selectedCompany, searchQuery, recentTimeline]);
 
   // Pagination Configuration (20 positions per page)
   const ITEMS_PER_PAGE = 20;
   const [currentPage, setCurrentPage] = useState(1);
 
-  // Reset pagination to page 1 when search query, tabs, or company filter change
+  // Reset pagination to page 1 when search query, tabs, company, or timeline filter change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, activeTabFilter, selectedCompany]);
+  }, [searchQuery, activeTabFilter, selectedCompany, recentTimeline]);
 
   const totalPages = Math.ceil(filteredPositions.length / ITEMS_PER_PAGE);
   const paginatedPositions = useMemo(() => {
@@ -281,23 +342,29 @@ const OpenPositions = () => {
     return filteredPositions.slice(startIndex, startIndex + ITEMS_PER_PAGE);
   }, [filteredPositions, currentPage]);
 
-  const formatWorkMode = (workMode?: string | null, location?: string | null): string => {
-    if (workMode && workMode.trim()) {
-      const mode = workMode.trim().toLowerCase();
-      if (mode === "remote") return "Remote";
-      if (mode === "hybrid") return "Hybrid";
-      if (mode === "onsite" || mode === "on-site" || mode === "on site") return "On-site";
-      return workMode.trim().charAt(0).toUpperCase() + workMode.trim().slice(1);
-    }
-    
-    if (location && location.trim()) {
-      const loc = location.trim().toLowerCase();
-      if (loc === "remote") return "Remote";
-      if (loc === "hybrid") return "Hybrid";
-      if (loc === "onsite" || loc === "on-site" || loc === "on site") return "On-site";
+  const formatWorkMode = (workMode?: string | null): string => {
+    if (!workMode || !workMode.trim()) return "";
+    const mode = workMode.trim().toLowerCase();
+    if (mode === "remote") return "Remote";
+    if (mode === "hybrid") return "Hybrid";
+    if (mode === "onsite" || mode === "on-site" || mode === "on site") return "On-site";
+    return workMode.trim().charAt(0).toUpperCase() + workMode.trim().slice(1);
+  };
+
+  const formatDisplayLocationMode = (workMode?: string | null, location?: string | null): string => {
+    const formattedMode = formatWorkMode(workMode);
+    let loc = location && location.trim() ? location.trim() : "";
+    const locLower = loc.toLowerCase();
+    if (locLower === "on-site" || locLower === "onsite" || locLower === "on site") {
+      loc = "";
     }
 
-    return "On-site";
+    if (loc && formattedMode) {
+      return `${loc} (${formattedMode})`;
+    }
+    if (loc) return loc;
+    if (formattedMode) return formattedMode;
+    return "";
   };
 
   const formatExportDuration = (duration?: string | null, timePeriod?: string | null): string => {
@@ -323,7 +390,7 @@ const OpenPositions = () => {
         "Position Name": pos.title || "N/A",
         "Duration": formatExportDuration(pos.projectDuration, pos.project_time_period),
         "Total Openings": pos.positions_required || 1,
-        "Work Mode": formatWorkMode(pos.work_mode, pos.location),
+        "Work Mode": formatDisplayLocationMode(pos.work_mode, pos.location) || "N/A",
         "JD": pos.responsibilities || pos.description || "N/A",
       }));
 
@@ -485,54 +552,111 @@ const OpenPositions = () => {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        <div className="glass-card p-5 rounded-2xl border border-border/50 flex items-center gap-4 hover:shadow-md transition-all">
-          <div className="w-12 h-12 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0">
-            <Briefcase className="w-6 h-6" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <div
+          onClick={() => setActiveTabFilter("all")}
+          className={`glass-card p-4 rounded-2xl border transition-all cursor-pointer flex items-center gap-3.5 hover:shadow-md ${
+            activeTabFilter === "all" ? "border-blue-500/50 bg-blue-500/5 ring-1 ring-blue-500/20" : "border-border/50"
+          }`}
+        >
+          <div className="w-11 h-11 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0">
+            <Briefcase className="w-5 h-5" />
           </div>
-          <div>
-            <h3 className="text-2xl font-bold text-foreground leading-none">{statsSummary.totalPositions ?? 0}</h3>
-            <p className="text-[11px] text-muted-foreground font-semibold mt-1">Total Positions</p>
-          </div>
-        </div>
-
-        <div className="glass-card p-5 rounded-2xl border border-border/50 flex items-center gap-4 hover:shadow-md transition-all">
-          <div className="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
-            <Clock className="w-6 h-6" />
-          </div>
-          <div>
-            <h3 className="text-2xl font-bold text-foreground leading-none">{statsSummary.activePositions ?? 0}</h3>
-            <p className="text-[11px] text-muted-foreground font-semibold mt-1">Active Positions</p>
+          <div className="min-w-0">
+            <h3 className="text-xl font-bold text-foreground leading-none">{statsSummary.totalPositions ?? 0}</h3>
+            <p className="text-[11px] text-muted-foreground font-semibold mt-1 truncate">Total Positions</p>
           </div>
         </div>
 
-        <div className="glass-card p-5 rounded-2xl border border-border/50 flex items-center gap-4 hover:shadow-md transition-all">
-          <div className="w-12 h-12 rounded-xl bg-violet-500/10 text-violet-500 flex items-center justify-center shrink-0">
-            <Building2 className="w-6 h-6" />
+        <div
+          onClick={() => setActiveTabFilter("active")}
+          className={`glass-card p-4 rounded-2xl border transition-all cursor-pointer flex items-center gap-3.5 hover:shadow-md ${
+            activeTabFilter === "active" ? "border-emerald-500/50 bg-emerald-500/5 ring-1 ring-emerald-500/20" : "border-border/50"
+          }`}
+        >
+          <div className="w-11 h-11 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
+            <Clock className="w-5 h-5" />
           </div>
-          <div>
-            <h3 className="text-2xl font-bold text-foreground leading-none">{statsSummary.totalPartners ?? 0}</h3>
-            <p className="text-[11px] text-muted-foreground font-semibold mt-1">Partner Clients</p>
-          </div>
-        </div>
-
-        <div className="glass-card p-5 rounded-2xl border border-border/50 flex items-center gap-4 hover:shadow-md transition-all">
-          <div className="w-12 h-12 rounded-xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center shrink-0">
-            <Users className="w-6 h-6" />
-          </div>
-          <div>
-            <h3 className="text-2xl font-bold text-foreground leading-none">{statsSummary.totalCandidates ?? 0}</h3>
-            <p className="text-[11px] text-muted-foreground font-semibold mt-1">Total Candidates</p>
+          <div className="min-w-0">
+            <h3 className="text-xl font-bold text-foreground leading-none">{statsSummary.activePositions ?? 0}</h3>
+            <p className="text-[11px] text-muted-foreground font-semibold mt-1 truncate">Active Positions</p>
           </div>
         </div>
 
-        <div className="glass-card p-5 rounded-2xl border border-border/50 flex items-center gap-4 hover:shadow-md transition-all">
-          <div className="w-12 h-12 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0">
-            <Star className="w-6 h-6 fill-amber-500/20" />
+        <div
+          onClick={() => setActiveTabFilter("loss")}
+          className={`glass-card p-4 rounded-2xl border transition-all cursor-pointer flex items-center gap-3.5 hover:shadow-md ${
+            activeTabFilter === "loss" ? "border-amber-500/50 bg-amber-500/5 ring-1 ring-amber-500/20" : "border-border/50"
+          }`}
+        >
+          <div className="w-11 h-11 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0">
+            <X className="w-5 h-5" />
           </div>
-          <div>
-            <h3 className="text-2xl font-bold text-foreground leading-none">{statsSummary.successfulHires ?? 0}</h3>
-            <p className="text-[11px] text-muted-foreground font-semibold mt-1">Hired Candidates</p>
+          <div className="min-w-0">
+            <h3 className="text-xl font-bold text-foreground leading-none">{statsSummary.lossPositions ?? 0}</h3>
+            <p className="text-[11px] text-muted-foreground font-semibold mt-1 truncate">Loss Position</p>
+          </div>
+        </div>
+
+        <div
+          onClick={() => setActiveTabFilter("on_hold")}
+          className={`glass-card p-4 rounded-2xl border transition-all cursor-pointer flex items-center gap-3.5 hover:shadow-md ${
+            activeTabFilter === "on_hold" ? "border-yellow-500/50 bg-yellow-500/5 ring-1 ring-yellow-500/20" : "border-border/50"
+          }`}
+        >
+          <div className="w-11 h-11 rounded-xl bg-yellow-500/10 text-yellow-600 flex items-center justify-center shrink-0">
+            <PauseCircle className="w-5 h-5" />
+          </div>
+          <div className="min-w-0">
+            <h3 className="text-xl font-bold text-foreground leading-none">{statsSummary.onHoldPositions ?? 0}</h3>
+            <p className="text-[11px] text-muted-foreground font-semibold mt-1 truncate">On-Hold</p>
+          </div>
+        </div>
+
+        <div
+          onClick={() => setActiveTabFilter("closed")}
+          className={`glass-card p-4 rounded-2xl border transition-all cursor-pointer flex items-center gap-3.5 hover:shadow-md ${
+            activeTabFilter === "closed" ? "border-rose-500/50 bg-rose-500/5 ring-1 ring-rose-500/20" : "border-border/50"
+          }`}
+        >
+          <div className="w-11 h-11 rounded-xl bg-rose-500/10 text-rose-500 flex items-center justify-center shrink-0">
+            <Calendar className="w-5 h-5" />
+          </div>
+          <div className="min-w-0">
+            <h3 className="text-xl font-bold text-foreground leading-none">{statsSummary.closedPositions ?? 0}</h3>
+            <p className="text-[11px] text-muted-foreground font-semibold mt-1 truncate">Closed Position</p>
+          </div>
+        </div>
+
+        <div
+          onClick={() => setActiveTabFilter("recent")}
+          className={`glass-card p-4 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between gap-2.5 hover:shadow-md ${
+            activeTabFilter === "recent" ? "border-indigo-500/50 bg-indigo-500/5 ring-1 ring-indigo-500/20" : "border-border/50"
+          }`}
+        >
+          <div className="flex items-center justify-between gap-1.5">
+            <div className="w-9 h-9 rounded-xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center shrink-0">
+              <Clock className="w-4.5 h-4.5" />
+            </div>
+            <select
+              value={recentTimeline}
+              onClick={(e) => e.stopPropagation()}
+              onChange={(e) => {
+                e.stopPropagation();
+                setRecentTimeline(e.target.value as any);
+              }}
+              className="text-[10px] font-bold bg-secondary/80 hover:bg-secondary text-foreground border border-border/80 rounded-lg px-2 py-1 focus:outline-none cursor-pointer"
+            >
+              <option value="today">Today</option>
+              <option value="this_week">This Week</option>
+              <option value="this_month">This Month</option>
+            </select>
+          </div>
+          <div className="min-w-0">
+            <h3 className="text-xl font-bold text-foreground leading-none">{statsSummary.recentlyAdded ?? 0}</h3>
+            <p className="text-[11px] text-muted-foreground font-semibold mt-1 truncate">
+              {recentTimeline === "today" ? "Added Today" : recentTimeline === "this_week" ? "Added This Week" : "Added This Month"}
+            </p>
           </div>
         </div>
       </div>
@@ -543,6 +667,7 @@ const OpenPositions = () => {
           { id: "all", label: "All Positions", icon: Briefcase },
           { id: "active", label: "Open Only", icon: Check },
           { id: "loss", label: "Loss Positions", icon: X },
+          { id: "on_hold", label: "On-Hold Positions", icon: PauseCircle },
           { id: "closed", label: "Closed Positions", icon: Calendar },
           { id: "recent", label: "Recently Added", icon: Clock }
         ].map((tab) => {
@@ -576,6 +701,25 @@ const OpenPositions = () => {
               <option key={name} value={name}>{name}</option>
             ))}
           </select>
+
+          {activeTabFilter === "recent" && (
+            <div className="flex items-center bg-secondary/40 p-0.5 rounded-xl border border-border">
+              {(["today", "this_week", "this_month"] as const).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setRecentTimeline(t)}
+                  className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                    recentTimeline === t
+                      ? "bg-primary text-white shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {t === "today" ? "Today" : t === "this_week" ? "This Week" : "This Month"}
+                </button>
+              ))}
+            </div>
+          )}
 
         </div>
 
@@ -642,9 +786,11 @@ const OpenPositions = () => {
                     <p className="text-sm font-bold text-foreground group-hover:text-primary transition-colors truncate">
                       {pos.title}
                     </p>
-                    <p className="text-[10px] text-muted-foreground font-semibold mt-0.5">
-                      {formatWorkMode(pos.work_mode, pos.location)}
-                    </p>
+                    {formatDisplayLocationMode(pos.work_mode, pos.location) ? (
+                      <p className="text-[10px] text-muted-foreground font-semibold mt-0.5">
+                        {formatDisplayLocationMode(pos.work_mode, pos.location)}
+                      </p>
+                    ) : null}
                   </div>
                 </div>
 
@@ -889,9 +1035,7 @@ const OpenPositions = () => {
                     <div>
                       <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Location / Mode</p>
                       <p className="text-xs font-bold text-foreground mt-0.5">
-                        {selectedPosition.location && selectedPosition.location.toLowerCase() !== selectedPosition.work_mode?.toLowerCase()
-                          ? `${selectedPosition.location} (${formatWorkMode(selectedPosition.work_mode, selectedPosition.location)})`
-                          : formatWorkMode(selectedPosition.work_mode, selectedPosition.location)}
+                        {formatDisplayLocationMode(selectedPosition.work_mode, selectedPosition.location) || "Not Specified"}
                       </p>
                     </div>
                   </div>

@@ -96,6 +96,7 @@ export const EditOpenPositionModal = ({ open, onClose, position, onSuccess }: Ed
       project_duration_unit: "Months",
       description: "",
       skills: "",
+      location: "",
       status: "open",
     },
   });
@@ -122,6 +123,23 @@ export const EditOpenPositionModal = ({ open, onClose, position, onSuccess }: Ed
         else normalizedWorkMode = "on-site";
       }
 
+      let normalizedStatus = "open";
+      if (position.status) {
+        const s = position.status.toLowerCase().trim();
+        if (s === "loss") normalizedStatus = "loss";
+        else if (s === "closed") normalizedStatus = "closed";
+        else if (s === "on-hold" || s === "on_hold") normalizedStatus = "on_hold";
+        else normalizedStatus = "open";
+      }
+
+      let locValue = "";
+      if (position.location && position.location.trim()) {
+        const locLower = position.location.trim().toLowerCase();
+        if (locLower !== "on-site" && locLower !== "onsite" && locLower !== "on site") {
+          locValue = position.location.trim();
+        }
+      }
+
       reset({
         title: position.title || "",
         company_id: position.company_id ? position.company_id.toString() : "",
@@ -129,7 +147,7 @@ export const EditOpenPositionModal = ({ open, onClose, position, onSuccess }: Ed
         skills: position.skills || "",
         experience_required: position.experience_required !== undefined && position.experience_required !== null ? position.experience_required.toString() : "",
         work_mode: normalizedWorkMode,
-        location: position.location || "",
+        location: locValue,
         positions_required: (position.positions_required || 1).toString(),
         project_start_date: position.projectStartDate && position.projectStartDate !== "N/A" ? position.projectStartDate : "",
         project_duration_val: durVal,
@@ -137,7 +155,7 @@ export const EditOpenPositionModal = ({ open, onClose, position, onSuccess }: Ed
         request_raised_by: position.raisedBy && position.raisedBy !== "N/A" ? position.raisedBy : "",
         budget: position.budget && position.budget !== "N/A" ? position.budget : "",
         description: position.responsibilities || position.description || "",
-        status: position.status || "open",
+        status: normalizedStatus,
       });
 
       setClientSearch(position.clientName || "");
@@ -195,7 +213,7 @@ ${values.description || ""}`;
         company_id: targetCompanyId,
         title: title,
         description: richDetails.trim(),
-        status: values.status || position.status || "open",
+        status: (values.status || position.status || "open").toLowerCase(),
         positions_required: values.positions_required ? parseInt(values.positions_required) || 1 : 1,
         location: values.location ? values.location.trim() : null,
         work_mode: values.work_mode || "on-site",
@@ -444,24 +462,51 @@ ${values.description || ""}`;
                   <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Status</label>
                   <select
                     {...register("status")}
-                    className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all font-semibold"
+                    className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all font-semibold cursor-pointer"
                   >
                     <option value="open">Open</option>
-                    <option value="closed">Closed</option>
                     <option value="loss">Loss</option>
+                    <option value="closed">Closed</option>
+                    <option value="on_hold">On-Hold</option>
                   </select>
                 </div>
               </div>
 
               {/* Page 1 Action Row */}
-              <div className="flex justify-end pt-4 border-t border-border/50">
+              <div className="flex justify-between items-center pt-4 border-t border-border/50">
                 <button
                   type="button"
-                  onClick={() => setActivePage(2)}
-                  className="px-6 py-2.5 bg-primary text-white rounded-xl text-xs font-bold hover:bg-primary/95 transition-all flex items-center gap-1.5 shadow-sm"
+                  onClick={onClose}
+                  className="px-5 py-2.5 border border-border rounded-xl text-xs font-bold hover:bg-secondary text-muted-foreground transition-all"
                 >
-                  Next Page &rarr;
+                  Cancel
                 </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="submit"
+                    disabled={mutation.isPending}
+                    className="px-5 py-2.5 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/30 rounded-xl text-xs font-bold shadow-sm flex items-center gap-1.5 transition-all disabled:opacity-50"
+                  >
+                    {mutation.isPending ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <Edit className="w-3.5 h-3.5" />
+                        Save Changes
+                      </>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActivePage(2)}
+                    className="px-6 py-2.5 bg-primary text-white rounded-xl text-xs font-bold hover:bg-primary/95 transition-all flex items-center gap-1.5 shadow-sm"
+                  >
+                    Next Page &rarr;
+                  </button>
+                </div>
               </div>
             </div>
           )}

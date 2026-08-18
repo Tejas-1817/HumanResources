@@ -102,6 +102,7 @@ export const AddOpenPositionModal = ({ open, onClose, onPositionCreated }: AddOp
       project_duration_unit: "Months",
       description: "",
       skills: "",
+      location: "",
       status: "open",
     },
   });
