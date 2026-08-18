@@ -4,24 +4,21 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Modal } from "@/components/ui/Modal";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getCompanies, createJobRole, createCompany, JobRole } from "@/api/resumeiq";
+import { getCompanies, updateJobRole, createCompany, JobRole } from "@/api/resumeiq";
 import { toast } from "sonner";
 import {
   BriefcaseBusiness,
   Loader2,
-  Building2,
   Calendar as CalendarIcon,
   Plus,
-  UploadCloud,
-  FileText,
-  Clock,
   DollarSign,
   UserCheck,
-  CheckCircle,
-  ChevronDown
+  ChevronDown,
+  Edit,
+  Building2
 } from "lucide-react";
 
-// Validation schema with optional fields
+// Optional validation schema for editing
 const formSchema = z.object({
   company_id: z.string().optional(),
   project_name: z.string().optional(),
@@ -42,13 +39,13 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-interface AddOpenPositionModalProps {
+interface EditOpenPositionModalProps {
   open: boolean;
   onClose: () => void;
-  onPositionCreated?: (position: JobRole) => void;
+  position: any | null;
+  onSuccess?: () => void;
 }
 
-// Mock Database of Internal Employees
 const EMPLOYEES = [
   { id: "emp-1", name: "Sarah Connor", designation: "HR Director" },
   { id: "emp-2", name: "John Doe", designation: "Senior Talent Acquisition" },
@@ -57,7 +54,7 @@ const EMPLOYEES = [
   { id: "emp-5", name: "Jane Smith", designation: "Resource Manager" }
 ];
 
-export const AddOpenPositionModal = ({ open, onClose, onPositionCreated }: AddOpenPositionModalProps) => {
+export const EditOpenPositionModal = ({ open, onClose, position, onSuccess }: EditOpenPositionModalProps) => {
   const queryClient = useQueryClient();
   
   // Clients query
@@ -66,21 +63,18 @@ export const AddOpenPositionModal = ({ open, onClose, onPositionCreated }: AddOp
     queryFn: () => getCompanies(),
   });
 
-  // Client search & inline addition
   const [clientSearch, setClientSearch] = useState("");
   const [isClientDropdownOpen, setIsClientDropdownOpen] = useState(false);
   const [isAddingNewClient, setIsAddingNewClient] = useState(false);
   const [newClientName, setNewClientName] = useState("");
   const [newClientLocation, setNewClientLocation] = useState("");
 
-  // Employee search state
   const [employeeSearch, setEmployeeSearch] = useState("");
   const [isEmployeeDropdownOpen, setIsEmployeeDropdownOpen] = useState(false);
 
   const clientDropdownRef = useRef<HTMLDivElement>(null);
   const employeeDropdownRef = useRef<HTMLDivElement>(null);
 
-  // Close dropdowns on outside click
   useEffect(() => {
     const handleOutsideClick = (e: MouseEvent) => {
       if (clientDropdownRef.current && !clientDropdownRef.current.contains(e.target as Node)) {
@@ -94,7 +88,7 @@ export const AddOpenPositionModal = ({ open, onClose, onPositionCreated }: AddOp
     return () => document.removeEventListener("mousedown", handleOutsideClick);
   }, []);
 
-  const { register, handleSubmit, formState: { errors }, setValue, watch, reset } = useForm<FormValues>({
+  const { register, handleSubmit, setValue, watch, reset } = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       work_mode: "on-site",
@@ -106,16 +100,51 @@ export const AddOpenPositionModal = ({ open, onClose, onPositionCreated }: AddOp
     },
   });
 
-  const selectedClientId = watch("company_id");
-  const descriptionText = watch("description");
-
-  // Form Section tracking: 2 Pages ("page-1" and "page-2")
+  const descriptionText = watch("description") || "";
   const [activePage, setActivePage] = useState<1 | 2>(1);
 
-  // PDF drag-and-drop state
-  const [isDragging, setIsDragging] = useState(false);
-  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
-  const [isExtracting, setIsExtracting] = useState(false);
+  // Pre-fill form when position changes or modal opens
+  useEffect(() => {
+    if (position && open) {
+      let durVal = "";
+      let durUnit = "Months";
+      if (position.projectDuration && position.projectDuration !== "N/A") {
+        const parts = position.projectDuration.trim().split(" ");
+        if (parts[0]) durVal = parts[0];
+        if (parts[1]) durUnit = parts[1];
+      }
+
+      let normalizedWorkMode = "on-site";
+      if (position.work_mode) {
+        const wm = position.work_mode.toLowerCase().trim();
+        if (wm === "remote") normalizedWorkMode = "remote";
+        else if (wm === "hybrid") normalizedWorkMode = "hybrid";
+        else normalizedWorkMode = "on-site";
+      }
+
+      reset({
+        title: position.title || "",
+        company_id: position.company_id ? position.company_id.toString() : "",
+        project_name: position.projectName && position.projectName !== "N/A" ? position.projectName : "",
+        skills: position.skills || "",
+        experience_required: position.experience_required !== undefined && position.experience_required !== null ? position.experience_required.toString() : "",
+        work_mode: normalizedWorkMode,
+        location: position.location || "",
+        positions_required: (position.positions_required || 1).toString(),
+        project_start_date: position.projectStartDate && position.projectStartDate !== "N/A" ? position.projectStartDate : "",
+        project_duration_val: durVal,
+        project_duration_unit: durUnit,
+        request_raised_by: position.raisedBy && position.raisedBy !== "N/A" ? position.raisedBy : "",
+        budget: position.budget && position.budget !== "N/A" ? position.budget : "",
+        description: position.responsibilities || position.description || "",
+        status: position.status || "open",
+      });
+
+      setClientSearch(position.clientName || "");
+      setEmployeeSearch(position.raisedBy && position.raisedBy !== "N/A" ? position.raisedBy : "");
+      setActivePage(1);
+    }
+  }, [position, open, reset]);
 
   // Client add mutation
   const addClientMutation = useMutation({
@@ -136,9 +165,10 @@ export const AddOpenPositionModal = ({ open, onClose, onPositionCreated }: AddOp
     }
   });
 
-  // Create Job Role mutation
+  // Update Job Role mutation
   const mutation = useMutation({
     mutationFn: (values: FormValues) => {
+      if (!position) throw new Error("No position selected for editing");
       const budgetVal = values.budget || "N/A";
       const raisedByEmp = EMPLOYEES.find(e => e.id === values.request_raised_by);
       const raisedByName = raisedByEmp ? `${raisedByEmp.name} (${raisedByEmp.designation})` : (values.request_raised_by || "N/A");
@@ -146,10 +176,10 @@ export const AddOpenPositionModal = ({ open, onClose, onPositionCreated }: AddOp
         ? `${values.project_duration_val} ${values.project_duration_unit || "Months"}`
         : "6 Months";
       const projectName = values.project_name || "N/A";
-      const title = (values.title || "").trim() || "New Position";
-      const targetCompanyId = values.company_id ? parseInt(values.company_id) : (companies[0]?.id || 1);
+      const title = (values.title || "").trim() || position.title || "Position";
+      const targetCompanyId = values.company_id ? parseInt(values.company_id) : position.company_id;
 
-      // Serialize details into description
+      // Serialize metadata into description
       const richDetails = `
 === REQUISITION METADATA ===
 Project: ${projectName}
@@ -161,11 +191,11 @@ Budget Range: ${budgetVal}
 
 ${values.description || ""}`;
 
-      return createJobRole({
+      return updateJobRole(position.id, {
         company_id: targetCompanyId,
         title: title,
         description: richDetails.trim(),
-        status: values.status || "open",
+        status: values.status || position.status || "open",
         positions_required: values.positions_required ? parseInt(values.positions_required) || 1 : 1,
         location: values.location ? values.location.trim() : null,
         work_mode: values.work_mode || "on-site",
@@ -173,22 +203,19 @@ ${values.description || ""}`;
         project_time_period: durationFormatted !== "N/A" ? durationFormatted : null,
       });
     },
-    onSuccess: (data: JobRole) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["job-roles"] });
       queryClient.invalidateQueries({ queryKey: ["companies"] });
-      toast.success("Position created successfully");
-      reset();
-      setUploadedFileName(null);
-      setClientSearch("");
-      setEmployeeSearch("");
-      setActivePage(1);
+      queryClient.invalidateQueries({ queryKey: ["pipeline"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+      toast.success("Position updated successfully");
       onClose();
-      if (onPositionCreated) {
-        onPositionCreated(data);
-      }
+      if (onSuccess) onSuccess();
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.detail || "Failed to create position");
+      const data = error?.response?.data;
+      const errorMsg = data?.detail || data?.message || "Failed to update position";
+      toast.error(errorMsg);
     },
   });
 
@@ -196,76 +223,44 @@ ${values.description || ""}`;
     mutation.mutate(data);
   };
 
-  // PDF Text Extraction mockup
-  const handleFileUpload = (file: File) => {
-    if (!file) return;
-    setUploadedFileName(file.name);
-    setIsExtracting(true);
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      setTimeout(() => {
-        const text = e.target?.result as string;
-        const cleanText = text
-          ? text.slice(0, 1000)
-          : `• Drive development of user-facing components\n• Collaborate with product managers & engineers\n• Write clean, testable, and robust front-end code.`;
-        setValue("description", cleanText);
-        setIsExtracting(false);
-        toast.success("Text extracted successfully!");
-      }, 1000);
-    };
-
-    if (file.type === "text/plain") {
-      reader.readAsText(file);
-    } else {
-      setTimeout(() => {
-        setValue(
-          "description",
-          `• Deliver premium, production-ready React codebase & user interface layouts\n• Participate in system architecture design meetings\n• Ensure high performance on mobile and desktop web platforms.`
-        );
-        setIsExtracting(false);
-        toast.success("Text extracted from PDF successfully");
-      }, 1200);
-    }
-  };
-
-  // Safe client list filtration
   const filteredClientsList = companies.filter(c =>
     c.name.toLowerCase().includes(clientSearch.toLowerCase())
   );
 
-  // Safe employee list filtration
   const filteredEmployeesList = EMPLOYEES.filter(e =>
     e.name.toLowerCase().includes(employeeSearch.toLowerCase()) ||
     e.designation.toLowerCase().includes(employeeSearch.toLowerCase())
   );
 
   return (
-    <Modal open={open} onClose={onClose} title="Position Requisition Form">
-      <div className="max-h-[82vh] overflow-y-auto custom-scrollbar p-1">
-        {/* Simple Page Steps Indicator */}
-        <div className="flex items-center justify-center gap-6 mb-6">
-          <button
-            type="button"
-            onClick={() => setActivePage(1)}
-            className={`flex items-center gap-2 pb-2 text-xs font-bold uppercase tracking-wider transition-all border-b-2 ${
-              activePage === 1 ? "text-primary border-primary" : "text-muted-foreground border-transparent hover:text-foreground"
-            }`}
-          >
-            <span className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px]">1</span>
-            Position & Requirements
-          </button>
-          <div className="h-px bg-border w-12 mb-2" />
-          <button
-            type="button"
-            onClick={() => setActivePage(2)}
-            className={`flex items-center gap-2 pb-2 text-xs font-bold uppercase tracking-wider transition-all border-b-2 ${
-              activePage === 2 ? "text-primary border-primary" : "text-muted-foreground border-transparent hover:text-foreground"
-            }`}
-          >
-            <span className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px]">2</span>
-            Timeline & Responsibilities
-          </button>
+    <Modal open={open} onClose={onClose} title="Edit Position Requisition">
+      <div className="space-y-6 pt-1 max-w-2xl mx-auto">
+        
+        {/* Navigation Tabs */}
+        <div className="flex items-center justify-between border-b border-border pb-1">
+          <div className="flex items-center gap-6">
+            <button
+              type="button"
+              onClick={() => setActivePage(1)}
+              className={`flex items-center gap-2 pb-2 text-xs font-bold uppercase tracking-wider transition-all border-b-2 ${
+                activePage === 1 ? "text-primary border-primary" : "text-muted-foreground border-transparent hover:text-foreground"
+              }`}
+            >
+              <span className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px]">1</span>
+              Position Details & Requirements
+            </button>
+            <div className="h-px bg-border w-8 mb-2" />
+            <button
+              type="button"
+              onClick={() => setActivePage(2)}
+              className={`flex items-center gap-2 pb-2 text-xs font-bold uppercase tracking-wider transition-all border-b-2 ${
+                activePage === 2 ? "text-primary border-primary" : "text-muted-foreground border-transparent hover:text-foreground"
+              }`}
+            >
+              <span className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px]">2</span>
+              Timeline & Responsibilities
+            </button>
+          </div>
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
@@ -283,7 +278,6 @@ ${values.description || ""}`;
                     placeholder="e.g. Senior Frontend Engineer"
                     className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all font-medium"
                   />
-                  {errors.title && <p className="text-[10px] text-destructive font-bold">{errors.title.message}</p>}
                 </div>
 
                 <div className="space-y-1.5">
@@ -294,7 +288,6 @@ ${values.description || ""}`;
                     {...register("positions_required")}
                     className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all font-medium"
                   />
-                  {errors.positions_required && <p className="text-[10px] text-destructive font-bold">{errors.positions_required.message}</p>}
                 </div>
               </div>
 
@@ -389,7 +382,6 @@ ${values.description || ""}`;
                       </div>
                     </div>
                   )}
-                  {errors.company_id && <p className="text-[10px] text-destructive font-bold">{errors.company_id.message}</p>}
                 </div>
 
                 <div className="space-y-1.5">
@@ -400,7 +392,6 @@ ${values.description || ""}`;
                     {...register("project_name")}
                     className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all font-medium"
                   />
-                  {errors.project_name && <p className="text-[10px] text-destructive font-bold">{errors.project_name.message}</p>}
                 </div>
               </div>
 
@@ -412,13 +403,12 @@ ${values.description || ""}`;
                   placeholder="e.g. React, Node.js, AWS Cloud, PostgreSQL"
                   className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all font-medium"
                 />
-                {errors.skills && <p className="text-[10px] text-destructive font-bold">{errors.skills.message}</p>}
               </div>
 
               {/* Row 4: Experience, Mode, Location & Status */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Experience (Years)</label>
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Experience (Yrs)</label>
                   <input
                     type="number"
                     min="0"
@@ -427,11 +417,10 @@ ${values.description || ""}`;
                     placeholder="e.g. 5"
                     className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all font-medium"
                   />
-                  {errors.experience_required && <p className="text-[10px] text-destructive font-bold">{errors.experience_required.message}</p>}
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Employment Type</label>
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Employment</label>
                   <select
                     {...register("work_mode")}
                     className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all font-semibold"
@@ -446,10 +435,9 @@ ${values.description || ""}`;
                   <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Location</label>
                   <input
                     {...register("location")}
-                    placeholder="e.g. Bengaluru, Karnataka"
+                    placeholder="e.g. Bengaluru"
                     className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all font-medium"
                   />
-                  {errors.location && <p className="text-[10px] text-destructive font-bold">{errors.location.message}</p>}
                 </div>
 
                 <div className="space-y-1.5">
@@ -493,7 +481,6 @@ ${values.description || ""}`;
                     {...register("project_start_date")}
                     className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all font-medium"
                   />
-                  {errors.project_start_date && <p className="text-[10px] text-destructive font-bold">{errors.project_start_date.message}</p>}
                 </div>
 
                 <div className="grid grid-cols-3 gap-2 items-end">
@@ -519,7 +506,6 @@ ${values.description || ""}`;
                   </div>
                 </div>
               </div>
-              {errors.project_duration_val && <p className="text-[10px] text-destructive font-bold">{errors.project_duration_val.message}</p>}
 
               {/* Row 2: Request Raised By & Budget */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -573,7 +559,6 @@ ${values.description || ""}`;
                       )}
                     </div>
                   )}
-                  {errors.request_raised_by && <p className="text-[10px] text-destructive font-bold">{errors.request_raised_by.message}</p>}
                 </div>
 
                 <div className="space-y-1.5">
@@ -585,60 +570,10 @@ ${values.description || ""}`;
                     placeholder="e.g. ₹5,00,000 or ₹12 LPA"
                     className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all font-medium"
                   />
-                  {errors.budget && <p className="text-[10px] text-destructive font-bold">{errors.budget.message}</p>}
                 </div>
               </div>
 
-              {/* Row 3: Drag & Drop File Extraction */}
-              <div
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  setIsDragging(true);
-                }}
-                onDragLeave={() => setIsDragging(false)}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  setIsDragging(false);
-                  const files = e.dataTransfer.files;
-                  if (files && files.length > 0) handleFileUpload(files[0]);
-                }}
-                className={`border-2 border-dashed rounded-2xl p-4 text-center transition-all ${
-                  isDragging ? "border-primary bg-primary/5" : "border-border hover:border-primary/40"
-                }`}
-              >
-                <input
-                  type="file"
-                  id="requisition-file"
-                  accept=".pdf,.txt"
-                  className="hidden"
-                  onChange={(e) => {
-                    const files = e.target.files;
-                    if (files && files.length > 0) handleFileUpload(files[0]);
-                  }}
-                />
-                <label htmlFor="requisition-file" className="cursor-pointer space-y-1.5 block">
-                  <div className="w-10 h-10 bg-secondary/50 rounded-full flex items-center justify-center mx-auto text-muted-foreground">
-                    {isExtracting ? (
-                      <Loader2 className="w-5 h-5 animate-spin text-primary" />
-                    ) : (
-                      <UploadCloud className="w-5 h-5" />
-                    )}
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-foreground">
-                      {isExtracting ? "Extracting JDs..." : "Optional: Upload JD Document"}
-                    </p>
-                    <p className="text-[10px] text-muted-foreground">Drag PDF or Text file here to auto-populate responsibilities</p>
-                  </div>
-                  {uploadedFileName && (
-                    <div className="inline-flex items-center gap-1.5 px-3 py-0.5 bg-emerald-500/10 text-emerald-600 rounded-full text-[10px] font-bold border border-emerald-500/20">
-                      <CheckCircle className="w-3 h-3" /> Loaded: {uploadedFileName}
-                    </div>
-                  )}
-                </label>
-              </div>
-
-              {/* Row 4: Responsibilities Description */}
+              {/* Row 3: Responsibilities Description */}
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex justify-between">
                   <span>Responsibilities</span>
@@ -674,7 +609,6 @@ ${values.description || ""}`;
                     placeholder="Provide requisition responsibilities and project scope details here..."
                   />
                 </div>
-                {errors.description && <p className="text-[10px] text-destructive font-bold">{errors.description.message}</p>}
               </div>
 
               {/* Page 2 Action Row */}
@@ -702,12 +636,12 @@ ${values.description || ""}`;
                     {mutation.isPending ? (
                       <>
                         <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        Saving...
+                        Saving Changes...
                       </>
                     ) : (
                       <>
-                        <BriefcaseBusiness className="w-3.5 h-3.5" />
-                        Create Position
+                        <Edit className="w-3.5 h-3.5" />
+                        Save Changes
                       </>
                     )}
                   </button>

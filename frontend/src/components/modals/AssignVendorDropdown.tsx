@@ -112,11 +112,13 @@ export const AssignVendorDropdown = ({
                 </div>
                 <div className="min-w-0">
                   <p className="text-sm font-bold text-foreground truncate">
-                    {vendor.name}
+                    {vendor.company_name || vendor.name}
                   </p>
-                  <p className="text-[10px] text-muted-foreground truncate uppercase font-medium tracking-wide">
-                    {vendor.company_name}
-                  </p>
+                  {vendor.company_name && (
+                    <p className="text-[10px] text-muted-foreground truncate uppercase font-medium tracking-wide">
+                      {vendor.company_name}
+                    </p>
+                  )}
                 </div>
               </div>
             ))

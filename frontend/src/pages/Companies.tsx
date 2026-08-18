@@ -744,20 +744,37 @@ const Companies = () => {
   const openAddCompany = () => { setEditId(null); setCompanyForm({ name: "", location: "" }); setCompanyModalOpen(true); };
   const openEditCompany = (c: Company) => { setEditId(c.id); setCompanyForm({ name: c.name, location: c.location || "" }); setCompanyModalOpen(true); };
   const handleSaveCompany = async () => {
-    if (!companyForm.name.trim()) { toast.error("Company name is required"); return; }
+    if (!companyForm.name.trim()) {
+      toast.error("Company name is required");
+      return;
+    }
     try {
       if (editId) {
-        await updateCompany(editId, { name: companyForm.name.trim(), location: companyForm.location.trim() || null });
-        toast.success("Company updated");
+        await updateCompany(editId, {
+          name: companyForm.name.trim(),
+          location: companyForm.location.trim() || undefined,
+        });
+        toast.success("Company updated successfully");
       } else {
-        await createCompany({ name: companyForm.name.trim(), location: companyForm.location.trim() || null });
-        toast.success("Company added");
+        await createCompany({
+          name: companyForm.name.trim(),
+          location: companyForm.location.trim() || undefined,
+        });
+        toast.success("Company added successfully");
       }
       await queryClient.invalidateQueries({ queryKey: ["companies"] });
       setCompanyModalOpen(false);
-    } catch (err: unknown) {
-      const maybe = err as { response?: { data?: { message?: string } } };
-      toast.error(maybe.response?.data?.message || "Failed to save company");
+    } catch (err: any) {
+      const data = err?.response?.data;
+      let errorMsg = "Failed to save company";
+      if (typeof data?.detail === "string") {
+        errorMsg = data.detail;
+      } else if (Array.isArray(data?.detail) && data.detail[0]?.msg) {
+        errorMsg = data.detail[0].msg;
+      } else if (data?.message) {
+        errorMsg = data.message;
+      }
+      toast.error(errorMsg);
     }
   };
   const handleDeleteCompany = async () => {
@@ -768,9 +785,10 @@ const Companies = () => {
       toast.success("Company removed");
       if (selectedCompanyId === deleteId) setSelectedCompanyId(null);
       setDeleteId(null);
-    } catch (err: unknown) {
-      const maybe = err as { response?: { data?: { message?: string } } };
-      toast.error(maybe.response?.data?.message || "Cannot delete company");
+    } catch (err: any) {
+      const data = err?.response?.data;
+      const errorMsg = data?.detail || data?.message || "Cannot delete company";
+      toast.error(errorMsg);
     }
   };
 

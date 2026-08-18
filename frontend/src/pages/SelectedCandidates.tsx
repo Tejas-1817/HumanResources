@@ -160,7 +160,7 @@ const SelectedCandidates = () => {
                       {[
                         { id: "name", label: "Candidate Name" },
                         { id: "company", label: "Company Name" },
-                        { id: "technology", label: "Technology" }
+                        { id: "technology", label: "Job Role" }
                       ].map((option) => (
                         <button
                           key={option.id}
@@ -255,7 +255,7 @@ const SelectedCandidates = () => {
                     </p>
                   </div>
                   <div className="space-y-1">
-                    <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Technology</p>
+                    <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Job Role</p>
                     <p className="text-xs font-semibold text-foreground flex items-center gap-1.5 truncate">
                       <Briefcase className="w-3 h-3 text-primary opacity-60" /> {cand.technology}
                     </p>
@@ -325,7 +325,7 @@ const SelectedCandidates = () => {
             <div className="grid grid-cols-12 gap-3 px-6 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
               <div className="col-span-2">Candidate</div>
               <div className="col-span-2">Client</div>
-              <div className="col-span-2">Technology</div>
+              <div className="col-span-2">Job Role</div>
               <div className="col-span-1 text-center">Duration</div>
               <div className="col-span-1 text-center">Cost</div>
               <div className="col-span-1 text-center">Source</div>
@@ -377,7 +377,7 @@ const SelectedCandidates = () => {
                     </div>
                   </div>
 
-                  {/* Technology */}
+                  {/* Job Role */}
                   <div className="col-span-2 min-w-0">
                     <div className="flex items-center gap-2">
                       <Briefcase className="w-3.5 h-3.5 text-primary opacity-60" />

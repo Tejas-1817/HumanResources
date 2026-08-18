@@ -16,7 +16,7 @@ const routeLabels: Record<string, string> = {
   "pipeline": "Pipeline",
   "selected": "Selected",
   "replacements": "Replacements",
-  "open-positions": "Open Positions",
+  "open-positions": "POSITIONS",
 };
 
 export const Topbar = ({

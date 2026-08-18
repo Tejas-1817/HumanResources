@@ -30,7 +30,7 @@ const navItems = [
   { label: "Dashboard", icon: LayoutDashboard, path: "/" },
   { label: "Analytics", icon: BarChart3, path: "/analytics" },
   { label: "Total Candidates", icon: Users, path: "/candidates" },
-  { label: "Open Positions", icon: Briefcase, path: "/open-positions" },
+  { label: "Positions", icon: Briefcase, path: "/open-positions" },
   { label: "Selected", icon: UserCheck, path: "/selected" },
   { label: "Replacements", icon: RefreshCcw, path: "/replacements" },
   { label: "Companies", icon: Building2, path: "/companies" },
@@ -76,7 +76,7 @@ export const AppSidebar = ({ onMobileClose, onQuickAction }: { onMobileClose?: (
             className={`object-contain transition-all duration-200 ${collapsed ? "w-8" : "w-24"}`}
           />
         </div>
-        
+
         {/* Collapse toggle on the upper side, floating on the right border */}
         <button
           onClick={() => setCollapsed(!collapsed)}
@@ -148,9 +148,8 @@ export const AppSidebar = ({ onMobileClose, onQuickAction }: { onMobileClose?: (
                   >
                     <span className="truncate">{item.label}</span>
                     {getBadgeValue(item.label) !== undefined && getBadgeValue(item.label) !== null && (
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold shrink-0 ml-2 ${
-                        isActive ? "bg-white text-blue-600" : "bg-blue-500/20 text-blue-400"
-                      }`}>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold shrink-0 ml-2 ${isActive ? "bg-white text-blue-600" : "bg-blue-500/20 text-blue-400"
+                        }`}>
                         {getBadgeValue(item.label)}
                       </span>
                     )}

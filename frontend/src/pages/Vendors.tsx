@@ -334,7 +334,9 @@ const Vendors = () => {
   });
 
   const filteredVendors = vendors.filter(v =>
-    v.name.toLowerCase().includes(searchTerm.toLowerCase())
+    (v.company_name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (v.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (v.email || "").toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -627,6 +629,7 @@ const Vendors = () => {
                 </button>
                 {vendors.map((vendor) => {
                   const isActive = vendorFilterId === vendor.id;
+                  const displayName = vendor.company_name || vendor.name;
                   return (
                     <button
                       key={vendor.id}
@@ -638,11 +641,11 @@ const Vendors = () => {
                           : "text-muted-foreground hover:bg-secondary/80 hover:text-foreground"
                       }`}
                     >
-                      <span className="truncate flex-1 pr-2">{vendor.name}</span>
+                      <span className="truncate flex-1 pr-2">{displayName}</span>
                       <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black shrink-0 ${
                         isActive ? "bg-white/20 text-white" : "bg-secondary text-muted-foreground"
                       }`}>
-                        {vendor.company_name?.charAt(0).toUpperCase() || "P"}
+                        {displayName?.charAt(0).toUpperCase() || "P"}
                       </span>
                     </button>
                   );
@@ -696,7 +699,7 @@ const Vendors = () => {
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
                           <p className="text-sm font-bold text-foreground group-hover:text-primary transition-colors truncate">
-                            {vendor.name}
+                            {vendor.company_name || vendor.name}
                           </p>
                           <span className={`w-1.5 h-1.5 rounded-full ${vendor.is_active ? 'bg-emerald-500 animate-pulse' : 'bg-white/20'}`} />
                         </div>
@@ -933,7 +936,7 @@ const Vendors = () => {
       </Modal>
 
       {/* Assign Job Modal */}
-      <Modal open={isAssignModalOpen} onClose={() => setIsAssignModalOpen(false)} title={`Assign Job to ${selectedVendor?.name}`}>
+      <Modal open={isAssignModalOpen} onClose={() => setIsAssignModalOpen(false)} title={`Assign Job to ${selectedVendor?.company_name || selectedVendor?.name || "Partner"}`}>
         <form onSubmit={(e) => { e.preventDefault(); assignMutation.mutate(assignment); }} className="space-y-6">
           <div>
             <label className="label-text mb-2 block font-bold uppercase tracking-widest text-[10px]">Select Job Role</label>
@@ -1011,7 +1014,7 @@ const Vendors = () => {
             <div className="space-y-1">
               <p className="text-sm font-bold text-foreground">Are you sure you want to permanently delete this record?</p>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                You are about to delete <strong>{vendorToDelete?.name}</strong>.
+                You are about to delete <strong>{vendorToDelete?.company_name || vendorToDelete?.name}</strong>.
                 This action is <strong>irreversible</strong> and will remove their record and login access from the system.
               </p>
             </div>

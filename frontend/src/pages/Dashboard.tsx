@@ -1296,7 +1296,7 @@ const Dashboard = () => {
           onClick={() => navigate("/candidates")}
         />
         <MetricCard
-          label="Open Positions"
+          label="POSITIONS"
           value={totalActivePositionsCount}
           icon={Briefcase}
           iconBg="bg-blue-50 text-blue-600"
@@ -1578,7 +1578,7 @@ const Dashboard = () => {
         <motion.div variants={item} className="bg-white border border-blue-200/80 hover:border-blue-300 transition-colors rounded-2xl p-6 shadow-sm flex flex-col justify-between h-[390px]">
           <div>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-black text-slate-800 tracking-tight">Open Positions</h3>
+              <h3 className="text-sm font-black text-slate-800 tracking-tight">POSITIONS</h3>
               <button
                 onClick={() => navigate("/open-positions")}
                 className="text-xs font-black text-blue-600 hover:text-blue-700"
