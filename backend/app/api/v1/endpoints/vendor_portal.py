@@ -128,15 +128,13 @@ async def get_candidate_file_vendor(
         else "application/pdf"
     )
     raw_filename = candidate.original_filename or f"candidate-{candidate.id}{ext}"
-    import urllib.parse
     safe_filename = raw_filename.replace('"', '').replace('\r', '').replace('\n', '')
-    encoded_filename = urllib.parse.quote(raw_filename)
     from fastapi.responses import FileResponse
     return FileResponse(
-        path=file_path,
+        path=str(file_path),
         filename=safe_filename,
         media_type=mime_type,
-        headers={"Content-Disposition": f'inline; filename="{safe_filename}"; filename*=UTF-8\'\'{encoded_filename}'}
+        content_disposition_type="inline",
     )
 
 @router.post("/candidates/upload")
