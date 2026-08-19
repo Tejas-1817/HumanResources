@@ -20,7 +20,10 @@ client.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem("resumeiq_token");
-      window.location.href = "/login";
+      const loginUrl = `${import.meta.env.BASE_URL}login`;
+      if (!window.location.pathname.includes("/login")) {
+        window.location.href = loginUrl;
+      }
     }
     return Promise.reject(error);
   }

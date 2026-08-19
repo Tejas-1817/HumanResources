@@ -167,7 +167,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUser(null);
         setInterviewer(null);
         // Using window.location.href for vendor portal to ensure clean state
-        window.location.href = "/vendor";
+        window.location.href = `${import.meta.env.BASE_URL}vendor`;
       } else if (data.role === "interviewer" || data.interviewer) {
         const interviewerData: Interviewer = data.interviewer || {
           id: (data as any).interviewer_id || 0,
@@ -178,7 +178,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setInterviewer(interviewerData);
         setUser(null);
         setVendor(null);
-        window.location.href = "/interviewer";
+        window.location.href = `${import.meta.env.BASE_URL}interviewer`;
       } else {
         setUser({
           email: data.user?.email || email,
@@ -200,7 +200,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUser(null);
     setVendor(null);
     setInterviewer(null);
-    window.location.href = "/login";
+    window.location.href = `${import.meta.env.BASE_URL}login`;
   };
 
 

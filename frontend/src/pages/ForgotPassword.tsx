@@ -16,7 +16,9 @@ const ForgotPassword = () => {
 
   // Build the full clickable URL from the relative path returned by the API
   const fullResetUrl = resetLink
-    ? `${window.location.origin}${resetLink}`
+    ? (resetLink.startsWith("http")
+        ? resetLink
+        : `${window.location.origin}${import.meta.env.BASE_URL.replace(/\/$/, "")}${resetLink.startsWith("/") ? "" : "/"}${resetLink}`)
     : "";
 
   const handleSubmit = async (e: React.FormEvent) => {

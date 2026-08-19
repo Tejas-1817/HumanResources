@@ -181,11 +181,13 @@ const App = () => {
     root.classList.add(`theme-${savedTheme}`);
   }, []);
 
+  const basename = import.meta.env.BASE_URL.replace(/\/$/, "") || "/resumeiq";
+
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Sonner />
-        <BrowserRouter>
+        <BrowserRouter basename={basename}>
           <ScrollToTop />
           <AuthProvider>
             <AppRoutes />
