@@ -56,7 +56,7 @@ const Archives = () => {
   const [roleFilter, setRoleFilter] = useState("all");
   const [isSortOpen, setIsSortOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const PAGE_SIZE = 5;
+  const PAGE_SIZE = 20;
   const sortRef = useRef<HTMLDivElement>(null);
 
   // Selection states
@@ -172,6 +172,13 @@ const Archives = () => {
 
     return filtered;
   }, [allArchivedCandidates, searchQuery, statusFilter, companyFilter, roleFilter, sortBy]);
+
+  const totalPages = Math.max(1, Math.ceil(archivedCandidates.length / PAGE_SIZE));
+
+  const paginatedCandidates = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return archivedCandidates.slice(start, start + PAGE_SIZE);
+  }, [archivedCandidates, currentPage, PAGE_SIZE]);
 
   // Selection handlers
   const handleToggleSelect = (id: number) => {
@@ -426,7 +433,7 @@ const Archives = () => {
               <p className="text-sm text-muted-foreground">No candidate actions recorded yet.</p>
             </div>
           ) : (
-            archivedCandidates.map((cand) => (
+            paginatedCandidates.map((cand) => (
               <motion.div
                 key={cand.id}
                 variants={item}
@@ -535,7 +542,7 @@ const Archives = () => {
                 </p>
               </div>
             ) : (
-              archivedCandidates.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE).map((cand) => (
+              paginatedCandidates.map((cand) => (
                 <motion.div
                   key={cand.id}
                   variants={item}
@@ -643,7 +650,7 @@ const Archives = () => {
                 <ChevronLeft className="w-4 h-4" />
               </button>
               
-              {Array.from({ length: Math.ceil(archivedCandidates.length / PAGE_SIZE) }).map((_, i) => (
+              {Array.from({ length: totalPages }).map((_, i) => (
                 <button
                   key={i}
                   onClick={() => setCurrentPage(i + 1)}
@@ -658,8 +665,8 @@ const Archives = () => {
               ))}
 
               <button
-                disabled={currentPage === Math.ceil(archivedCandidates.length / PAGE_SIZE)}
-                onClick={() => setCurrentPage(prev => Math.min(Math.ceil(archivedCandidates.length / PAGE_SIZE), prev + 1))}
+                disabled={currentPage === totalPages}
+                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                 className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed text-slate-600 shadow-sm"
               >
                 <ChevronRight className="w-4 h-4" />
