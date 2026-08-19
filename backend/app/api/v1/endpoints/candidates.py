@@ -178,16 +178,23 @@ def get_candidate_file(
             raise ForbiddenException(message="Access denied to this candidate file")
             
     candidate = CandidateService.get_by_id(db, candidate_id)
-    file_path = storage_service.get_candidate_file_path(candidate_id)
-    if not file_path.exists():
-        raise NotFoundException(message="Candidate resume file not found")
+    file_path = storage_service.ensure_candidate_resume(candidate)
     ext = file_path.suffix.lower()
     mime_type = (
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         if ext == ".docx"
         else "application/pdf"
     )
-    return FileResponse(path=file_path, filename=candidate.original_filename, media_type=mime_type)
+    raw_filename = candidate.original_filename or f"candidate-{candidate.id}{ext}"
+    import urllib.parse
+    safe_filename = raw_filename.replace('"', '').replace('\r', '').replace('\n', '')
+    encoded_filename = urllib.parse.quote(raw_filename)
+    return FileResponse(
+        path=file_path,
+        filename=safe_filename,
+        media_type=mime_type,
+        headers={"Content-Disposition": f'inline; filename="{safe_filename}"; filename*=UTF-8\'\'{encoded_filename}'}
+    )
 
 
 @router.get(

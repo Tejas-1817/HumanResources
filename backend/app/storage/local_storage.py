@@ -1,3 +1,5 @@
+import os
+import shutil
 from pathlib import Path
 from uuid import uuid4
 
@@ -17,9 +19,12 @@ class LocalStorageService:
 
     def _ensure_directories(self) -> None:
         try:
-            self.base_path.mkdir(parents=True, exist_ok=True)
-            self.temp_path.mkdir(parents=True, exist_ok=True)
-            self.resumes_path.mkdir(parents=True, exist_ok=True)
+            for directory in (self.base_path, self.temp_path, self.resumes_path):
+                directory.mkdir(parents=True, exist_ok=True)
+                try:
+                    os.chmod(str(directory), 0o755)
+                except Exception:
+                    pass
         except Exception as exc:
             raise StorageException(
                 message="Unable to initialize storage directories",
@@ -32,13 +37,16 @@ class LocalStorageService:
             raise FileValidationException(message="Missing filename")
 
         suffix = Path(filename).suffix.lower().lstrip(".")
-        if suffix not in settings.allowed_extensions_list:
+        allowed = [ext.lower().lstrip(".") for ext in settings.allowed_extensions_list]
+        # Always allow standard document formats
+        if suffix not in allowed and suffix not in ("pdf", "docx", "doc"):
             raise FileValidationException(
                 message="Invalid file type",
-                detail=f"Allowed extensions: {', '.join(settings.allowed_extensions_list)}",
+                detail=f"Allowed extensions: {', '.join(set(allowed + ['pdf', 'docx', 'doc']))}",
             )
 
     async def save_temp_file(self, file: UploadFile) -> Path:
+        self._ensure_directories()
         self.validate_file(file)
         ext = Path(file.filename or "").suffix.lower() or ".pdf"
         temp_file_path = self.temp_path / f"{uuid4().hex}{ext}"
@@ -59,6 +67,10 @@ class LocalStorageService:
                         )
                     await out.write(chunk)
             await file.seek(0)
+            try:
+                os.chmod(str(temp_file_path), 0o644)
+            except Exception:
+                pass
             return temp_file_path
         except FileValidationException:
             await self.delete_file(temp_file_path)
@@ -71,11 +83,19 @@ class LocalStorageService:
             ) from exc
 
     async def finalize_file(self, temp_path: Path, candidate_id: int, extension: str = ".pdf") -> Path:
+        self._ensure_directories()
+        if not extension.startswith("."):
+            extension = f".{extension}"
         final_path = self.resumes_path / f"{candidate_id}{extension}"
         try:
             if final_path.exists():
                 final_path.unlink()
-            temp_path.rename(final_path)
+            # Use shutil.move to support cross-device/partition moves cleanly on servers
+            shutil.move(str(temp_path), str(final_path))
+            try:
+                os.chmod(str(final_path), 0o644)
+            except Exception:
+                pass
             return final_path
         except Exception as exc:
             raise StorageException(
@@ -94,14 +114,58 @@ class LocalStorageService:
                 detail=str(exc),
             ) from exc
 
-    def get_candidate_file_path(self, candidate_id: int) -> Path:
-        """Return the resume file path for a candidate, checking all allowed extensions."""
-        for ext in settings.allowed_extensions_list:
+    def get_file_path(self, candidate_id: int, extension: str = ".pdf") -> Path:
+        """Alias method for retrieving candidate file path."""
+        return self.get_candidate_file_path(candidate_id)
+
+    def get_candidate_file_path(self, candidate_id: int, original_filename: str | None = None) -> Path:
+        """Return the resume file path for a candidate, checking known extensions and filename suffix."""
+        self._ensure_directories()
+        
+        # 1. If original_filename provided, check its extension first
+        if original_filename:
+            orig_ext = Path(original_filename).suffix.lower()
+            if orig_ext:
+                candidate_path = self.resumes_path / f"{candidate_id}{orig_ext}"
+                if candidate_path.exists() and candidate_path.stat().st_size > 0:
+                    return candidate_path
+
+        # 2. Check all common extensions
+        extensions_to_check = ["pdf", "docx", "doc"] + [ext.lstrip(".") for ext in settings.allowed_extensions_list]
+        for ext in extensions_to_check:
             candidate_path = self.resumes_path / f"{candidate_id}.{ext}"
-            if candidate_path.exists():
+            if candidate_path.exists() and candidate_path.stat().st_size > 0:
                 return candidate_path
-        # Fallback to .pdf (preserves backward-compat for existing files)
+
+        # 3. Check any file in resumes directory matching candidate_id.*
+        try:
+            matches = list(self.resumes_path.glob(f"{candidate_id}.*"))
+            for match in matches:
+                if match.is_file() and match.stat().st_size > 0:
+                    return match
+        except Exception:
+            pass
+
+        # Fallback to .pdf
         return self.resumes_path / f"{candidate_id}.pdf"
+
+    def ensure_candidate_resume(self, candidate) -> Path:
+        """Ensure candidate resume file exists on disk, auto-generating a PDF if missing."""
+        self._ensure_directories()
+        file_path = self.get_candidate_file_path(candidate.id, getattr(candidate, "original_filename", None))
+        if file_path.exists() and file_path.stat().st_size > 0:
+            return file_path
+
+        from app.services.resume_generator import generate_candidate_pdf
+        target_path = self.resumes_path / f"{candidate.id}.pdf"
+        generate_candidate_pdf(candidate, target_path)
+        try:
+            os.chmod(str(target_path), 0o644)
+        except Exception:
+            pass
+        return target_path
 
 
 storage_service = LocalStorageService()
+
+

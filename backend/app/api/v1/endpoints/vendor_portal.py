@@ -120,15 +120,23 @@ async def get_candidate_file_vendor(
     if not candidate:
         raise NotFoundException(message="Candidate not found")
 
-    file_path = storage_service.get_file_path(candidate_id, Path(candidate.original_filename).suffix.lower())
-    if not file_path or not file_path.exists():
-        raise NotFoundException(message="Resume file not found")
-
+    file_path = storage_service.ensure_candidate_resume(candidate)
+    ext = file_path.suffix.lower()
+    mime_type = (
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        if ext == ".docx"
+        else "application/pdf"
+    )
+    raw_filename = candidate.original_filename or f"candidate-{candidate.id}{ext}"
+    import urllib.parse
+    safe_filename = raw_filename.replace('"', '').replace('\r', '').replace('\n', '')
+    encoded_filename = urllib.parse.quote(raw_filename)
     from fastapi.responses import FileResponse
     return FileResponse(
         path=file_path,
-        filename=candidate.original_filename,
-        media_type="application/octet-stream"
+        filename=safe_filename,
+        media_type=mime_type,
+        headers={"Content-Disposition": f'inline; filename="{safe_filename}"; filename*=UTF-8\'\'{encoded_filename}'}
     )
 
 @router.post("/candidates/upload")

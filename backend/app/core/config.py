@@ -25,7 +25,7 @@ class Settings(BaseSettings):
 
     local_storage_path: str = "./uploads"
     max_file_size_mb: int = 10
-    allowed_extensions: str = "pdf"
+    allowed_extensions: str = "pdf,docx,doc"
     frontend_url: str = "http://localhost:5173"
     frontend_origins: str | None = None
 
@@ -64,7 +64,13 @@ class Settings(BaseSettings):
     @computed_field
     @property
     def storage_path(self) -> Path:
-        return Path(self.upload_dir or self.local_storage_path).resolve()
+        if self.upload_dir:
+            return Path(self.upload_dir).resolve()
+        p = Path(self.local_storage_path)
+        if not p.is_absolute():
+            backend_root = Path(__file__).resolve().parent.parent.parent
+            return (backend_root / p).resolve()
+        return p.resolve()
 
     @computed_field
     @property
