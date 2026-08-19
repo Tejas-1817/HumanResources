@@ -5,6 +5,7 @@ import { Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import { registerApi } from "@/api/resumeiq";
+import altzorLogo from "@/assets/altzor-Logo.png";
 
 const Login = () => {
   const [isSignUp, setIsSignUp] = useState(false);
@@ -55,7 +56,7 @@ const Login = () => {
         <div className="relative z-10">
           <div className="flex items-center gap-4 mb-8">
             <img
-              src="/altzor-Logo.png"
+              src={altzorLogo}
               alt="Altzor Logo"
               className="w-44 h-auto object-contain drop-shadow-2xl"
             />

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import altzorLogo from "@/assets/altzor-Logo.png";
 import {
   LayoutDashboard,
   Building2,
@@ -39,7 +40,7 @@ export const VendorSidebar = ({ onMobileClose, onQuickAction }: { onMobileClose?
       <div className="h-16 flex items-center px-4 border-b border-white/5 gap-3 justify-between">
         <div className={`flex items-center gap-3 flex-1 overflow-hidden transition-all duration-200 ${collapsed ? "justify-center" : "pl-8"}`}>
           <img
-            src="/altzor-Logo.png"
+            src={altzorLogo}
             alt="Altzor Logo"
             className={`object-contain transition-all duration-200 ${collapsed ? "w-10" : "w-28"
               }`}

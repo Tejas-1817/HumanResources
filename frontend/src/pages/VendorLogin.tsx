@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Eye, EyeOff } from "lucide-react";
 import { useVendorAuth } from "@/context/AuthContext";
+import altzorLogo from "@/assets/altzor-Logo.png";
 
 const VendorLogin = () => {
   const [email, setEmail] = useState("");
@@ -42,7 +43,7 @@ const VendorLogin = () => {
         <div className="relative z-10">
           <div className="flex items-center gap-4 mb-4">
             <img
-              src="/altzor-Logo.png"
+              src={altzorLogo}
               alt="Altzor Logo"
               className="w-36 h-auto object-contain"
             />
@@ -72,7 +73,7 @@ const VendorLogin = () => {
         >
           <div className="lg:hidden flex flex-col items-center mb-8">
             <img
-              src="/Altzor-Logo.png"
+              src={altzorLogo}
               alt="Altzor Logo"
               className="w-32 h-auto object-contain mb-2"
             />

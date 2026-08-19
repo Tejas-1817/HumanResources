@@ -3,6 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
 import { getDashboardStats } from "@/api/resumeiq";
+import altzorLogo from "@/assets/altzor-Logo.png";
 import {
   LayoutDashboard,
   Building2,
@@ -71,7 +72,7 @@ export const AppSidebar = ({ onMobileClose, onQuickAction }: { onMobileClose?: (
       <div className="h-16 flex items-center px-4 border-b border-white/5 gap-3 justify-between shrink-0 relative">
         <div className={`flex items-center gap-3 flex-1 overflow-hidden transition-all duration-200 ${collapsed ? "justify-center" : "pl-6"}`}>
           <img
-            src="/altzor-Logo.png"
+            src={altzorLogo}
             alt="Altzor Logo"
             className={`object-contain transition-all duration-200 ${collapsed ? "w-8" : "w-24"}`}
           />

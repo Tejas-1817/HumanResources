@@ -23,25 +23,36 @@ const VendorCandidateDetail = () => {
   const [isPdfLoading, setIsPdfLoading] = useState(false);
 
   useEffect(() => {
-    if (!c || !c.original_filename?.toLowerCase().endsWith(".pdf")) {
+    if (!c) {
       setPdfUrl(null);
       return;
     }
 
     setIsPdfLoading(true);
+    let active = true;
     let url = "";
     client.get(`/vendor/candidates/${c.id}/file`, { responseType: "blob" })
       .then((res) => {
-        url = URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
+        if (!active) return;
+        if (res.data?.type?.includes("json")) {
+          setPdfUrl(null);
+          return;
+        }
+        url = URL.createObjectURL(new Blob([res.data], { type: res.data.type || "application/pdf" }));
         setPdfUrl(url);
       })
       .catch(() => {
-        setPdfUrl(null);
-        toast.error("Failed to load PDF preview");
+        if (active) {
+          setPdfUrl(null);
+          toast.error("Failed to load PDF preview");
+        }
       })
-      .finally(() => setIsPdfLoading(false));
+      .finally(() => {
+        if (active) setIsPdfLoading(false);
+      });
 
     return () => {
+      active = false;
       if (url) URL.revokeObjectURL(url);
     };
   }, [c?.id, c?.original_filename]);
@@ -50,7 +61,11 @@ const VendorCandidateDetail = () => {
     if (!c) return;
     try {
       const res = await client.get(`/vendor/candidates/${c.id}/file`, { responseType: "blob" });
-      const mime = c.original_filename?.toLowerCase().endsWith(".pdf") ? "application/pdf" : "application/octet-stream";
+      if (res.data?.type?.includes("json")) {
+        toast.error("Resume file not available");
+        return;
+      }
+      const mime = res.data?.type || (c.original_filename?.toLowerCase().endsWith(".docx") ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document" : "application/pdf");
       const url = URL.createObjectURL(new Blob([res.data], { type: mime }));
       const a = document.createElement("a");
       a.href = url;

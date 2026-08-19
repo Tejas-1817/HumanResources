@@ -52,20 +52,36 @@ const CandidateDetail = () => {
 
   // PDF Preview State
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [isPdfLoading, setIsPdfLoading] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
 
   useEffect(() => {
-    if (!c || !c.original_filename?.toLowerCase().endsWith(".pdf")) return;
+    if (!c) return;
+    let active = true;
     let url = "";
+    setIsPdfLoading(true);
+
     client
       .get(`/candidates/${c.id}/file`, { responseType: "blob" })
       .then((res) => {
-        url = URL.createObjectURL(new Blob([res.data], { type: res.data.type || "application/pdf" }));
+        if (!active) return;
+        if (res.data?.type?.includes("json")) {
+          setPdfUrl(null);
+          return;
+        }
+        const blob = new Blob([res.data], { type: res.data.type || "application/pdf" });
+        url = URL.createObjectURL(blob);
         setPdfUrl(url);
       })
-      .catch(() => setPdfUrl(null));
+      .catch(() => {
+        if (active) setPdfUrl(null);
+      })
+      .finally(() => {
+        if (active) setIsPdfLoading(false);
+      });
 
     return () => {
+      active = false;
       if (url) URL.revokeObjectURL(url);
     };
   }, [c?.id, c?.original_filename]);
@@ -127,7 +143,8 @@ const CandidateDetail = () => {
     if (!c) return;
     try {
       const res = await client.get(`/candidates/${c.id}/file`, { responseType: "blob" });
-      const url = URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
+      const blob = new Blob([res.data], { type: res.data.type || "application/pdf" });
+      const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
       a.download = c.original_filename || `candidate-${c.id}.pdf`;
@@ -135,6 +152,7 @@ const CandidateDetail = () => {
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
+      toast.success("Resume downloaded successfully");
     } catch {
       toast.error("Resume file not available");
     }
@@ -275,7 +293,12 @@ const CandidateDetail = () => {
               )}
 
               <div className={`w-full h-full rounded-xl overflow-hidden shadow-2xl border border-white/10 ${isFullScreen ? "max-w-5xl mx-auto" : ""}`}>
-                {pdfUrl ? (
+                {isPdfLoading ? (
+                  <div className="w-full h-full flex flex-col items-center justify-center bg-card gap-3">
+                    <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+                    <span className="text-xs font-semibold text-muted-foreground animate-pulse">Loading preview...</span>
+                  </div>
+                ) : pdfUrl ? (
                   <iframe
                     src={`${pdfUrl}#toolbar=0&navpanes=0&scrollbar=0`}
                     className="w-full h-full border-0 bg-white"
