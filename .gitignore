@@ -56,3 +56,4 @@ backend/app/venv/
 venv/
 .venv/
 __pycache__/
+deployment/
