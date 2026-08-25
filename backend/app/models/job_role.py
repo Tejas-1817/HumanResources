@@ -31,7 +31,7 @@ class JobRole(Base):
     department: Mapped[str | None] = mapped_column(String(255), nullable=True)
     location: Mapped[str | None] = mapped_column(String(255), nullable=True)
     work_mode: Mapped[str | None] = mapped_column(String(50), nullable=True)  # remote, hybrid, onsite
-    experience_required: Mapped[float | None] = mapped_column(Float, nullable=True)  # years
+    experience_required: Mapped[str | None] = mapped_column(String(100), nullable=True)  # e.g. "3-5 years" or "5"
     project_time_period: Mapped[str | None] = mapped_column(String(100), nullable=True)
     created_by: Mapped[int | None] = mapped_column(
         Integer,

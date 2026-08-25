@@ -35,7 +35,7 @@ class JobRoleService:
             department=payload.department,
             location=payload.location,
             work_mode=payload.work_mode,
-            experience_required=payload.experience_required,
+            experience_required=str(payload.experience_required).strip() if payload.experience_required is not None and str(payload.experience_required).strip() != "" else None,
             project_time_period=payload.project_time_period,
             created_by=created_by,
         )
@@ -124,7 +124,7 @@ class JobRoleService:
         if "work_mode" in payload.model_fields_set:
             role.work_mode = payload.work_mode
         if "experience_required" in payload.model_fields_set:
-            role.experience_required = payload.experience_required
+            role.experience_required = str(payload.experience_required).strip() if payload.experience_required is not None and str(payload.experience_required).strip() != "" else None
         if "project_time_period" in payload.model_fields_set:
             role.project_time_period = payload.project_time_period
 

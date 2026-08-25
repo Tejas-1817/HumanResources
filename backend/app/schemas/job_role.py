@@ -25,7 +25,7 @@ class JobRoleCreate(BaseModel):
     department: str | None = None
     location: str | None = None
     work_mode: str | None = None  # remote, hybrid, onsite
-    experience_required: float | None = None
+    experience_required: str | float | int | None = None
     project_time_period: str | None = None
     vendor_ids: list[int] | None = None
 
@@ -43,7 +43,7 @@ class JobRoleUpdate(BaseModel):
     department: str | None = None
     location: str | None = None
     work_mode: str | None = None
-    experience_required: float | None = None
+    experience_required: str | float | int | None = None
     project_time_period: str | None = None
     vendor_ids: list[int] | None = None
 
@@ -62,7 +62,7 @@ class JobRoleResponse(BaseModel):
     department: str | None = None
     location: str | None = None
     work_mode: str | None = None
-    experience_required: float | None = None
+    experience_required: str | None = None
     project_time_period: str | None = None
     created_by: int | None
     company_name: str | None = None
