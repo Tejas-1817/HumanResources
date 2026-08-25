@@ -11,12 +11,14 @@ class CompanyCreate(BaseModel):
 class CompanyUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=255)
     location: str | None = Field(default=None, max_length=255)
+    note: str | None = Field(default=None)
 
 
 class CompanyResponse(BaseModel):
     id: int
     name: str
     location: str | None = None
+    note: str | None = None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

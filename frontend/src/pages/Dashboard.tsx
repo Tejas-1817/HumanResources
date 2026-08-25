@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, type Variants } from "framer-motion";
 import {
   Users,
   Briefcase,
@@ -29,12 +29,16 @@ import {
   UserPlus,
   BarChart3,
   BadgeCheck,
+  Pencil,
+  Check,
+  Loader2,
 } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
 import {
   getDashboardStats,
   getCompanies,
+  updateCompany,
   getJobRoles,
   getPipeline,
   getCandidates,
@@ -46,12 +50,12 @@ import {
 } from "@/api/resumeiq";
 import { toast } from "sonner";
 
-const container = {
+const container: Variants = {
   hidden: { opacity: 0 },
   show: { opacity: 1, transition: { staggerChildren: 0.05 } },
 };
 
-const item = {
+const item: Variants = {
   hidden: { opacity: 0, y: 15 },
   show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 100, damping: 15 } },
 };
@@ -376,6 +380,38 @@ const Dashboard = () => {
     setTimeout(() => {
       setHighlightTodaysInterviews(false);
     }, 4000);
+  };
+
+  const queryClient = useQueryClient();
+
+  // ── Company Note editing state ────────────────────────
+  const [editingNoteFor, setEditingNoteFor] = useState<number | null>(null);
+  const [noteDraft, setNoteDraft] = useState<string>("");
+  const [savingNoteFor, setSavingNoteFor] = useState<number | null>(null);
+
+  const handleStartEditNote = (companyId: number, currentNote: string) => {
+    setEditingNoteFor(companyId);
+    setNoteDraft(currentNote || "");
+  };
+
+  const handleSaveCompanyNote = async (companyId: number) => {
+    try {
+      setSavingNoteFor(companyId);
+      await updateCompany(companyId, { note: noteDraft });
+      await queryClient.invalidateQueries({ queryKey: ["companies"] });
+      setEditingNoteFor(null);
+      toast.success("Note saved successfully");
+    } catch (err) {
+      console.error("Failed to save note:", err);
+      toast.error("Failed to save note");
+    } finally {
+      setSavingNoteFor(null);
+    }
+  };
+
+  const handleCancelEditNote = () => {
+    setEditingNoteFor(null);
+    setNoteDraft("");
   };
 
   // ── Data queries ──────────────────────────────────────
@@ -773,9 +809,10 @@ const Dashboard = () => {
     return list;
   }, [formattedUpcoming, upcomingView, upcomingWeek, upcomingMonth]);
 
-  // ── Open Positions Mapper ─────────────────────────────
-  const openPositionsList = useMemo(() => {
+  // ── Company Positions Aggregation ────────────────────
+  const companyPositionsList = useMemo(() => {
     const allApps = Object.values(pipeline).flat();
+
     const openRoles = jobRoles.filter((r) => {
       if ((r.status || "").toLowerCase() !== "open") return false;
       const filledCount = allApps.filter((app: any) => app.job_role_id === r.id && (app.status === "selected" || app.status === "joined")).length;
@@ -783,19 +820,44 @@ const Dashboard = () => {
       return !isFilled;
     });
 
-    return openRoles.map((r) => {
+    const byCompany = new Map<number, {
+      companyId: number;
+      company: string;
+      totalPositions: number;
+      filled: number;
+      applicants: number;
+      roleCount: number;
+    }>();
+
+    openRoles.forEach((r) => {
       const companyObj = companies.find((c) => c.id === r.company_id);
       const companyName = r.company_name || companyObj?.name || "Unknown";
+      const required = r.positions_required || 1;
+      const filledCount = allApps.filter(
+        (app: any) => app.job_role_id === r.id && (app.status === "selected" || app.status === "joined")
+      ).length;
       const totalApps = allApps.filter((app: any) => app.job_role_id === r.id).length;
-      return {
-        id: r.id,
+
+      const existing = byCompany.get(r.company_id) || {
+        companyId: r.company_id,
         company: companyName,
-        role: r.title,
-        positions: r.positions_required || 1,
-        count: totalApps,
-        status: "Active",
+        totalPositions: 0,
+        filled: 0,
+        applicants: 0,
+        roleCount: 0,
       };
+      existing.totalPositions += required;
+      existing.filled += Math.min(filledCount, required); // cap filled at required per role
+      existing.applicants += totalApps;
+      existing.roleCount += 1;
+      byCompany.set(r.company_id, existing);
     });
+
+    return Array.from(byCompany.values()).map((c) => ({
+      ...c,
+      active: Math.max(c.totalPositions - c.filled, 0),
+      note: companies.find((co) => co.id === c.companyId)?.note || "",
+    }));
   }, [jobRoles, pipeline, companies]);
 
   // ── Time helper function ──────────────────────────────
@@ -1431,6 +1493,128 @@ const Dashboard = () => {
 
 
 
+        {/* Positions (2-column wide) */}
+        <motion.div variants={item} className="bg-white border border-blue-200/80 hover:border-blue-300 transition-colors rounded-2xl p-6 shadow-sm flex flex-col justify-between h-[390px] md:col-span-2 lg:col-span-2">
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-black text-slate-800 tracking-tight">Positions</h3>
+              <button
+                onClick={() => navigate("/open-positions")}
+                className="text-xs font-black text-blue-600 hover:text-blue-700"
+              >
+                View All
+              </button>
+            </div>
+
+            <div className="space-y-3.5 max-h-[265px] overflow-y-auto pr-1 custom-scrollbar">
+              {companyPositionsList.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-10 text-slate-400 gap-1.5 h-full">
+                  <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center mb-2">
+                    <Briefcase className="w-4 h-4 text-slate-400" />
+                  </div>
+                  <span className="text-[11px] font-bold">No open positions</span>
+                  <span className="text-[9px] text-slate-400 text-center px-4 mt-1">Open positions by company will appear here</span>
+                </div>
+              ) : (
+                companyPositionsList.map((c) => (
+                  <div key={c.companyId} className="pb-3.5 border-b border-slate-100 last:border-0 last:pb-0 flex items-center justify-between gap-4">
+                    {/* Company Details */}
+                    <div className="shrink-0 min-w-[160px] max-w-[220px]">
+                      <h4
+                        className="text-xs font-black text-slate-800 hover:text-blue-600 transition-colors cursor-pointer truncate"
+                        onClick={() => navigate(`/companies?id=${c.companyId}`)}
+                        title={c.company}
+                      >
+                        {c.company}
+                      </h4>
+                      <p className="text-[10px] text-slate-400 font-bold mt-0.5">
+                        {c.totalPositions} {c.totalPositions === 1 ? "pos" : "pos"} • {c.active} active • {c.filled} filled • {c.applicants} {c.applicants === 1 ? "app" : "apps"}
+                      </p>
+                    </div>
+
+                    {/* Middle: Editable Company Note */}
+                    <div className="flex-1 min-w-0">
+                      {editingNoteFor === c.companyId ? (
+                        <div className="space-y-1.5 bg-slate-50/90 p-2 rounded-xl border border-slate-200/80">
+                          <textarea
+                            value={noteDraft}
+                            onChange={(e) => setNoteDraft(e.target.value)}
+                            placeholder="e.g. 2 positions, 1 filled, 1 in interview stage..."
+                            rows={2}
+                            className="w-full text-[11px] text-slate-700 bg-white border border-slate-200 rounded-lg p-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none font-medium placeholder:text-slate-400"
+                            autoFocus
+                          />
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              type="button"
+                              onClick={handleCancelEditNote}
+                              disabled={savingNoteFor === c.companyId}
+                              className="px-2 py-0.5 text-[9px] font-bold text-slate-500 hover:text-slate-700 rounded hover:bg-slate-200/50 transition-colors"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleSaveCompanyNote(c.companyId)}
+                              disabled={savingNoteFor === c.companyId}
+                              className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[9px] font-bold text-white bg-blue-600 hover:bg-blue-700 rounded shadow-sm transition-colors disabled:opacity-50"
+                            >
+                              {savingNoteFor === c.companyId ? (
+                                <>
+                                  <Loader2 className="w-2.5 h-2.5 animate-spin" /> Saving...
+                                </>
+                              ) : (
+                                <>
+                                  <Check className="w-2.5 h-2.5" /> Save
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="group">
+                          {c.note ? (
+                            <div
+                              onClick={() => handleStartEditNote(c.companyId, c.note)}
+                              className="text-[11px] text-slate-600 bg-slate-50/80 hover:bg-slate-100/90 border border-slate-100 hover:border-slate-200 rounded-lg px-2.5 py-1.5 cursor-pointer transition-colors flex items-center justify-between gap-2"
+                              title="Click to edit note"
+                            >
+                              <span className="font-medium italic text-slate-600 truncate">"{c.note}"</span>
+                              <Pencil className="w-3 h-3 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => handleStartEditNote(c.companyId, "")}
+                              className="text-[10px] font-bold text-slate-400 hover:text-blue-600 inline-flex items-center gap-1 transition-colors px-2 py-1 rounded hover:bg-slate-50 border border-dashed border-slate-200"
+                            >
+                              <Plus className="w-3 h-3" /> Add note
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Status Badge */}
+                    <div className="shrink-0">
+                      <span className="text-[9px] font-black uppercase text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+                        Active
+                      </span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          <button
+            onClick={handleCreateJobPost}
+            className="w-full text-center text-xs font-black text-blue-600 hover:text-blue-700 py-1.5 border-t border-slate-100 mt-2"
+          >
+            + Create New Position
+          </button>
+        </motion.div>
+
         {/* Upcoming Interviews */}
         <motion.div variants={item} className="bg-white border border-blue-200/80 hover:border-blue-300 transition-colors rounded-2xl p-6 shadow-sm flex flex-col justify-between h-[390px]">
           <div>
@@ -1575,96 +1759,6 @@ const Dashboard = () => {
           </button>
         </motion.div>
 
-        {/* Open Positions */}
-        <motion.div variants={item} className="bg-white border border-blue-200/80 hover:border-blue-300 transition-colors rounded-2xl p-6 shadow-sm flex flex-col justify-between h-[390px]">
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-black text-slate-800 tracking-tight">POSITIONS</h3>
-              <button
-                onClick={() => navigate("/open-positions")}
-                className="text-xs font-black text-blue-600 hover:text-blue-700"
-              >
-                View All
-              </button>
-            </div>
-
-            <div className="space-y-3.5 max-h-[265px] overflow-y-auto pr-1 custom-scrollbar">
-              {openPositionsList.map((position, idx) => (
-                <div key={idx} className="flex items-center justify-between pb-3.5 border-b border-slate-100 last:border-0 last:pb-0">
-                  <div>
-                    <h4 className="text-xs font-black text-slate-800 hover:text-blue-600 transition-colors cursor-pointer" onClick={() => position.id && navigate(`/job-roles/${position.id}`)}>
-                      {position.company}
-                    </h4>
-                    <p className="text-[10px] text-slate-400 font-bold mt-1">
-                      {position.role} • {position.positions} {position.positions === 1 ? "position" : "positions"}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-[10px] font-black text-slate-800">{position.count} Applicants</span>
-                    <span className="text-[9px] font-black uppercase text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
-                      {position.status}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <button
-            onClick={handleCreateJobPost}
-            className="w-full text-center text-xs font-black text-blue-600 hover:text-blue-700 py-1.5 border-t border-slate-100 mt-2"
-          >
-            + Create New Position
-          </button>
-        </motion.div>
-
-        {/* Activity Feed */}
-        <motion.div variants={item} className="bg-white border border-blue-200/80 hover:border-blue-300 transition-colors rounded-2xl p-6 shadow-sm flex flex-col justify-between h-[390px]">
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-black text-slate-800 tracking-tight">Activity Feed</h3>
-            </div>
-
-            <div className="space-y-4 max-h-[280px] overflow-y-auto pr-1 custom-scrollbar">
-              {activitiesList.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-10 text-slate-400 gap-1.5 h-full">
-                  <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center mb-2">
-                    <span className="text-slate-400 font-bold text-xs">A</span>
-                  </div>
-                  <span className="text-[11px] font-bold">No recent activities</span>
-                  <span className="text-[9px] text-slate-400 text-center px-4 mt-1">Activities from today and yesterday will appear here</span>
-                </div>
-              ) : (
-                activitiesList.map((activity) => (
-                  <div key={activity.id} className="flex items-start gap-3">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs font-black ${activity.iconBg}`}>
-                      {activity.text.includes("shortlisted") ? "S" : activity.text.includes("Interview") ? "I" : "N"}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold text-slate-800 leading-normal">{activity.text}</p>
-                      <span className="text-[9px] text-slate-400 font-bold block mt-1">{activity.time}</span>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        </motion.div>
-
-        {/* Interview Schedule Calendar */}
-        <motion.div variants={item} className="bg-white border border-blue-200/80 hover:border-blue-300 transition-colors rounded-2xl p-6 shadow-sm flex flex-col justify-between h-[390px]">
-          <DashboardCalendar
-            selectedDate={selectedCalendarDate}
-            onSelectDate={setSelectedCalendarDate}
-            schedules={allCombinedInterviews}
-            onScheduleInterview={(date) => {
-              const yyyy = date.getFullYear();
-              const mm = String(date.getMonth() + 1).padStart(2, '0');
-              const dd = String(date.getDate()).padStart(2, '0');
-              navigate(`/companies?scheduleDate=${yyyy}-${mm}-${dd}`);
-            }}
-          />
-        </motion.div>
 
         {/* Today's Interviews */}
         <motion.div
@@ -1731,6 +1825,54 @@ const Dashboard = () => {
           >
             View Full Schedule
           </button>
+        </motion.div>
+
+        {/* Interview Schedule Calendar */}
+        <motion.div variants={item} className="bg-white border border-blue-200/80 hover:border-blue-300 transition-colors rounded-2xl p-6 shadow-sm flex flex-col justify-between h-[390px]">
+          <DashboardCalendar
+            selectedDate={selectedCalendarDate}
+            onSelectDate={setSelectedCalendarDate}
+            schedules={allCombinedInterviews}
+            onScheduleInterview={(date) => {
+              const yyyy = date.getFullYear();
+              const mm = String(date.getMonth() + 1).padStart(2, '0');
+              const dd = String(date.getDate()).padStart(2, '0');
+              navigate(`/companies?scheduleDate=${yyyy}-${mm}-${dd}`);
+            }}
+          />
+        </motion.div>
+
+        {/* Activity Feed */}
+        <motion.div variants={item} className="bg-white border border-blue-200/80 hover:border-blue-300 transition-colors rounded-2xl p-6 shadow-sm flex flex-col justify-between h-[390px]">
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-black text-slate-800 tracking-tight">Activity Feed</h3>
+            </div>
+
+            <div className="space-y-4 max-h-[280px] overflow-y-auto pr-1 custom-scrollbar">
+              {activitiesList.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-10 text-slate-400 gap-1.5 h-full">
+                  <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center mb-2">
+                    <span className="text-slate-400 font-bold text-xs">A</span>
+                  </div>
+                  <span className="text-[11px] font-bold">No recent activities</span>
+                  <span className="text-[9px] text-slate-400 text-center px-4 mt-1">Activities from today and yesterday will appear here</span>
+                </div>
+              ) : (
+                activitiesList.map((activity) => (
+                  <div key={activity.id} className="flex items-start gap-3">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs font-black ${activity.iconBg}`}>
+                      {activity.text.includes("shortlisted") ? "S" : activity.text.includes("Interview") ? "I" : "N"}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-slate-800 leading-normal">{activity.text}</p>
+                      <span className="text-[9px] text-slate-400 font-bold block mt-1">{activity.time}</span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
         </motion.div>
 
         {/* Upcoming Holidays */}

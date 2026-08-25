@@ -51,6 +51,7 @@ def get_company(company_id: int, db: Session = Depends(get_db)) -> CompanyDetail
         id=company.id,
         name=company.name,
         location=company.location,
+        note=company.note,
         created_at=company.created_at,
         job_roles_count=len(company.job_roles),
     )

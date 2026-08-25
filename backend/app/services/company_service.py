@@ -60,6 +60,9 @@ class CompanyService:
         if payload.location is not None:
             company.location = payload.location.strip() if payload.location else None
 
+        if payload.note is not None:
+            company.note = payload.note
+
         db.commit()
         db.refresh(company)
         return company

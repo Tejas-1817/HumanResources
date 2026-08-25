@@ -115,6 +115,7 @@ export interface Company {
   id: number;
   name: string;
   location?: string | null;
+  note?: string | null;
   created_at: string;
   description?: string;
 }
@@ -199,9 +200,10 @@ export interface LoginPayload {
   password: "";
 }
 
-interface CompanyCreatePayload {
+export interface CompanyCreatePayload {
   name: string;
   location?: string | null;
+  note?: string | null;
 }
 
 export const registerApi = async (payload: any): Promise<any> => {
