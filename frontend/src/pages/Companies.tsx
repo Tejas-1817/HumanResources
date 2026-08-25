@@ -812,7 +812,7 @@ const Companies = () => {
       pipeline_stages: roleForm.pipeline_stages,
       location: roleForm.location.trim() || null,
       work_mode: roleForm.work_mode || null,
-      experience_required: roleForm.experience_required !== "" ? parseFloat(roleForm.experience_required.toString()) : null,
+      experience_required: roleForm.experience_required !== "" ? String(roleForm.experience_required).trim() : null,
       project_time_period: roleForm.project_time_period.trim() || null,
       vendor_ids: selectedVendorIds,
     });
@@ -839,7 +839,7 @@ const Companies = () => {
         positions_required: isNaN(parseInt(roleForm.positions_required.toString())) ? 0 : parseInt(roleForm.positions_required.toString()),
         location: roleForm.location.trim() || null,
         work_mode: roleForm.work_mode || null,
-        experience_required: roleForm.experience_required !== "" ? parseFloat(roleForm.experience_required.toString()) : null,
+        experience_required: roleForm.experience_required !== "" ? String(roleForm.experience_required).trim() : null,
         project_time_period: roleForm.project_time_period.trim() || null,
         vendor_ids: selectedVendorIds,
       });
@@ -2298,13 +2298,11 @@ const Companies = () => {
             <div>
               <label className="label-text mb-2 block text-xs font-bold uppercase tracking-wider">Experience Required (yrs)</label>
               <input
-                type="number"
+                type="text"
                 value={roleForm.experience_required}
-                onChange={(e) => setRoleForm({ ...roleForm, experience_required: e.target.value === "" ? "" : parseFloat(e.target.value) })}
-                min="0"
-                step="0.5"
+                onChange={(e) => setRoleForm({ ...roleForm, experience_required: e.target.value })}
                 className="w-full px-4 py-3 rounded-lg bg-secondary border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-                placeholder="e.g. 3"
+                placeholder="e.g. 3-5 Years"
               />
             </div>
           </div>

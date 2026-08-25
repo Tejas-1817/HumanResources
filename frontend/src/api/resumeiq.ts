@@ -72,7 +72,7 @@ export interface JobRole {
   department?: string | null;
   location: string | null;
   work_mode: string | null;
-  experience_required: number | null;
+  experience_required: string | number | null;
   project_time_period: string | null;
   created_by: number | null;
   created_at: string;
@@ -296,7 +296,7 @@ export const createJobRole = async (payload: {
   department?: string | null;
   location?: string | null;
   work_mode?: string | null;
-  experience_required?: number | null;
+  experience_required?: string | number | null;
   project_time_period?: string | null;
   vendor_ids?: number[];
 }): Promise<JobRole> => {
@@ -319,7 +319,7 @@ export const updateJobRole = async (
     department?: string | null;
     location?: string | null;
     work_mode?: string | null;
-    experience_required?: number | null;
+    experience_required?: string | number | null;
     project_time_period?: string | null;
     vendor_ids?: number[];
   }

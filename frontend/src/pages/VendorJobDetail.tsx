@@ -107,7 +107,11 @@ const VendorJobDetail = () => {
                   <span className="text-base">🎯</span>
                   <div>
                     <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest leading-none">Experience</p>
-                    <p className="text-xs font-bold text-foreground mt-1">{job.experience_required} yrs</p>
+                    <p className="text-xs font-bold text-foreground mt-1">
+                      {String(job.experience_required).toLowerCase().includes("yr") || String(job.experience_required).toLowerCase().includes("year")
+                        ? job.experience_required
+                        : `${job.experience_required} yrs`}
+                    </p>
                   </div>
                 </div>
               )}
@@ -201,7 +205,13 @@ const VendorJobDetail = () => {
               </div>
               <div className="flex justify-between items-center py-1 border-b border-border/20">
                 <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Experience</span>
-                <span className="text-sm font-black text-foreground">{job.experience_required}+ Yrs</span>
+                <span className="text-sm font-black text-foreground">
+                  {job.experience_required != null
+                    ? (String(job.experience_required).toLowerCase().includes("yr") || String(job.experience_required).toLowerCase().includes("year")
+                        ? job.experience_required
+                        : `${job.experience_required}+ Yrs`)
+                    : "Fresher / No bar"}
+                </span>
               </div>
               <div className="flex justify-between items-center py-1">
                 <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Status</span>

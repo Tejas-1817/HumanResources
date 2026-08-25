@@ -92,7 +92,11 @@ const VendorJobs = () => {
                 <div className="col-span-2 text-center mb-2 md:mb-0">
                   <span className="md:hidden text-[9px] font-bold text-muted-foreground/50 uppercase tracking-widest block mb-1">Experience</span>
                   <span className="px-3 py-1 rounded-lg bg-secondary text-[11px] font-bold text-foreground">
-                    {job.experience_required}+ Yrs Exp
+                    {job.experience_required != null
+                      ? (String(job.experience_required).toLowerCase().includes("yr") || String(job.experience_required).toLowerCase().includes("year")
+                          ? job.experience_required
+                          : `${job.experience_required} Yrs Exp`)
+                      : "Fresher / No bar"}
                   </span>
                 </div>
 

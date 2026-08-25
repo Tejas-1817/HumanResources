@@ -1057,7 +1057,13 @@ const OpenPositions = () => {
                       </div>
                       <div>
                         <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Experience Required</p>
-                        <p className="text-xs font-semibold text-foreground mt-0.5">{selectedPosition.experience_required ? `${selectedPosition.experience_required} Years` : "Fresher / No bar"}</p>
+                        <p className="text-xs font-semibold text-foreground mt-0.5">
+                          {selectedPosition.experience_required
+                            ? (String(selectedPosition.experience_required).toLowerCase().includes("yr") || String(selectedPosition.experience_required).toLowerCase().includes("year")
+                                ? selectedPosition.experience_required
+                                : `${selectedPosition.experience_required} Years`)
+                            : "Fresher / No bar"}
+                        </p>
                       </div>
                     </div>
 

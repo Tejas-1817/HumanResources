@@ -24,7 +24,7 @@ const JobRoleDetail = () => {
     description: "",
     location: "",
     work_mode: "",
-    experience_required: 0,
+    experience_required: "" as string | number,
     positions_required: 1,
     estimated_budget: 0,
     currency: "INR",
@@ -90,7 +90,7 @@ const JobRoleDetail = () => {
       description: roleData.description,
       location: roleData.location || "",
       work_mode: roleData.work_mode || "office",
-      experience_required: roleData.experience_required || 0,
+      experience_required: roleData.experience_required != null ? roleData.experience_required : "",
       positions_required: roleData.positions_required || 1,
       estimated_budget: roleData.estimated_budget || 0,
       currency: roleData.currency || "INR",
@@ -108,7 +108,7 @@ const JobRoleDetail = () => {
         description: editForm.description,
         location: editForm.location,
         work_mode: editForm.work_mode,
-        experience_required: editForm.experience_required,
+        experience_required: editForm.experience_required !== "" ? String(editForm.experience_required).trim() : null,
         positions_required: editForm.positions_required,
         estimated_budget: editForm.estimated_budget,
         currency: editForm.currency,
@@ -188,7 +188,11 @@ const JobRoleDetail = () => {
                 <span className="text-base">🎯</span>
                 <div>
                   <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Experience</p>
-                  <p className="text-sm font-semibold text-foreground">{roleData.experience_required} yrs</p>
+                  <p className="text-sm font-semibold text-foreground">
+                    {String(roleData.experience_required).toLowerCase().includes("yr") || String(roleData.experience_required).toLowerCase().includes("year")
+                      ? roleData.experience_required
+                      : `${roleData.experience_required} yrs`}
+                  </p>
                 </div>
               </div>
             )}
@@ -421,9 +425,10 @@ const JobRoleDetail = () => {
             <div>
               <label className="label-text mb-2 block">Experience Required (Years)</label>
               <input
-                type="number"
+                type="text"
+                placeholder="e.g. 3-5 Years"
                 value={editForm.experience_required}
-                onChange={(e) => setEditForm({ ...editForm, experience_required: Number(e.target.value) })}
+                onChange={(e) => setEditForm({ ...editForm, experience_required: e.target.value })}
                 className="w-full px-4 py-3 rounded-lg bg-secondary border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
               />
             </div>

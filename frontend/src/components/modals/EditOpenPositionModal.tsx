@@ -217,7 +217,7 @@ ${values.description || ""}`;
         positions_required: values.positions_required ? parseInt(values.positions_required) || 1 : 1,
         location: values.location ? values.location.trim() : null,
         work_mode: values.work_mode || "on-site",
-        experience_required: values.experience_required ? parseFloat(values.experience_required) || null : null,
+        experience_required: values.experience_required && values.experience_required.trim() !== "" ? values.experience_required.trim() : null,
         project_time_period: durationFormatted !== "N/A" ? durationFormatted : null,
       });
     },
@@ -426,13 +426,11 @@ ${values.description || ""}`;
               {/* Row 4: Experience, Mode, Location & Status */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Experience (Yrs)</label>
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Experience (Years)</label>
                   <input
-                    type="number"
-                    min="0"
-                    step="0.5"
+                    type="text"
                     {...register("experience_required")}
-                    placeholder="e.g. 5"
+                    placeholder="e.g. 3-5 Years"
                     className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all font-medium"
                   />
                 </div>

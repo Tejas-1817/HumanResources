@@ -342,7 +342,7 @@ export const CreateJobPostForm = ({ onSuccess }: { onSuccess: () => void }) => {
         positions_required: Number(form.positions_required),
         location: form.location.trim() || undefined,
         work_mode: form.work_mode,
-        experience_required: form.experience_required ? Number(form.experience_required) : undefined,
+        experience_required: form.experience_required && form.experience_required.trim() !== "" ? form.experience_required.trim() : undefined,
         deadline: form.deadline || undefined,
       });
       toast.success("Job position created successfully");
@@ -411,12 +411,11 @@ export const CreateJobPostForm = ({ onSuccess }: { onSuccess: () => void }) => {
         <div>
           <label className="label-text mb-2 block font-medium">Experience Req. (Years)</label>
           <input
-            type="number"
-            min="0"
+            type="text"
             value={form.experience_required}
             onChange={(e) => setForm({ ...form, experience_required: e.target.value })}
             className="w-full px-4 py-3 rounded-lg bg-secondary border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-            placeholder="e.g. 3"
+            placeholder="e.g. 3-5 Years"
           />
         </div>
       </div>

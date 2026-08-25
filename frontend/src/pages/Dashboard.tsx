@@ -134,21 +134,22 @@ const DashboardCalendar = ({
   const getHolidayName = (day: number) => {
     const mmDd = `${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
     const holidayList = [
-      { date: "01-01", name: "New Year's Day" },
-      { date: "01-14", name: "Makar Sankranti" },
-      { date: "01-26", name: "Republic Day" },
-      { date: "03-14", name: "Holi" },
-      { date: "04-14", name: "Ambedkar Jayanti" },
-      { date: "04-18", name: "Good Friday" },
-      { date: "05-01", name: "Maharashtra Day" },
-      { date: "08-15", name: "Independence Day" },
-      { date: "08-27", name: "Ganesh Chaturthi" },
-      { date: "10-02", name: "Gandhi Jayanti" },
-      { date: "10-24", name: "Dussehra" },
-      { date: "10-20", name: "Diwali" },
-      { date: "10-21", name: "Diwali (Lakshmi Puja)" },
-      { date: "11-05", name: "Guru Nanak Jayanti" },
-      { date: "12-25", name: "Christmas Day" },
+      // Public Holidays
+      { date: "01-26", name: "Republic Day (Public Holiday)" },
+      { date: "05-01", name: "May Day & Maharashtra Day (Public Holiday)" },
+      { date: "05-28", name: "Bakrid (Public Holiday)" },
+      { date: "08-15", name: "Independence Day (Public Holiday)" },
+      { date: "09-14", name: "Ganesh Chaturthi (Public Holiday)" },
+      { date: "10-02", name: "Gandhi Jayanti (Public Holiday)" },
+      { date: "11-09", name: "Diwali (Public Holiday)" },
+      { date: "12-25", name: "Christmas (Public Holiday)" },
+      // Optional Holidays
+      { date: "01-01", name: "New Years (Optional Holiday)" },
+      { date: "01-15", name: "Makara Sankranthi (Optional Holiday)" },
+      { date: "03-03", name: "Holi (Optional Holiday)" },
+      { date: "03-19", name: "Ugadi/Gudi Padwa (Optional Holiday)" },
+      { date: "04-03", name: "Good Friday (Optional Holiday)" },
+      { date: "10-20", name: "Dasara (Optional Holiday)" },
     ];
     const h = holidayList.find(item => item.date === mmDd);
     return h ? h.name : null;
@@ -924,21 +925,22 @@ const Dashboard = () => {
     const currentYear = now.getFullYear();
 
     const baseHolidays = [
-      { date: "01-01", name: "New Year's Day", type: "Regional" },
-      { date: "01-14", name: "Makar Sankranti", type: "Regional" },
-      { date: "01-26", name: "Republic Day", type: "National" },
-      { date: "03-14", name: "Holi", type: "Regional" },
-      { date: "04-14", name: "Ambedkar Jayanti", type: "Regional" },
-      { date: "04-18", name: "Good Friday", type: "National" },
-      { date: "05-01", name: "Maharashtra Day", type: "Regional" },
-      { date: "08-15", name: "Independence Day", type: "National" },
-      { date: "08-27", name: "Ganesh Chaturthi", type: "Regional" },
-      { date: "10-02", name: "Gandhi Jayanti", type: "National" },
-      { date: "10-24", name: "Dussehra", type: "Regional" },
-      { date: "10-20", name: "Diwali", type: "National" },
-      { date: "10-21", name: "Diwali (Lakshmi Puja)", type: "Regional" },
-      { date: "11-05", name: "Guru Nanak Jayanti", type: "Regional" },
-      { date: "12-25", name: "Christmas Day", type: "National" },
+      // Public Holidays
+      { date: "01-26", name: "Republic Day", type: "Public Holiday" },
+      { date: "05-01", name: "May Day & Maharashtra Day", type: "Public Holiday" },
+      { date: "05-28", name: "Bakrid", type: "Public Holiday" },
+      { date: "08-15", name: "Independence Day", type: "Public Holiday" },
+      { date: "09-14", name: "Ganesh Chaturthi", type: "Public Holiday" },
+      { date: "10-02", name: "Gandhi Jayanti", type: "Public Holiday" },
+      { date: "11-09", name: "Diwali", type: "Public Holiday" },
+      { date: "12-25", name: "Christmas", type: "Public Holiday" },
+      // Optional Holidays
+      { date: "01-01", name: "New Years", type: "Optional Holiday" },
+      { date: "01-15", name: "Makara Sankranthi", type: "Optional Holiday" },
+      { date: "03-03", name: "Holi", type: "Optional Holiday" },
+      { date: "03-19", name: "Ugadi/Gudi Padwa", type: "Optional Holiday" },
+      { date: "04-03", name: "Good Friday", type: "Optional Holiday" },
+      { date: "10-20", name: "Dasara", type: "Optional Holiday" },
     ];
 
     const processed = baseHolidays.map(h => {
@@ -1740,7 +1742,7 @@ const Dashboard = () => {
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-black text-slate-800 tracking-tight">Upcoming Holidays</h3>
               <span className="text-[10px] font-black px-1.5 py-0.5 rounded-full text-blue-600 bg-blue-50">
-                Indian Public Holidays
+                Company Holidays (2026)
               </span>
             </div>
 
@@ -1758,6 +1760,7 @@ const Dashboard = () => {
                         <h4 className="text-xs font-black text-slate-800">{holiday.name}</h4>
                         <p className="text-[10px] text-slate-400 font-bold mt-0.5">
                           {holiday.dateObj.toLocaleDateString(undefined, {
+                            weekday: "short",
                             month: "short",
                             day: "numeric",
                             year: "numeric",
@@ -1768,7 +1771,7 @@ const Dashboard = () => {
                     <div className="flex items-center gap-2">
                       <span
                         className={`text-[8px] font-black uppercase px-2 py-0.5 rounded border ${
-                          holiday.type === "National"
+                          holiday.type === "Public Holiday"
                             ? "bg-blue-50 text-blue-600 border-blue-100"
                             : "bg-purple-50 text-purple-600 border-purple-100"
                         }`}
