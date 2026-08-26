@@ -111,13 +111,29 @@ const VendorJobs = () => {
                 {/* Status */}
                 <div className="col-span-1 text-center mb-4 md:mb-0">
                   <span className="md:hidden text-[9px] font-bold text-muted-foreground/50 uppercase tracking-widest block mb-1">Status</span>
-                  <span className={`inline-flex px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${
-                    job.status === "open" 
-                      ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" 
-                      : "bg-secondary text-muted-foreground border-border"
-                  }`}>
-                    {job.status}
-                  </span>
+                  {(() => {
+                    const s = (job.status || "open").toLowerCase().trim().replace("_", "-");
+                    let label = "OPEN";
+                    let cls = "bg-emerald-500/10 text-emerald-500 border-emerald-500/20";
+                    if (s === "on-hold" || s === "on hold") {
+                      label = "ON HOLD";
+                      cls = "bg-amber-500/10 text-amber-500 border-amber-500/20";
+                    } else if (s === "closed") {
+                      label = "CLOSED";
+                      cls = "bg-muted text-muted-foreground border-border";
+                    } else if (s === "loss") {
+                      label = "LOSS";
+                      cls = "bg-rose-500/10 text-rose-500 border-rose-500/20";
+                    } else if (s !== "open" && s !== "active") {
+                      label = (job.status || "OPEN").toUpperCase();
+                      cls = "bg-secondary text-muted-foreground border-border";
+                    }
+                    return (
+                      <span className={`inline-flex px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${cls}`}>
+                        {label}
+                      </span>
+                    );
+                  })()}
                 </div>
 
                 {/* Action */}

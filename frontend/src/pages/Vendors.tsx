@@ -34,7 +34,8 @@ import {
   getCandidates,
   deleteCandidate,
   getPipeline,
-  getVendorAssignedJobs
+  getVendorAssignedJobs,
+  unassignJobFromVendorApi
 } from "@/api/resumeiq";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Modal } from "@/components/ui/Modal";
@@ -53,6 +54,9 @@ const Vendors = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
+  const [isViewAssignedModalOpen, setIsViewAssignedModalOpen] = useState(false);
+  const [viewingAssignedVendor, setViewingAssignedVendor] = useState<any>(null);
+  const [assignedModalSearch, setAssignedModalSearch] = useState("");
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedVendor, setSelectedVendor] = useState<any>(null);
   const [vendorToDelete, setVendorToDelete] = useState<any>(null);
@@ -100,6 +104,17 @@ const Vendors = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  const [openDropdownVendorId, setOpenDropdownVendorId] = useState<number | null>(null);
+
+  // Close assigned positions dropdown on click outside
+  useEffect(() => {
+    const handleCloseDropdown = () => {
+      setOpenDropdownVendorId(null);
+    };
+    window.addEventListener("click", handleCloseDropdown);
+    return () => window.removeEventListener("click", handleCloseDropdown);
+  }, []);
+
   const [newVendor, setNewVendor] = useState({
     name: "",
     email: "",
@@ -108,9 +123,7 @@ const Vendors = () => {
     phone: ""
   });
 
-  const [assignment, setAssignment] = useState({
-    job_role_id: 0
-  });
+  const [selectedJobRoleIds, setSelectedJobRoleIds] = useState<number[]>([]);
 
   const { data: vendors = [], isLoading: vendorsLoading } = useQuery({
     queryKey: ["vendors"],
@@ -121,6 +134,30 @@ const Vendors = () => {
     queryKey: ["job-roles-all"],
     queryFn: () => getJobRoles()
   });
+
+  const { data: pipelineData, isLoading: pipelineLoading } = useQuery({
+    queryKey: ["pipeline"],
+    queryFn: () => getPipeline()
+  });
+
+  const pipeline = pipelineData ?? {};
+
+  // Only active / open positions that are not closed, on-hold, or fully filled
+  const activeJobs = useMemo(() => {
+    const allApps = Object.values(pipeline).flat();
+    return (allJobs || []).filter((r: any) => {
+      const status = (r.status || "").toLowerCase().trim();
+      if (status !== "open") return false;
+
+      const filledCount = allApps.filter(
+        (app: any) => app.job_role_id === r.id && (app.status === "selected" || app.status === "joined")
+      ).length;
+      const positionsReq = r.positions_required || 1;
+      const isFilled = positionsReq > 0 && filledCount >= positionsReq;
+
+      return !isFilled;
+    });
+  }, [allJobs, pipeline]);
 
   const { data: candidatesData, isLoading: candidatesLoading } = useQuery({
     queryKey: ["candidates-hub", vendorFilterId, skillFilter || searchTerm],
@@ -135,14 +172,6 @@ const Vendors = () => {
   });
 
   const candidates = candidatesData?.items ?? [];
-
-  const { data: pipelineData, isLoading: pipelineLoading } = useQuery({
-    queryKey: ["pipeline"],
-    queryFn: () => getPipeline(),
-    enabled: activeView === "talent"
-  });
-
-  const pipeline = pipelineData ?? {};
 
   const { data: vendorJobs = [], isLoading: vendorJobsLoading } = useQuery({
     queryKey: ["vendor-jobs", vendorFilterId],
@@ -273,15 +302,39 @@ const Vendors = () => {
   });
 
   const assignMutation = useMutation({
-    mutationFn: (data: any) => assignVendorJob(selectedVendor.id, { ...data, vendor_id: selectedVendor.id }),
+    mutationFn: (roleIds: number[]) =>
+      assignVendorJob(selectedVendor.id, { job_role_ids: roleIds, vendor_id: selectedVendor.id }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["vendors"] });
-      toast.success("Job assigned to vendor");
+      toast.success("Jobs assigned to partner successfully");
       setIsAssignModalOpen(false);
-      setAssignment({ job_role_id: 0 });
+      setSelectedJobRoleIds([]);
     },
     onError: (err: any) => {
-      toast.error(err.response?.data?.detail || "Failed to assign job");
+      toast.error(err.response?.data?.message || err.response?.data?.detail || "Failed to assign jobs");
+    }
+  });
+
+  const unassignMutation = useMutation({
+    mutationFn: ({ vendorId, jobId }: { vendorId: number; jobId: number }) =>
+      unassignJobFromVendorApi(vendorId, jobId),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["vendors"] });
+      toast.success("Position unassigned successfully");
+      if (viewingAssignedVendor && viewingAssignedVendor.id === variables.vendorId) {
+        setViewingAssignedVendor((prev: any) => {
+          if (!prev) return null;
+          const updatedJobs = (prev.assigned_jobs || []).filter((j: any) => j.id !== variables.jobId);
+          return {
+            ...prev,
+            assigned_jobs: updatedJobs,
+            jobs_assigned_count: updatedJobs.length
+          };
+        });
+      }
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message || err.response?.data?.detail || "Failed to unassign position");
     }
   });
 
@@ -667,12 +720,12 @@ const Vendors = () => {
           </div>
 
           <div className="glass-card overflow-hidden">
-            <div className="hidden md:block p-4 border-b border-border/50 bg-secondary/20">
-              <div className="grid grid-cols-12 gap-4 px-4 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-                <div className="col-span-12 md:col-span-4">Name</div>
-                <div className="md:col-span-4">Contact Information</div>
-                <div className="md:col-span-2 text-center">Assignments</div>
-                <div className="md:col-span-2 text-right">Action</div>
+            <div className="hidden md:block p-4 md:px-8 border-b border-border/50 bg-secondary/20">
+              <div className="grid grid-cols-12 gap-4 text-[10px] font-bold text-muted-foreground uppercase tracking-widest items-center">
+                <div className="col-span-4">Name</div>
+                <div className="col-span-3">Contact Information</div>
+                <div className="col-span-3 text-center">Assignments</div>
+                <div className="col-span-2 text-right">Action</div>
               </div>
             </div>
 
@@ -711,7 +764,7 @@ const Vendors = () => {
                       </div>
                     </div>
 
-                    <div className="w-full md:col-span-4 space-y-1 py-2 md:py-0">
+                    <div className="w-full md:col-span-3 space-y-1 py-2 md:py-0">
                       <div className="flex items-center gap-2 text-[11px] text-muted-foreground truncate">
                         <Mail className="w-3.5 h-3.5 opacity-50" /> {vendor.email}
                       </div>
@@ -722,12 +775,26 @@ const Vendors = () => {
                       )}
                     </div>
 
-                    <div className="w-full md:col-span-2 flex justify-center">
+                    <div className="w-full md:col-span-3 flex items-center justify-center gap-2">
                       <button
-                        onClick={(e) => { e.stopPropagation(); setSelectedVendor(vendor); setIsAssignModalOpen(true); }}
-                        className="w-full md:w-auto px-4 py-2 rounded-lg bg-primary text-primary-foreground text-[10px] font-bold hover:bg-primary/90 transition-all flex items-center justify-center gap-1.5 shadow-sm"
+                        onClick={(e) => { e.stopPropagation(); setSelectedVendor(vendor); setSelectedJobRoleIds([]); setIsAssignModalOpen(true); }}
+                        className="px-3 py-2 rounded-lg bg-primary text-primary-foreground text-[10px] font-bold hover:bg-primary/90 transition-all flex items-center justify-center gap-1.5 shadow-sm whitespace-nowrap active:scale-95"
                       >
                         <Briefcase className="w-3.5 h-3.5" /> Assign Job
+                      </button>
+
+                      {/* Assigned Positions Button (opens dedicated modal) */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setViewingAssignedVendor(vendor);
+                          setIsViewAssignedModalOpen(true);
+                        }}
+                        className="px-3 py-2 rounded-lg bg-secondary/80 border border-border text-foreground hover:bg-secondary hover:border-primary/50 hover:text-primary text-[10px] font-bold transition-all flex items-center gap-1.5 shadow-xs whitespace-nowrap active:scale-95"
+                        title="Click to view assigned positions"
+                      >
+                        <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+                        <span>{vendor.jobs_assigned_count ?? vendor.assigned_jobs?.length ?? 0} {(vendor.jobs_assigned_count ?? vendor.assigned_jobs?.length ?? 0) === 1 ? "Position" : "Positions"}</span>
                       </button>
                     </div>
 
@@ -936,39 +1003,352 @@ const Vendors = () => {
       </Modal>
 
       {/* Assign Job Modal */}
-      <Modal open={isAssignModalOpen} onClose={() => setIsAssignModalOpen(false)} title={`Assign Job to ${selectedVendor?.company_name || selectedVendor?.name || "Partner"}`}>
-        <form onSubmit={(e) => { e.preventDefault(); assignMutation.mutate(assignment); }} className="space-y-6">
+      <Modal
+        open={isAssignModalOpen}
+        onClose={() => {
+          setIsAssignModalOpen(false);
+          setSelectedJobRoleIds([]);
+        }}
+        title={`Assign Job to ${selectedVendor?.company_name || selectedVendor?.name || "Partner"}`}
+      >
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (selectedJobRoleIds.length === 0) return;
+            assignMutation.mutate(selectedJobRoleIds);
+          }}
+          className="space-y-5"
+        >
           <div>
-            <label className="label-text mb-2 block font-bold uppercase tracking-widest text-[10px]">Select Job Role</label>
-            <select
-              required
-              value={assignment.job_role_id}
-              onChange={(e) => setAssignment({ ...assignment, job_role_id: parseInt(e.target.value) })}
-              className="w-full px-4 py-3 rounded-lg bg-secondary border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 appearance-none"
-            >
-              <option value="0">Choose an open position...</option>
-              {allJobs.filter(j => j.status === 'open').map(job => (
-                <option key={job.id} value={job.id}>{job.title} ({job.location || 'Remote'})</option>
-              ))}
-            </select>
+            <div className="flex items-center justify-between mb-2.5">
+              <label className="label-text block font-bold uppercase tracking-widest text-[10px] text-muted-foreground">
+                Select Positions
+              </label>
+              {selectedJobRoleIds.length > 0 && (
+                <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                  {selectedJobRoleIds.length} of {activeJobs.length} selected
+                </span>
+              )}
+            </div>
+
+            <div className="border border-border rounded-xl overflow-hidden bg-card divide-y divide-border">
+              {/* Select All Row */}
+              <div
+                onClick={() => {
+                  if (activeJobs.length === 0) return;
+                  const isAllSelected = activeJobs.length > 0 && selectedJobRoleIds.length === activeJobs.length;
+                  if (isAllSelected) {
+                    setSelectedJobRoleIds([]);
+                  } else {
+                    setSelectedJobRoleIds(activeJobs.map((j: any) => j.id));
+                  }
+                }}
+                className={`p-3 flex items-center gap-3 bg-secondary/30 transition-colors ${
+                  activeJobs.length > 0 ? "cursor-pointer hover:bg-secondary/60" : "opacity-50 cursor-not-allowed"
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  id="select-all-active-positions"
+                  checked={activeJobs.length > 0 && selectedJobRoleIds.length === activeJobs.length}
+                  onChange={(e) => {
+                    if (activeJobs.length === 0) return;
+                    if (e.target.checked) {
+                      setSelectedJobRoleIds(activeJobs.map((j: any) => j.id));
+                    } else {
+                      setSelectedJobRoleIds([]);
+                    }
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                  disabled={activeJobs.length === 0}
+                  className="w-4 h-4 rounded border-border text-primary focus:ring-primary/50 cursor-pointer accent-primary"
+                />
+                <label
+                  htmlFor="select-all-active-positions"
+                  className="text-xs font-bold text-foreground cursor-pointer select-none flex-1"
+                >
+                  Select All
+                </label>
+                {activeJobs.length > 0 && (
+                  <span className="text-[10px] text-muted-foreground font-semibold">
+                    ({activeJobs.length} active)
+                  </span>
+                )}
+              </div>
+
+              {/* Active Positions List */}
+              <div className="max-h-64 overflow-y-auto custom-scrollbar divide-y divide-border">
+                {activeJobs.length === 0 ? (
+                  <div className="p-6 text-center text-xs text-muted-foreground font-medium">
+                    No active positions available to assign.
+                  </div>
+                ) : (
+                  activeJobs.map((job: any) => {
+                    const isSelected = selectedJobRoleIds.includes(job.id);
+                    const locationLabel = job.location || (job.work_mode === 'on-site' ? 'On-site' : job.work_mode ? (job.work_mode.charAt(0).toUpperCase() + job.work_mode.slice(1)) : 'Remote');
+                    return (
+                      <div
+                        key={job.id}
+                        onClick={() => {
+                          setSelectedJobRoleIds(prev =>
+                            prev.includes(job.id) ? prev.filter(id => id !== job.id) : [...prev, job.id]
+                          );
+                        }}
+                        className={`p-3 flex items-center gap-3 transition-colors cursor-pointer select-none hover:bg-secondary/40 ${
+                          isSelected ? "bg-primary/5" : ""
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          id={`position-${job.id}`}
+                          checked={isSelected}
+                          onChange={() => {
+                            setSelectedJobRoleIds(prev =>
+                              prev.includes(job.id) ? prev.filter(id => id !== job.id) : [...prev, job.id]
+                            );
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                          className="w-4 h-4 rounded border-border text-primary focus:ring-primary/50 cursor-pointer accent-primary"
+                        />
+                        <label
+                          htmlFor={`position-${job.id}`}
+                          className="text-xs font-medium text-foreground cursor-pointer flex-1 flex items-center justify-between gap-2"
+                        >
+                          <span className="truncate">
+                            {job.title} <span className="text-muted-foreground font-normal">({locationLabel})</span>
+                          </span>
+                          <span className="text-[10px] font-semibold text-muted-foreground bg-secondary px-2 py-0.5 rounded-full border border-border/60 shrink-0">
+                            {job.positions_required || 1} {(job.positions_required || 1) === 1 ? "Opening" : "Openings"}
+                          </span>
+                        </label>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
           </div>
+
           <div className="pt-2 flex gap-3">
             <button
               type="button"
-              onClick={() => setIsAssignModalOpen(false)}
+              onClick={() => {
+                setIsAssignModalOpen(false);
+                setSelectedJobRoleIds([]);
+              }}
               className="flex-1 py-3 bg-secondary rounded-lg text-foreground text-sm font-medium hover:bg-secondary/80 transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
-              disabled={assignMutation.isPending || assignment.job_role_id === 0}
-              className="flex-1 py-3 bg-primary rounded-lg text-primary-foreground text-sm font-bold hover:bg-primary/90 transition-colors"
+              disabled={assignMutation.isPending || selectedJobRoleIds.length === 0}
+              className="flex-1 py-3 bg-primary rounded-lg text-primary-foreground text-sm font-bold hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {assignMutation.isPending ? "Assigning..." : "Confirm Assignment"}
             </button>
           </div>
         </form>
+      </Modal>
+
+      {/* Assigned Positions Dedicated Modal / View */}
+      <Modal
+        open={isViewAssignedModalOpen}
+        onClose={() => {
+          setIsViewAssignedModalOpen(false);
+          setViewingAssignedVendor(null);
+          setAssignedModalSearch("");
+        }}
+        title={`Assigned Positions — ${viewingAssignedVendor?.company_name || viewingAssignedVendor?.name || "Partner"}`}
+      >
+        <div className="space-y-4 max-w-2xl mx-auto">
+          {/* Header Info Banner */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3.5 bg-secondary/40 rounded-xl border border-border">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                <Building2 className="w-4 h-4" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-foreground truncate">{viewingAssignedVendor?.company_name || viewingAssignedVendor?.name}</p>
+                <p className="text-[10px] text-muted-foreground truncate">{viewingAssignedVendor?.email}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 self-start sm:self-auto">
+              <span className="text-[10px] font-bold text-primary bg-primary/10 px-2.5 py-1 rounded-full border border-primary/20">
+                {viewingAssignedVendor?.assigned_jobs?.length || 0} {(viewingAssignedVendor?.assigned_jobs?.length || 0) === 1 ? "Position Assigned" : "Positions Assigned"}
+              </span>
+            </div>
+          </div>
+
+          {/* Search if multiple positions */}
+          {(viewingAssignedVendor?.assigned_jobs?.length || 0) > 2 && (
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="Search assigned positions..."
+                value={assignedModalSearch}
+                onChange={(e) => setAssignedModalSearch(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 bg-secondary/50 border border-border rounded-xl text-xs focus:outline-none focus:ring-1 focus:ring-primary font-medium"
+              />
+            </div>
+          )}
+
+          {/* List of Assigned Positions */}
+          <div className="max-h-[50vh] overflow-y-auto custom-scrollbar space-y-2.5 pr-1">
+            {(!viewingAssignedVendor?.assigned_jobs || viewingAssignedVendor.assigned_jobs.length === 0) ? (
+              <div className="py-10 text-center space-y-3">
+                <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center mx-auto text-muted-foreground">
+                  <Briefcase className="w-6 h-6 opacity-40" />
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm font-bold text-foreground">No positions assigned</p>
+                  <p className="text-xs text-muted-foreground">This partner does not currently have any assigned positions.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsViewAssignedModalOpen(false);
+                    setSelectedVendor(viewingAssignedVendor);
+                    setSelectedJobRoleIds([]);
+                    setIsAssignModalOpen(true);
+                  }}
+                  className="px-4 py-2 bg-primary text-primary-foreground text-xs font-bold rounded-lg hover:bg-primary/90 transition-all inline-flex items-center gap-1.5 shadow-sm"
+                >
+                  <Plus className="w-3.5 h-3.5" /> Assign Position Now
+                </button>
+              </div>
+            ) : (
+              viewingAssignedVendor.assigned_jobs
+                .filter((job: any) =>
+                  job.title?.toLowerCase().includes(assignedModalSearch.toLowerCase()) ||
+                  (job.location || "")?.toLowerCase().includes(assignedModalSearch.toLowerCase()) ||
+                  (job.work_mode || "")?.toLowerCase().includes(assignedModalSearch.toLowerCase())
+                )
+                .map((job: any) => {
+                  // Cross-check latest job role data from allJobs and pipeline matching the Positions tab
+                  const freshJob = (allJobs || []).find((j: any) => j.id === job.id) || job;
+                  const allApps = Object.values(pipeline || {}).flat();
+                  const hiredCandidates = allApps.filter(
+                    (app: any) => app.job_role_id === freshJob.id && (app.status === "selected" || app.status === "joined")
+                  ).length;
+                  const positionsReq = freshJob.positions_required || 1;
+                  const isFilled = hiredCandidates >= positionsReq && positionsReq > 0;
+                  
+                  let computedStatus = (freshJob.status || "open").toLowerCase().trim().replace("_", "-");
+                  if (isFilled && computedStatus === "open") {
+                    computedStatus = "closed";
+                  }
+
+                  const locationLabel = freshJob.location || (freshJob.work_mode === 'on-site' ? 'On-site' : freshJob.work_mode ? (freshJob.work_mode.charAt(0).toUpperCase() + freshJob.work_mode.slice(1)) : 'Remote');
+
+                  let statusBadge = (
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 uppercase">
+                      Open
+                    </span>
+                  );
+
+                  if (computedStatus === "loss") {
+                    statusBadge = (
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-600 border border-amber-500/20 uppercase">
+                        Loss
+                      </span>
+                    );
+                  } else if (computedStatus === "on-hold" || computedStatus === "on hold") {
+                    statusBadge = (
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-yellow-500/10 text-yellow-600 border border-yellow-500/20 uppercase">
+                        On-Hold
+                      </span>
+                    );
+                  } else if (computedStatus === "closed") {
+                    statusBadge = (
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-red-500/10 text-red-600 border border-red-500/20 uppercase">
+                        Closed
+                      </span>
+                    );
+                  }
+
+                  return (
+                    <div
+                      key={freshJob.id}
+                      className="p-3.5 rounded-xl border border-border bg-card hover:border-primary/40 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs"
+                    >
+                      <div className="min-w-0 space-y-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h4 className="text-xs font-bold text-foreground">{freshJob.title}</h4>
+                          {statusBadge}
+                        </div>
+                        <p className="text-[11px] text-muted-foreground font-medium flex items-center gap-2 flex-wrap">
+                          <span>{locationLabel}</span>
+                          <span>•</span>
+                          <span>{freshJob.positions_required || 1} {(freshJob.positions_required || 1) === 1 ? "Opening" : "Openings"}</span>
+                          {freshJob.experience_required && (
+                            <>
+                              <span>•</span>
+                              <span>{freshJob.experience_required} Exp</span>
+                            </>
+                          )}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsViewAssignedModalOpen(false);
+                            navigate(`/candidates?vendor_id=${viewingAssignedVendor.id}&job_role_id=${freshJob.id}&unassigned_only=true`);
+                          }}
+                          className="px-2.5 py-1.5 bg-secondary hover:bg-secondary/80 text-foreground text-[10px] font-bold rounded-lg transition-colors flex items-center gap-1 border border-border"
+                          title="View Bench Candidates"
+                        >
+                          <Users className="w-3 h-3 text-primary" /> View Candidates
+                        </button>
+                        <button
+                          type="button"
+                          disabled={unassignMutation.isPending}
+                          onClick={() => {
+                            if (window.confirm(`Are you sure you want to unassign "${freshJob.title}" from this vendor?`)) {
+                              unassignMutation.mutate({ vendorId: viewingAssignedVendor.id, jobId: freshJob.id });
+                            }
+                          }}
+                          className="p-1.5 hover:bg-destructive/10 text-muted-foreground hover:text-destructive rounded-lg transition-colors"
+                          title="Unassign Position"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+            )}
+          </div>
+
+          <div className="pt-2 border-t border-border flex justify-between items-center gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                setIsViewAssignedModalOpen(false);
+                setSelectedVendor(viewingAssignedVendor);
+                setSelectedJobRoleIds([]);
+                setIsAssignModalOpen(true);
+              }}
+              className="px-3.5 py-2 bg-primary/10 text-primary hover:bg-primary/20 text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5"
+            >
+              <Plus className="w-3.5 h-3.5" /> Assign More Positions
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setIsViewAssignedModalOpen(false);
+                setViewingAssignedVendor(null);
+                setAssignedModalSearch("");
+              }}
+              className="px-4 py-2 bg-secondary rounded-lg text-foreground text-xs font-bold hover:bg-secondary/80 transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        </div>
       </Modal>
 
       {/* Candidate Delete Confirmation Modal */}

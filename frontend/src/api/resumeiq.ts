@@ -132,6 +132,8 @@ export interface Vendor {
   phone?: string;
   is_active: boolean;
   created_at: string;
+  assigned_jobs?: JobRole[];
+  jobs_assigned_count?: number;
 }
 
 export interface VendorStats {
