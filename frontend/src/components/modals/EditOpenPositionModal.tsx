@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Modal } from "@/components/ui/Modal";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getCompanies, updateJobRole, createCompany, JobRole } from "@/api/resumeiq";
+import { getCompanies, updateJobRole, createCompany, JobRole, extractJdText } from "@/api/resumeiq";
 import { toast } from "sonner";
 import {
   BriefcaseBusiness,
@@ -15,7 +15,9 @@ import {
   UserCheck,
   ChevronDown,
   Edit,
-  Building2
+  Building2,
+  UploadCloud,
+  CheckCircle,
 } from "lucide-react";
 
 // Optional validation schema for editing
@@ -236,6 +238,64 @@ ${values.description || ""}`;
       toast.error(errorMsg);
     },
   });
+
+  const [isDragging, setIsDragging] = useState(false);
+  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
+  const [isExtracting, setIsExtracting] = useState(false);
+
+  const sanitizeExtractedText = (text: string): string => {
+    if (!text) return "";
+    return text
+      .replace(/\(cid:\s*0\)/g, "")
+      .replace(/\(cid:\s*\d+\)/g, "• ")
+      .replace(/[\u2022\u2023\u25E6\u2043\u2219\u25CB\u25CF\u25AA\u25AB\uF0B7\uF0A7\uF0A8\uF0D8]/g, "• ")
+      .replace(/\xa0/g, " ")
+      .replace(/\r\n/g, "\n")
+      .replace(/\r/g, "\n")
+      .replace(/•\s+/g, "• ")
+      .replace(/\n{3,}/g, "\n\n")
+      .split("\n")
+      .map(line => line.trim())
+      .join("\n")
+      .trim();
+  };
+
+  // PDF / Document Text Extraction
+  const handleFileUpload = async (file: File) => {
+    if (!file) return;
+    setUploadedFileName(file.name);
+    setIsExtracting(true);
+
+    try {
+      const res = await extractJdText(file);
+      const cleaned = sanitizeExtractedText(res.text);
+      if (cleaned) {
+        setValue("description", cleaned);
+        toast.success("JD text extracted and formatted into Responsibilities!");
+      } else {
+        toast.error("No readable text found in the uploaded file.");
+      }
+    } catch (err: any) {
+      console.error("JD extraction error:", err);
+      if (file.type === "text/plain") {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const text = e.target?.result as string;
+          if (text) {
+            const cleaned = sanitizeExtractedText(text);
+            setValue("description", cleaned);
+            toast.success("Text file loaded successfully!");
+          }
+        };
+        reader.readAsText(file);
+      } else {
+        const msg = err.response?.data?.detail || "Failed to extract text from PDF/Document";
+        toast.error(msg);
+      }
+    } finally {
+      setIsExtracting(false);
+    }
+  };
 
   const onSubmit = (data: FormValues) => {
     mutation.mutate(data);
@@ -614,6 +674,55 @@ ${values.description || ""}`;
                     className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all font-medium"
                   />
                 </div>
+              </div>
+
+              {/* Drag & Drop File Extraction */}
+              <div
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setIsDragging(true);
+                }}
+                onDragLeave={() => setIsDragging(false)}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setIsDragging(false);
+                  const files = e.dataTransfer.files;
+                  if (files && files.length > 0) handleFileUpload(files[0]);
+                }}
+                className={`border-2 border-dashed rounded-2xl p-4 text-center transition-all ${
+                  isDragging ? "border-primary bg-primary/5" : "border-border hover:border-primary/40"
+                }`}
+              >
+                <input
+                  type="file"
+                  id="edit-requisition-file"
+                  accept=".pdf,.docx,.doc,.txt"
+                  className="hidden"
+                  onChange={(e) => {
+                    const files = e.target.files;
+                    if (files && files.length > 0) handleFileUpload(files[0]);
+                  }}
+                />
+                <label htmlFor="edit-requisition-file" className="cursor-pointer space-y-1.5 block">
+                  <div className="w-10 h-10 bg-secondary/50 rounded-full flex items-center justify-center mx-auto text-muted-foreground">
+                    {isExtracting ? (
+                      <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                    ) : (
+                      <UploadCloud className="w-5 h-5" />
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-foreground">
+                      {isExtracting ? "Extracting JDs..." : "Optional: Upload JD Document"}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground">Drag PDF or Text file here to auto-populate responsibilities</p>
+                  </div>
+                  {uploadedFileName && (
+                    <div className="inline-flex items-center gap-1.5 px-3 py-0.5 bg-emerald-500/10 text-emerald-600 rounded-full text-[10px] font-bold border border-emerald-500/20">
+                      <CheckCircle className="w-3 h-3" /> Loaded: {uploadedFileName}
+                    </div>
+                  )}
+                </label>
               </div>
 
               {/* Row 3: Responsibilities Description */}

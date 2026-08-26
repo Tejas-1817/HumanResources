@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Modal } from "@/components/ui/Modal";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getCompanies, createJobRole, createCompany, JobRole } from "@/api/resumeiq";
+import { getCompanies, createJobRole, createCompany, JobRole, extractJdText } from "@/api/resumeiq";
 import { toast } from "sonner";
 import {
   BriefcaseBusiness,
@@ -197,36 +197,58 @@ ${values.description || ""}`;
     mutation.mutate(data);
   };
 
-  // PDF Text Extraction mockup
-  const handleFileUpload = (file: File) => {
+  const sanitizeExtractedText = (text: string): string => {
+    if (!text) return "";
+    return text
+      .replace(/\(cid:\s*0\)/g, "")
+      .replace(/\(cid:\s*\d+\)/g, "• ")
+      .replace(/[\u2022\u2023\u25E6\u2043\u2219\u25CB\u25CF\u25AA\u25AB\uF0B7\uF0A7\uF0A8\uF0D8]/g, "• ")
+      .replace(/\xa0/g, " ")
+      .replace(/\r\n/g, "\n")
+      .replace(/\r/g, "\n")
+      .replace(/•\s+/g, "• ")
+      .replace(/\n{3,}/g, "\n\n")
+      .split("\n")
+      .map(line => line.trim())
+      .join("\n")
+      .trim();
+  };
+
+  // PDF / Document Text Extraction
+  const handleFileUpload = async (file: File) => {
     if (!file) return;
     setUploadedFileName(file.name);
     setIsExtracting(true);
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      setTimeout(() => {
-        const text = e.target?.result as string;
-        const cleanText = text
-          ? text.slice(0, 1000)
-          : `• Drive development of user-facing components\n• Collaborate with product managers & engineers\n• Write clean, testable, and robust front-end code.`;
-        setValue("description", cleanText);
-        setIsExtracting(false);
-        toast.success("Text extracted successfully!");
-      }, 1000);
-    };
-
-    if (file.type === "text/plain") {
-      reader.readAsText(file);
-    } else {
-      setTimeout(() => {
-        setValue(
-          "description",
-          `• Deliver premium, production-ready React codebase & user interface layouts\n• Participate in system architecture design meetings\n• Ensure high performance on mobile and desktop web platforms.`
-        );
-        setIsExtracting(false);
-        toast.success("Text extracted from PDF successfully");
-      }, 1200);
+    try {
+      const res = await extractJdText(file);
+      const cleaned = sanitizeExtractedText(res.text);
+      if (cleaned) {
+        setValue("description", cleaned);
+        toast.success("JD text extracted and formatted into Responsibilities!");
+      } else {
+        toast.error("No readable text found in the uploaded file.");
+      }
+    } catch (err: any) {
+      console.error("JD extraction error:", err);
+      // Fallback for plain text
+      if (file.type === "text/plain") {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const text = e.target?.result as string;
+          if (text) {
+            const cleaned = sanitizeExtractedText(text);
+            setValue("description", cleaned);
+            toast.success("Text file loaded successfully!");
+          }
+        };
+        reader.readAsText(file);
+      } else {
+        const msg = err.response?.data?.detail || "Failed to extract text from PDF/Document";
+        toast.error(msg);
+      }
+    } finally {
+      setIsExtracting(false);
     }
   };
 
@@ -608,7 +630,7 @@ ${values.description || ""}`;
                 <input
                   type="file"
                   id="requisition-file"
-                  accept=".pdf,.txt"
+                  accept=".pdf,.docx,.doc,.txt"
                   className="hidden"
                   onChange={(e) => {
                     const files = e.target.files;

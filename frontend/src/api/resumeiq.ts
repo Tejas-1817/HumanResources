@@ -330,6 +330,17 @@ export const updateJobRole = async (
   return data;
 };
 
+export const extractJdText = async (file: File): Promise<{ filename: string; text: string }> => {
+  const formData = new FormData();
+  formData.append("file", file);
+  const { data } = await client.post<{ filename: string; text: string }>("/job-roles/extract-jd", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
+  return data;
+};
+
 export const deleteJobRole = async (id: number): Promise<void> => {
   await client.delete(`/job-roles/${id}`);
 };
