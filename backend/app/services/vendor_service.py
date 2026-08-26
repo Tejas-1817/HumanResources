@@ -96,13 +96,21 @@ class VendorService:
 
     @staticmethod
     def list_vendors(db: Session) -> List[Vendor]:
-        return db.query(Vendor).all()
+        vendors = db.query(Vendor).all()
+        for v in vendors:
+            jobs = [a.job_role for a in v.job_assignments if a.job_role is not None]
+            v.assigned_jobs = jobs
+            v.jobs_assigned_count = len(jobs)
+        return vendors
 
     @staticmethod
     def get_vendor_by_id(db: Session, vendor_id: int) -> Vendor:
         vendor = db.query(Vendor).filter(Vendor.id == vendor_id).first()
         if not vendor:
             raise NotFoundException(message="Vendor not found")
+        jobs = [a.job_role for a in vendor.job_assignments if a.job_role is not None]
+        vendor.assigned_jobs = jobs
+        vendor.jobs_assigned_count = len(jobs)
         return vendor
 
     @staticmethod
@@ -127,6 +135,19 @@ class VendorService:
 
     @staticmethod
     def assign_job(db: Session, vendor_id: int, job_role_id: int, assigned_by_id: int) -> VendorJobAssignment:
+        # Check that job role exists and is active/open and not filled
+        role = db.query(JobRole).filter(JobRole.id == job_role_id, JobRole.status == "open").first()
+        if not role:
+            raise NotFoundException(message="Active job position not found")
+
+        filled_count = db.query(JobApplication).filter(
+            JobApplication.job_role_id == role.id,
+            JobApplication.status.in_(["selected", "joined"])
+        ).count()
+        req = role.positions_required or 1
+        if req > 0 and filled_count >= req:
+            raise NotFoundException(message="Position is already fully filled and no longer active")
+
         # Check if already assigned
         existing = db.query(VendorJobAssignment).filter(
             VendorJobAssignment.vendor_id == vendor_id,
@@ -144,6 +165,48 @@ class VendorService:
         db.commit()
         db.refresh(assignment)
         return assignment
+
+    @staticmethod
+    def assign_jobs(db: Session, vendor_id: int, job_role_ids: List[int], assigned_by_id: int) -> List[VendorJobAssignment]:
+        # Filter to only active/open job roles that are not fully filled
+        roles = db.query(JobRole).filter(
+            JobRole.id.in_(job_role_ids),
+            JobRole.status == "open"
+        ).all()
+        
+        valid_role_ids = []
+        for role in roles:
+            filled_count = db.query(JobApplication).filter(
+                JobApplication.job_role_id == role.id,
+                JobApplication.status.in_(["selected", "joined"])
+            ).count()
+            req = role.positions_required or 1
+            if req <= 0 or filled_count < req:
+                valid_role_ids.append(role.id)
+
+        if not valid_role_ids:
+            raise NotFoundException(message="No active job positions found from selection")
+
+        assignments = []
+        for role_id in valid_role_ids:
+            existing = db.query(VendorJobAssignment).filter(
+                VendorJobAssignment.vendor_id == vendor_id,
+                VendorJobAssignment.job_role_id == role_id
+            ).first()
+            if not existing:
+                assignment = VendorJobAssignment(
+                    vendor_id=vendor_id,
+                    job_role_id=role_id,
+                    assigned_by_id=assigned_by_id
+                )
+                db.add(assignment)
+                assignments.append(assignment)
+            else:
+                assignments.append(existing)
+        db.commit()
+        for a in assignments:
+            db.refresh(a)
+        return assignments
     
     @staticmethod
     def unassign_job(db: Session, vendor_id: int, job_role_id: int):

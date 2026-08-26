@@ -61,14 +61,24 @@ def deactivate_vendor(
     VendorService.delete_vendor(db, vendor_id)
     return None
 
-@router.post("/{vendor_id}/assign-job", response_model=VendorJobAssignmentResponse)
+from app.core.exceptions import AppException, NotFoundException
+
+@router.post("/{vendor_id}/assign-job")
 def assign_job(
     vendor_id: int,
     payload: VendorJobAssignmentCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role("admin", "hr"))
 ):
-    return VendorService.assign_job(db, vendor_id, payload.job_role_id, current_user.id)
+    if payload.job_role_ids:
+        assignments = VendorService.assign_jobs(db, vendor_id, payload.job_role_ids, current_user.id)
+        if not assignments:
+            raise NotFoundException(message="No active job positions were assigned")
+        return assignments[0]
+    elif payload.job_role_id:
+        return VendorService.assign_job(db, vendor_id, payload.job_role_id, current_user.id)
+    else:
+        raise AppException(message="No position selected", status_code=400)
 
 @router.delete("/{vendor_id}/assign-job/{job_role_id}", status_code=status.HTTP_204_NO_CONTENT)
 def unassign_job(

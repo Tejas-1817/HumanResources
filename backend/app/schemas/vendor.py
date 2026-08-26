@@ -21,9 +21,13 @@ class VendorUpdate(BaseModel):
     is_active: Optional[bool] = None
     password: Optional[str] = Field(None, min_length=6, max_length=128)
 
+from app.schemas.job_role import JobRoleResponse
+
 class VendorResponse(VendorBase):
     id: int
     created_at: datetime
+    assigned_jobs: Optional[List[JobRoleResponse]] = None
+    jobs_assigned_count: Optional[int] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -31,8 +35,10 @@ class VendorJobAssignmentBase(BaseModel):
     vendor_id: int
     job_role_id: int
 
-class VendorJobAssignmentCreate(VendorJobAssignmentBase):
-    pass
+class VendorJobAssignmentCreate(BaseModel):
+    vendor_id: Optional[int] = None
+    job_role_id: Optional[int] = None
+    job_role_ids: Optional[List[int]] = None
 
 class VendorJobAssignmentResponse(VendorJobAssignmentBase):
     id: int
