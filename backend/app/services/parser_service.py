@@ -98,16 +98,30 @@ class ParserService:
     def extract_text(file_path: str) -> str:
         path = Path(file_path)
         suffix = path.suffix.lower()
+        raw_text = ""
         if suffix == ".pdf":
             chunks: list[str] = []
             with pdfplumber.open(path) as pdf:
                 for page in pdf.pages:
                     chunks.append(page.extract_text() or "")
-            return "\n".join(chunks).strip()
-        if suffix == ".docx":
+            raw_text = "\n".join(chunks).strip()
+        elif suffix == ".docx":
             document = docx.Document(path)
-            return "\n".join(p.text for p in document.paragraphs if p.text).strip()
-        raise ValueError(f"Unsupported file type: {suffix}")
+            raw_text = "\n".join(p.text for p in document.paragraphs if p.text).strip()
+        else:
+            raise ValueError(f"Unsupported file type: {suffix}")
+
+        if not raw_text:
+            return ""
+
+        # Clean CID codes and normalize bullets
+        cleaned = re.sub(r'\(cid:\s*0\)', '', raw_text)
+        cleaned = re.sub(r'\(cid:\s*\d+\)', '• ', cleaned)
+        cleaned = re.sub(r'[\u2022\u2023\u25E6\u2043\u2219\u25CB\u25CF\u25AA\u25AB\uF0B7\uF0A7\uF0A8\uF0D8]', '• ', cleaned)
+        cleaned = cleaned.replace('\xa0', ' ').replace('\r\n', '\n').replace('\r', '\n')
+        cleaned = re.sub(r'•\s+', '• ', cleaned)
+        cleaned = re.sub(r'\n{3,}', '\n\n', cleaned)
+        return "\n".join(line.strip() for line in cleaned.split("\n")).strip()
 
     @staticmethod
     def _work_history_text(text: str) -> str:

@@ -23,10 +23,11 @@ with engine.connect() as conn:
         print("[SKIP] work_mode already exists")
 
     if not column_exists(conn, "job_roles", "experience_required"):
-        conn.execute(text("ALTER TABLE job_roles ADD COLUMN experience_required FLOAT NULL"))
+        conn.execute(text("ALTER TABLE job_roles ADD COLUMN experience_required VARCHAR(100) NULL"))
         print("[OK] Added column: experience_required")
     else:
-        print("[SKIP] experience_required already exists")
+        conn.execute(text("ALTER TABLE job_roles MODIFY COLUMN experience_required VARCHAR(100) NULL"))
+        print("[OK] Updated column experience_required to VARCHAR(100)")
 
     conn.commit()
 
