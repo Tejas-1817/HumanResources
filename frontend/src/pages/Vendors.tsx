@@ -725,7 +725,7 @@ const Vendors = () => {
                 <div className="col-span-4">Name</div>
                 <div className="col-span-3">Contact Information</div>
                 <div className="col-span-3 text-center">Assignments</div>
-                <div className="col-span-2 text-right">Action</div>
+                <div className="col-span-2 text-right pr-2">Actions</div>
               </div>
             </div>
 
