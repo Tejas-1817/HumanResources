@@ -244,9 +244,9 @@ const Candidates = () => {
                 </div>
               </div>
 
-              {/* Active Applicants Filter - In middle of Technical Skills and Affiliated Company */}
+              {/* Applicants Status Filter - In middle of Technical Skills and Affiliated Company */}
               <div>
-                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-3 block">Active Applicants</label>
+                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-3 block">Applicants Status</label>
                 <div className="relative">
                   <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">
                     <UserCheck className="w-4 h-4 text-primary/70" />
