@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -66,6 +66,26 @@ const OpenPositions = () => {
   const [candidateModalPosition, setCandidateModalPosition] = useState<any | null>(null);
   const [positionToEdit, setPositionToEdit] = useState<any | null>(null);
   const [candidateSearchQuery, setCandidateSearchQuery] = useState("");
+
+  // Client dropdown state
+  const [clientDropdownOpen, setClientDropdownOpen] = useState(false);
+  const [clientSearchQuery, setClientSearchQuery] = useState("");
+  const clientDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close client dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (clientDropdownRef.current && !clientDropdownRef.current.contains(event.target as Node)) {
+        setClientDropdownOpen(false);
+      }
+    };
+    if (clientDropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [clientDropdownOpen]);
 
   // Edit Candidate State
   const [editingCandidate, setEditingCandidate] = useState<any | null>(null);
@@ -214,10 +234,40 @@ const OpenPositions = () => {
     };
   }, [jobRoles, pipeline, recentTimeline]);
 
-  // Client name filter list
+  // Client name filter list with position counts
+  const clientOptions = useMemo(() => {
+    const counts: Record<string, number> = {};
+    companies.forEach((c) => {
+      if (c.name) counts[c.name] = 0;
+    });
+    jobRoles.forEach((role) => {
+      const client = companies.find((c) => c.id === role.company_id);
+      const name = client ? client.name : "Unknown Client";
+      counts[name] = (counts[name] || 0) + 1;
+    });
+
+    const list = Object.entries(counts).map(([name, count]) => ({
+      name,
+      count,
+    }));
+
+    // Sort: clients with positions first, then alphabetically
+    return list.sort((a, b) => {
+      if (b.count !== a.count) return b.count - a.count;
+      return a.name.localeCompare(b.name);
+    });
+  }, [companies, jobRoles]);
+
+  // Filtered client list for dropdown search
+  const filteredClientOptions = useMemo(() => {
+    if (!clientSearchQuery.trim()) return clientOptions;
+    const q = clientSearchQuery.toLowerCase();
+    return clientOptions.filter((c) => c.name.toLowerCase().includes(q));
+  }, [clientOptions, clientSearchQuery]);
+
   const companyNames = useMemo(() => {
-    return companies.map(c => c.name);
-  }, [companies]);
+    return clientOptions.map(c => c.name);
+  }, [clientOptions]);
 
 
   // Enrich and filter Job Roles
@@ -691,16 +741,199 @@ const OpenPositions = () => {
       {/* Secondary filter selectors */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-3 flex-1">
-          <select
-            value={selectedCompany}
-            onChange={(e) => setSelectedCompany(e.target.value)}
-            className="bg-card border border-border text-muted-foreground text-xs rounded-xl px-4 py-2.5 focus:outline-none focus:ring-1 focus:ring-primary/50 font-semibold cursor-pointer"
-          >
-            <option value="Company">Client</option>
-            {companyNames.map(name => (
-              <option key={name} value={name}>{name}</option>
-            ))}
-          </select>
+          {/* Aesthetic Client Filter Dropdown */}
+          <div className="relative" ref={clientDropdownRef}>
+            <button
+              type="button"
+              onClick={() => setClientDropdownOpen((prev) => !prev)}
+              className={`group flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all duration-150 border shadow-xs select-none ${
+                selectedCompany !== "Company"
+                  ? "bg-primary/10 border-primary/40 text-primary shadow-primary/5 ring-1 ring-primary/20"
+                  : "bg-card hover:bg-secondary/60 border-border text-foreground/80 hover:text-foreground hover:border-border/80"
+              }`}
+              title={selectedCompany !== "Company" ? `Filtered by client: ${selectedCompany}` : "Filter by client"}
+            >
+              <div
+                className={`p-1 rounded-lg transition-colors ${
+                  selectedCompany !== "Company"
+                    ? "bg-primary/15 text-primary"
+                    : "bg-secondary text-muted-foreground group-hover:text-primary"
+                }`}
+              >
+                <Building2 className="w-3.5 h-3.5" />
+              </div>
+
+              <div className="flex items-center gap-1.5 text-left">
+                {selectedCompany !== "Company" ? (
+                  <>
+                    <span className="text-[10px] uppercase font-bold tracking-wider opacity-70">Client:</span>
+                    <span className="font-bold max-w-[150px] truncate">{selectedCompany}</span>
+                  </>
+                ) : (
+                  <span className="font-semibold text-foreground/90">All Clients</span>
+                )}
+              </div>
+
+              {selectedCompany !== "Company" ? (
+                <span
+                  role="button"
+                  tabIndex={0}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedCompany("Company");
+                  }}
+                  className="ml-0.5 p-0.5 rounded-md hover:bg-primary/25 text-primary transition-colors cursor-pointer"
+                  title="Clear client filter"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </span>
+              ) : (
+                <ChevronDown
+                  className={`w-3.5 h-3.5 text-muted-foreground transition-transform duration-200 ${
+                    clientDropdownOpen ? "rotate-180 text-foreground" : "group-hover:text-foreground"
+                  }`}
+                />
+              )}
+            </button>
+
+            <AnimatePresence>
+              {clientDropdownOpen && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setClientDropdownOpen(false)} />
+                  <motion.div
+                    initial={{ opacity: 0, y: 6, scale: 0.97 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 6, scale: 0.97 }}
+                    transition={{ duration: 0.15, ease: "easeOut" }}
+                    className="absolute left-0 top-full mt-2 z-50 w-72 rounded-2xl bg-card/95 backdrop-blur-xl border border-border shadow-2xl p-2 overflow-hidden"
+                  >
+                    {/* Search inside dropdown */}
+                    <div className="relative mb-1.5 px-1 pt-1">
+                      <Search className="w-3.5 h-3.5 text-muted-foreground absolute left-3.5 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        value={clientSearchQuery}
+                        onChange={(e) => setClientSearchQuery(e.target.value)}
+                        placeholder="Search clients..."
+                        className="w-full bg-secondary/50 border border-border/70 rounded-xl pl-8 pr-7 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 focus:border-primary/50 transition-all font-medium"
+                        autoFocus
+                      />
+                      {clientSearchQuery && (
+                        <button
+                          type="button"
+                          onClick={() => setClientSearchQuery("")}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-0.5"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="max-h-60 overflow-y-auto space-y-0.5 px-1 py-1 custom-scrollbar">
+                      {/* All Clients option */}
+                      {(!clientSearchQuery || "all clients".includes(clientSearchQuery.toLowerCase())) && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedCompany("Company");
+                            setClientDropdownOpen(false);
+                            setClientSearchQuery("");
+                          }}
+                          className={`w-full text-left px-2.5 py-2 rounded-xl text-xs transition-all flex items-center justify-between group ${
+                            selectedCompany === "Company"
+                              ? "bg-primary/10 text-primary font-bold shadow-xs"
+                              : "text-foreground/80 hover:text-foreground hover:bg-secondary/70 font-medium"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div
+                              className={`w-6 h-6 rounded-lg flex items-center justify-center text-[10px] font-bold ${
+                                selectedCompany === "Company"
+                                  ? "bg-primary text-white"
+                                  : "bg-secondary text-muted-foreground group-hover:bg-secondary/80"
+                              }`}
+                            >
+                              <Users className="w-3 h-3" />
+                            </div>
+                            <span className="truncate">All Clients</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${
+                                selectedCompany === "Company"
+                                  ? "bg-primary/15 text-primary"
+                                  : "bg-secondary text-muted-foreground"
+                              }`}
+                            >
+                              {jobRoles.length}
+                            </span>
+                            {selectedCompany === "Company" && <Check className="w-3.5 h-3.5 text-primary flex-shrink-0" />}
+                          </div>
+                        </button>
+                      )}
+
+                      {clientOptions.length > 0 && <div className="h-px bg-border/50 my-1" />}
+
+                      {/* Client List */}
+                      {filteredClientOptions.length === 0 ? (
+                        <div className="py-5 text-center text-xs text-muted-foreground">
+                          No clients matching "{clientSearchQuery}"
+                        </div>
+                      ) : (
+                        filteredClientOptions.map((client) => {
+                          const isSelected = selectedCompany === client.name;
+                          const initial = client.name.charAt(0).toUpperCase();
+
+                          return (
+                            <button
+                              key={client.name}
+                              type="button"
+                              onClick={() => {
+                                setSelectedCompany(client.name);
+                                setClientDropdownOpen(false);
+                                setClientSearchQuery("");
+                              }}
+                              className={`w-full text-left px-2.5 py-2 rounded-xl text-xs transition-all flex items-center justify-between group ${
+                                isSelected
+                                  ? "bg-primary/10 text-primary font-bold shadow-xs"
+                                  : "text-foreground/80 hover:text-foreground hover:bg-secondary/70 font-medium"
+                              }`}
+                            >
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <div
+                                  className={`w-6 h-6 rounded-lg flex items-center justify-center text-[11px] font-bold uppercase transition-transform group-hover:scale-105 ${
+                                    isSelected
+                                      ? "bg-primary text-white shadow-xs shadow-primary/30"
+                                      : "bg-gradient-to-br from-blue-500/10 to-indigo-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/10"
+                                  }`}
+                                >
+                                  {initial}
+                                </div>
+                                <span className="truncate font-semibold">{client.name}</span>
+                              </div>
+
+                              <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                                <span
+                                  className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md transition-colors ${
+                                    isSelected
+                                      ? "bg-primary/15 text-primary"
+                                      : "bg-secondary text-muted-foreground group-hover:bg-secondary/90"
+                                  }`}
+                                >
+                                  {client.count} {client.count === 1 ? "role" : "roles"}
+                                </span>
+                                {isSelected && <Check className="w-3.5 h-3.5 text-primary flex-shrink-0" />}
+                              </div>
+                            </button>
+                          );
+                        })
+                      )}
+                    </div>
+                  </motion.div>
+                </>
+              )}
+            </AnimatePresence>
+          </div>
 
           {activeTabFilter === "recent" && (
             <div className="flex items-center bg-secondary/40 p-0.5 rounded-xl border border-border">

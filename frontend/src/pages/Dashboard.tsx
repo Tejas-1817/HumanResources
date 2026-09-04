@@ -1370,7 +1370,7 @@ const Dashboard = () => {
           value={totalActiveCount}
           icon={User}
           iconBg="bg-blue-50 text-blue-600"
-          onClick={() => navigate("/candidates")}
+          onClick={() => navigate("/candidates?applicant_status=active")}
         />
         <MetricCard
           label="Interviews Today"

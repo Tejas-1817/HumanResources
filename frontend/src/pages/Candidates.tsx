@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, Filter, ChevronLeft, ChevronRight, X, Mail, Phone, Calendar, Building2, User, Plus, Upload, Trash2, Eye } from "lucide-react";
+import { Search, Filter, ChevronLeft, ChevronRight, ChevronDown, X, Mail, Phone, Calendar, Building2, User, UserCheck, Plus, Upload, Trash2, Eye } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -21,18 +21,29 @@ const experienceRanges = [
 ];
 
 const Candidates = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
-  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(() => Boolean(searchParams.get("applicant_status") || searchParams.get("vendor_id") || searchParams.get("unassigned_only")));
   const [expFilter, setExpFilter] = useState(0);
   const [skillFilter, setSkillFilter] = useState("");
+  const [applicantStatusFilter, setApplicantStatusFilter] = useState<string>(() => searchParams.get("applicant_status") || "");
   const [companyFilter, setCompanyFilter] = useState<number | "">("");
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
   const vendorIdFromUrl = searchParams.get("vendor_id") ? Number(searchParams.get("vendor_id")) : null;
   const unassignedOnly = searchParams.get("unassigned_only") === "true";
   const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const statusFromUrl = searchParams.get("applicant_status") || "";
+    if (statusFromUrl !== applicantStatusFilter) {
+      setApplicantStatusFilter(statusFromUrl);
+      if (statusFromUrl) {
+        setFiltersOpen(true);
+      }
+    }
+  }, [searchParams]);
 
   const { data: companiesData } = useQuery({
     queryKey: ["companies"],
@@ -55,7 +66,7 @@ const Candidates = () => {
   });
 
   const { data, isLoading } = useQuery({
-    queryKey: ["candidates", search.trim(), skillFilter.trim(), expFilter, page, companyFilter, vendorIdFromUrl, unassignedOnly],
+    queryKey: ["candidates", search.trim(), skillFilter.trim(), expFilter, page, companyFilter, vendorIdFromUrl, unassignedOnly, applicantStatusFilter],
     queryFn: () => {
       let combinedSearch = search.trim();
       const st = skillFilter.trim();
@@ -72,6 +83,7 @@ const Candidates = () => {
         max_experience: range?.max !== Infinity ? range.max : undefined,
         vendor_id: vendorIdFromUrl || undefined,
         unassigned_only: unassignedOnly,
+        applicant_status: applicantStatusFilter || undefined,
       });
     }
   });
@@ -79,15 +91,17 @@ const Candidates = () => {
   const candidates = useMemo(() => data?.items ?? [], [data?.items]);
   const totalFromServer = data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(totalFromServer / PAGE_SIZE));
-  const hasActiveFilters = expFilter !== 0 || skillFilter.trim().length > 0 || companyFilter !== "" || vendorIdFromUrl !== null || unassignedOnly;
+  const hasActiveFilters = expFilter !== 0 || skillFilter.trim().length > 0 || companyFilter !== "" || applicantStatusFilter !== "" || vendorIdFromUrl !== null || unassignedOnly;
 
   const clearFilters = () => {
     setExpFilter(0);
     setSkillFilter("");
+    setApplicantStatusFilter("");
     setCompanyFilter("");
-    if (vendorIdFromUrl || unassignedOnly) {
+    if (vendorIdFromUrl || unassignedOnly || searchParams.get("applicant_status")) {
       searchParams.delete("vendor_id");
       searchParams.delete("unassigned_only");
+      searchParams.delete("applicant_status");
       setSearchParams(searchParams);
     }
   };
@@ -193,7 +207,7 @@ const Candidates = () => {
             exit={{ opacity: 0, y: -10 }}
             className="glass-card p-6 rounded-xl border border-primary/10 bg-primary/5 shadow-2xl shadow-primary/5"
           >
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <div>
                 <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-3 block">Experience Range</label>
                 <div className="flex flex-wrap gap-2">
@@ -230,18 +244,88 @@ const Candidates = () => {
                 </div>
               </div>
 
+              {/* Active Applicants Filter - In middle of Technical Skills and Affiliated Company */}
+              <div>
+                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-3 block">Active Applicants</label>
+                <div className="relative">
+                  <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">
+                    <UserCheck className="w-4 h-4 text-primary/70" />
+                  </div>
+                  <select
+                    value={applicantStatusFilter}
+                    onChange={(e) => {
+                      setApplicantStatusFilter(e.target.value);
+                      setPage(1);
+                    }}
+                    className={`w-full pl-10 pr-9 py-2.5 rounded-lg border text-sm font-medium focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all appearance-none cursor-pointer ${
+                      applicantStatusFilter
+                        ? "bg-primary/10 border-primary/40 text-primary font-semibold"
+                        : "bg-secondary/50 border-border text-foreground hover:bg-secondary/70"
+                    }`}
+                  >
+                    <option value="">All Applicants</option>
+                    <option value="active">Active (In Process)</option>
+                    <option value="available">Available (On Bench)</option>
+                    <option value="selected">Selected / Hired</option>
+                  </select>
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none flex items-center gap-1">
+                    {applicantStatusFilter && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setApplicantStatusFilter("");
+                          setPage(1);
+                        }}
+                        className="pointer-events-auto p-0.5 rounded-md hover:bg-primary/20 text-primary transition-colors"
+                        title="Clear status filter"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                    <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                  </div>
+                </div>
+              </div>
+
               <div>
                 <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-3 block">Affiliated Company</label>
-                <select
-                  value={companyFilter}
-                  onChange={(e) => { setCompanyFilter(e.target.value ? Number(e.target.value) : ""); setPage(1); }}
-                  className="w-full px-4 py-2.5 rounded-lg bg-secondary/50 border border-border text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all appearance-none cursor-pointer"
-                >
-                  <option value="">All Companies</option>
-                  {companiesData?.map((company) => (
-                    <option key={company.id} value={company.id}>{company.name}</option>
-                  ))}
-                </select>
+                <div className="relative">
+                  <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">
+                    <Building2 className="w-4 h-4 text-primary/70" />
+                  </div>
+                  <select
+                    value={companyFilter}
+                    onChange={(e) => { setCompanyFilter(e.target.value ? Number(e.target.value) : ""); setPage(1); }}
+                    className={`w-full pl-10 pr-9 py-2.5 rounded-lg border text-sm font-medium focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all appearance-none cursor-pointer ${
+                      companyFilter !== ""
+                        ? "bg-primary/10 border-primary/40 text-primary font-semibold"
+                        : "bg-secondary/50 border-border text-foreground hover:bg-secondary/70"
+                    }`}
+                  >
+                    <option value="">All Companies</option>
+                    {companiesData?.map((company) => (
+                      <option key={company.id} value={company.id}>{company.name}</option>
+                    ))}
+                  </select>
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none flex items-center gap-1">
+                    {companyFilter !== "" && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setCompanyFilter("");
+                          setPage(1);
+                        }}
+                        className="pointer-events-auto p-0.5 rounded-md hover:bg-primary/20 text-primary transition-colors"
+                        title="Clear company filter"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                    <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                  </div>
+                </div>
               </div>
             </div>
           </motion.div>
