@@ -53,6 +53,7 @@ class CandidateService:
         vendor_id: int | None = None,
         unassigned_only: bool = False,
         interviewer_id: int | None = None,
+        applicant_status: str | None = None,
     ) -> tuple[list[Candidate], int]:
         safe_page = max(page, 1)
         safe_page_size = max(1, min(page_size, 100))
@@ -74,6 +75,17 @@ class CandidateService:
         if unassigned_only:
             from app.models.job_application import JobApplication
             query = query.filter(~Candidate.applications.any(JobApplication.status == "selected"))
+
+        if applicant_status:
+            from app.models.job_application import JobApplication
+            status_clean = applicant_status.lower().strip()
+            active_statuses = ["pending", "shortlisted", "interview_scheduled", "interviewed", "on_hold", "applied", "interview"]
+            if status_clean in ("active", "in_process", "in-process", "active_only"):
+                query = query.filter(Candidate.applications.any(JobApplication.status.in_(active_statuses)))
+            elif status_clean in ("available", "on_bench", "bench", "unassigned"):
+                query = query.filter(~Candidate.applications.any(JobApplication.status.in_(active_statuses)))
+            elif status_clean in ("selected", "hired", "joined"):
+                query = query.filter(Candidate.applications.any(JobApplication.status.in_(["selected", "joined"])))
 
         if company_id or job_role_id:
             from app.models.job_application import JobApplication
