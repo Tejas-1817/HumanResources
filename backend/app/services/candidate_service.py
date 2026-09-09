@@ -54,6 +54,7 @@ class CandidateService:
         unassigned_only: bool = False,
         interviewer_id: int | None = None,
         applicant_status: str | None = None,
+        stage: str | None = None,
     ) -> tuple[list[Candidate], int]:
         safe_page = max(page, 1)
         safe_page_size = max(1, min(page_size, 100))
@@ -80,22 +81,6 @@ class CandidateService:
                 ~Candidate.applications.any(JobApplication.status.in_(["selected", "joined"]))
             )
 
-        if applicant_status:
-            from app.models.job_application import JobApplication
-            from sqlalchemy import or_
-            status_clean = applicant_status.lower().strip()
-            active_statuses = ["pending", "shortlisted", "interview_scheduled", "interviewed", "on_hold", "applied", "interview"]
-            if status_clean in ("active", "in_process", "in-process", "active_only"):
-                query = query.filter(Candidate.applications.any(JobApplication.status.in_(active_statuses)))
-            elif status_clean in ("available", "on_bench", "bench", "unassigned"):
-                # Realtime On Bench Talent candidates (excluding those already selected/hired)
-                query = query.filter(
-                    or_(Candidate.uploaded_by_vendor_id.isnot(None), Candidate.source == "vendor"),
-                    ~Candidate.applications.any(JobApplication.status.in_(["selected", "joined"]))
-                )
-            elif status_clean in ("selected", "hired", "joined"):
-                query = query.filter(Candidate.applications.any(JobApplication.status.in_(["selected", "joined"])))
-
         if company_id or job_role_id:
             from app.models.job_application import JobApplication
             from app.models.job_role import JobRole
@@ -106,6 +91,62 @@ class CandidateService:
             if job_role_id:
                 query = query.filter(JobApplication.job_role_id == job_role_id)
                 
+            query = query.distinct()
+
+        if applicant_status:
+            from app.models.job_application import JobApplication
+            from sqlalchemy import or_
+            status_clean = applicant_status.lower().strip()
+            active_statuses = ["pending", "shortlisted", "interview_scheduled", "interviewed", "on_hold", "applied", "interview"]
+            if status_clean in ("active", "in_process", "in-process", "active_only"):
+                if company_id or job_role_id:
+                    query = query.filter(JobApplication.status.in_(active_statuses))
+                else:
+                    query = query.filter(Candidate.applications.any(JobApplication.status.in_(active_statuses)))
+            elif status_clean in ("available", "on_bench", "bench", "unassigned"):
+                # Realtime On Bench Talent candidates (excluding those already selected/hired)
+                query = query.filter(
+                    or_(Candidate.uploaded_by_vendor_id.isnot(None), Candidate.source == "vendor"),
+                    ~Candidate.applications.any(JobApplication.status.in_(["selected", "joined"]))
+                )
+            elif status_clean in ("selected", "hired", "joined"):
+                if company_id or job_role_id:
+                    query = query.filter(JobApplication.status.in_(["selected", "joined"]))
+                else:
+                    query = query.filter(Candidate.applications.any(JobApplication.status.in_(["selected", "joined"])))
+            elif status_clean in ("applied", "pending"):
+                if company_id or job_role_id:
+                    query = query.filter(JobApplication.status.in_(["pending", "applied"]))
+                else:
+                    query = query.filter(Candidate.applications.any(JobApplication.status.in_(["pending", "applied"])))
+            elif status_clean in ("shortlisted",):
+                if company_id or job_role_id:
+                    query = query.filter(JobApplication.status == "shortlisted")
+                else:
+                    query = query.filter(Candidate.applications.any(JobApplication.status == "shortlisted"))
+            elif status_clean in ("interview", "interview_scheduled", "interviewed"):
+                if company_id or job_role_id:
+                    query = query.filter(JobApplication.status.in_(["interview_scheduled", "interviewed", "interview"]))
+                else:
+                    query = query.filter(Candidate.applications.any(JobApplication.status.in_(["interview_scheduled", "interviewed", "interview"])))
+
+        if stage:
+            from app.models.job_application import JobApplication
+            stage_clean = stage.lower().strip()
+            stage_status_map = {
+                "applied": ["pending", "applied"],
+                "pending": ["pending", "applied"],
+                "shortlisted": ["shortlisted"],
+                "interview": ["interview_scheduled", "interviewed", "interview"],
+                "selected": ["selected"],
+                "joined": ["joined"],
+            }
+            target_statuses = stage_status_map.get(stage_clean)
+            if target_statuses:
+                if company_id or job_role_id:
+                    query = query.filter(JobApplication.status.in_(target_statuses))
+                else:
+                    query = query.filter(Candidate.applications.any(JobApplication.status.in_(target_statuses)))
             query = query.distinct()
 
         if min_experience is not None:

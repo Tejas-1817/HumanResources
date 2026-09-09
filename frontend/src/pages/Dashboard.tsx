@@ -616,9 +616,9 @@ const Dashboard = () => {
     let joinedCount = 0;
     const hasPipelineData = Object.keys(filteredPipeline).length > 0;
     if (hasPipelineData) {
-      pendingCount = (filteredPipeline["pending"] || []).length;
+      pendingCount = (filteredPipeline["pending"] || []).length + (filteredPipeline["applied"] || []).length;
       shortlistedCount = (filteredPipeline["shortlisted"] || []).length;
-      interviewCountVal = (filteredPipeline["interview_scheduled"] || []).length + (filteredPipeline["interviewed"] || []).length;
+      interviewCountVal = (filteredPipeline["interview_scheduled"] || []).length + (filteredPipeline["interviewed"] || []).length + (filteredPipeline["interview"] || []).length;
       selectedCountVal = (filteredPipeline["selected"] || []).length;
       joinedCount = (filteredPipeline["joined"] || []).length;
     }
@@ -632,11 +632,11 @@ const Dashboard = () => {
     const totalStats = appliedVal + shortlistedVal + interviewVal + selectedVal + joinedVal;
 
     return [
-      { name: "Applied", value: appliedVal, pct: `${totalStats > 0 ? Math.round((appliedVal / totalStats) * 100) : 0}%`, bg: "bg-blue-50", textColor: "text-blue-500", icon: Send },
-      { name: "Shortlisted", value: shortlistedVal, pct: `${totalStats > 0 ? Math.round((shortlistedVal / totalStats) * 100) : 0}%`, bg: "bg-purple-50", textColor: "text-purple-500", icon: UserCheck },
-      { name: "Interview", value: interviewVal, pct: `${totalStats > 0 ? Math.round((interviewVal / totalStats) * 100) : 0}%`, bg: "bg-amber-50", textColor: "text-amber-500", icon: Clock },
-      { name: "Selected", value: selectedVal, pct: `${totalStats > 0 ? Math.round((selectedVal / totalStats) * 100) : 0}%`, bg: "bg-emerald-50", textColor: "text-emerald-500", icon: CheckCircle2 },
-      { name: "Joined", value: joinedVal, pct: `${totalStats > 0 ? Math.round((joinedVal / totalStats) * 100) : 0}%`, bg: "bg-cyan-50", textColor: "text-cyan-500", icon: Users },
+      { name: "Applied", stage: "applied", value: appliedVal, pct: `${totalStats > 0 ? Math.round((appliedVal / totalStats) * 100) : 0}%`, bg: "bg-blue-50", textColor: "text-blue-500", icon: Send },
+      { name: "Shortlisted", stage: "shortlisted", value: shortlistedVal, pct: `${totalStats > 0 ? Math.round((shortlistedVal / totalStats) * 100) : 0}%`, bg: "bg-purple-50", textColor: "text-purple-500", icon: UserCheck },
+      { name: "Interview", stage: "interview", value: interviewVal, pct: `${totalStats > 0 ? Math.round((interviewVal / totalStats) * 100) : 0}%`, bg: "bg-amber-50", textColor: "text-amber-500", icon: Clock },
+      { name: "Selected", stage: "selected", value: selectedVal, pct: `${totalStats > 0 ? Math.round((selectedVal / totalStats) * 100) : 0}%`, bg: "bg-emerald-50", textColor: "text-emerald-500", icon: CheckCircle2 },
+      { name: "Joined", stage: "joined", value: joinedVal, pct: `${totalStats > 0 ? Math.round((joinedVal / totalStats) * 100) : 0}%`, bg: "bg-cyan-50", textColor: "text-cyan-500", icon: Users },
     ];
   }, [filteredPipeline]);
 
@@ -1435,9 +1435,14 @@ const Dashboard = () => {
 
           {/* Top 5 Cards */}
           <div className="grid grid-cols-5 gap-4 mb-2 flex-1">
-            {overallStats.map((stat, i) => (
-              <div key={stat.name} className="relative overflow-hidden bg-white rounded-xl p-4 flex flex-col items-center justify-center border border-slate-100 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] hover:shadow-md transition-all h-full min-h-[120px]">
-                 <div className={`w-10 h-10 rounded-full flex items-center justify-center ${stat.bg} mb-2.5`}>
+            {overallStats.map((stat) => (
+              <div
+                key={stat.name}
+                onClick={() => navigate(`/candidates?stage=${stat.stage}`)}
+                className="relative overflow-hidden bg-white rounded-xl p-4 flex flex-col items-center justify-center border border-slate-100 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] hover:shadow-md hover:border-blue-200 hover:-translate-y-0.5 active:translate-y-0 cursor-pointer transition-all duration-200 h-full min-h-[120px] group select-none"
+                title={`View ${stat.name} Candidates`}
+              >
+                 <div className={`w-10 h-10 rounded-full flex items-center justify-center ${stat.bg} mb-2.5 transition-transform duration-200 group-hover:scale-110`}>
                    <stat.icon className={`w-5 h-5 ${stat.textColor}`} />
                  </div>
                  <h3 className={`text-[11px] font-bold ${stat.textColor} z-10`}>{stat.name}</h3>

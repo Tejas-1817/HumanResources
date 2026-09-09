@@ -24,11 +24,16 @@ const Candidates = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
-  const [filtersOpen, setFiltersOpen] = useState(() => Boolean(searchParams.get("applicant_status") || searchParams.get("vendor_id") || searchParams.get("unassigned_only")));
+  const stageFromUrl = searchParams.get("stage") || "";
+  const statusFromUrl = searchParams.get("applicant_status") || "";
+  const initialStatus = stageFromUrl || statusFromUrl;
+  const companyIdFromUrl = searchParams.get("company_id") ? Number(searchParams.get("company_id")) : "";
+
+  const [filtersOpen, setFiltersOpen] = useState(() => Boolean(initialStatus || companyIdFromUrl || searchParams.get("vendor_id") || searchParams.get("unassigned_only")));
   const [expFilter, setExpFilter] = useState(0);
   const [skillFilter, setSkillFilter] = useState("");
-  const [applicantStatusFilter, setApplicantStatusFilter] = useState<string>(() => searchParams.get("applicant_status") || "");
-  const [companyFilter, setCompanyFilter] = useState<number | "">("");
+  const [applicantStatusFilter, setApplicantStatusFilter] = useState<string>(() => initialStatus);
+  const [companyFilter, setCompanyFilter] = useState<number | "">(() => companyIdFromUrl);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const navigate = useNavigate();
   const vendorIdFromUrl = searchParams.get("vendor_id") ? Number(searchParams.get("vendor_id")) : null;
@@ -36,10 +41,17 @@ const Candidates = () => {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    const statusFromUrl = searchParams.get("applicant_status") || "";
-    if (statusFromUrl !== applicantStatusFilter) {
-      setApplicantStatusFilter(statusFromUrl);
-      if (statusFromUrl) {
+    const currentStatusFromUrl = searchParams.get("stage") || searchParams.get("applicant_status") || "";
+    if (currentStatusFromUrl !== applicantStatusFilter) {
+      setApplicantStatusFilter(currentStatusFromUrl);
+      if (currentStatusFromUrl) {
+        setFiltersOpen(true);
+      }
+    }
+    const currentCompanyFromUrl = searchParams.get("company_id") ? Number(searchParams.get("company_id")) : "";
+    if (currentCompanyFromUrl !== companyFilter) {
+      setCompanyFilter(currentCompanyFromUrl);
+      if (currentCompanyFromUrl) {
         setFiltersOpen(true);
       }
     }
@@ -74,6 +86,7 @@ const Candidates = () => {
         combinedSearch = combinedSearch ? `${combinedSearch} ${st}` : st;
       }
       const range = experienceRanges[expFilter];
+      const isPipelineStage = ["applied", "pending", "shortlisted", "interview", "selected", "joined"].includes(applicantStatusFilter.toLowerCase());
       return getCandidates({
         search: combinedSearch || undefined,
         page,
@@ -83,7 +96,8 @@ const Candidates = () => {
         max_experience: range?.max !== Infinity ? range.max : undefined,
         vendor_id: vendorIdFromUrl || undefined,
         unassigned_only: unassignedOnly,
-        applicant_status: applicantStatusFilter || undefined,
+        applicant_status: isPipelineStage ? undefined : (applicantStatusFilter || undefined),
+        stage: isPipelineStage ? applicantStatusFilter.toLowerCase() : undefined,
       });
     }
   });
@@ -98,10 +112,12 @@ const Candidates = () => {
     setSkillFilter("");
     setApplicantStatusFilter("");
     setCompanyFilter("");
-    if (vendorIdFromUrl || unassignedOnly || searchParams.get("applicant_status")) {
+    if (vendorIdFromUrl || unassignedOnly || searchParams.get("applicant_status") || searchParams.get("stage") || searchParams.get("company_id")) {
       searchParams.delete("vendor_id");
       searchParams.delete("unassigned_only");
       searchParams.delete("applicant_status");
+      searchParams.delete("stage");
+      searchParams.delete("company_id");
       setSearchParams(searchParams);
     }
   };
@@ -252,7 +268,7 @@ const Candidates = () => {
                     <UserCheck className="w-4 h-4 text-primary/70" />
                   </div>
                   <select
-                    value={applicantStatusFilter}
+                    value={applicantStatusFilter.toLowerCase() === "pending" ? "applied" : applicantStatusFilter}
                     onChange={(e) => {
                       setApplicantStatusFilter(e.target.value);
                       setPage(1);
@@ -264,9 +280,13 @@ const Candidates = () => {
                     }`}
                   >
                     <option value="">All Applicants</option>
+                    <option value="applied">Applied (Pending + Applied)</option>
+                    <option value="shortlisted">Shortlisted</option>
+                    <option value="interview">Interview</option>
+                    <option value="selected">Selected</option>
+                    <option value="joined">Joined</option>
                     <option value="active">Active (In Process)</option>
                     <option value="available">Available (On Bench)</option>
-                    <option value="selected">Selected / Hired</option>
                   </select>
                   <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none flex items-center gap-1">
                     {applicantStatusFilter && (

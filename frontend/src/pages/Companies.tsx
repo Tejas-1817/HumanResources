@@ -280,6 +280,7 @@ const Companies = () => {
   const [mainTab, setMainTab] = useState("All Companies");
   const [companyFilter, setCompanyFilter] = useState("Company");
   const [statusFilter, setStatusFilter] = useState("Status");
+  const [pipelineStageFilter, setPipelineStageFilter] = useState("Pipeline Stage");
 
 
   // ─── Company CRUD state ───────────────────────────────
@@ -392,10 +393,12 @@ const Companies = () => {
   };
 
   const PIPELINE_STAGE_LABEL: Record<string, string> = {
-    pending: "Pending",
+    pending: "Applied",
+    applied: "Applied",
     shortlisted: "Shortlisted",
     interview_scheduled: "Interview Scheduled",
     interviewed: "Interviewed",
+    interview: "Interview",
     on_hold: "On Hold",
     selected: "Selected",
     joined: "Joined",
@@ -557,9 +560,33 @@ const Companies = () => {
         if (statusFilter === "Closed") matchesStatus = isClosed;
       }
 
-      return matchesGlobal && matchesCompanySearch && matchesTab && matchesCompanyFilter && matchesStatus;
+      let matchesStage = true;
+      if (pipelineStageFilter && pipelineStageFilter !== "Pipeline Stage" && pipelineStageFilter !== "All Stages" && pipelineStageFilter !== "All") {
+        const stageLower = pipelineStageFilter.toLowerCase();
+        const companyJobRoleIds = new Set(jobRoles.filter(r => r.company_id === c.id).map(r => r.id));
+        if (stageLower === "applied") {
+          matchesStage = [
+            ...(pipeline["pending"] || []),
+            ...(pipeline["applied"] || []),
+          ].some((app: any) => companyJobRoleIds.has(app.job_role_id));
+        } else if (stageLower === "shortlisted") {
+          matchesStage = (pipeline["shortlisted"] || []).some((app: any) => companyJobRoleIds.has(app.job_role_id));
+        } else if (stageLower === "interview") {
+          matchesStage = [
+            ...(pipeline["interview_scheduled"] || []),
+            ...(pipeline["interviewed"] || []),
+            ...(pipeline["interview"] || []),
+          ].some((app: any) => companyJobRoleIds.has(app.job_role_id));
+        } else if (stageLower === "selected") {
+          matchesStage = (pipeline["selected"] || []).some((app: any) => companyJobRoleIds.has(app.job_role_id));
+        } else if (stageLower === "joined") {
+          matchesStage = (pipeline["joined"] || []).some((app: any) => companyJobRoleIds.has(app.job_role_id));
+        }
+      }
+
+      return matchesGlobal && matchesCompanySearch && matchesTab && matchesCompanyFilter && matchesStatus && matchesStage;
     });
-  }, [companies, globalSearch, companySearch, mainTab, companyFilter, statusFilter, jobRoles, openRoleCountByCompany, pipeline, roleById]);
+  }, [companies, globalSearch, companySearch, mainTab, companyFilter, statusFilter, pipelineStageFilter, jobRoles, openRoleCountByCompany, pipeline, roleById]);
 
   const getCompanyPipelineStage = (companyId: number) => {
     const companyApps: any[] = [];
@@ -572,20 +599,23 @@ const Companies = () => {
       });
     });
 
-    if (companyApps.some(app => app.stageId === "interview_scheduled" || app.stageId === "interviewed")) {
-      return { label: "Interviewing", style: "bg-amber-500/10 text-amber-600 border-amber-500/20" };
+    if (companyApps.some(app => app.stageId === "joined")) {
+      return { label: "Joined", style: "bg-cyan-500/10 text-cyan-600 border-cyan-500/20" };
+    }
+    if (companyApps.some(app => app.stageId === "selected")) {
+      return { label: "Selected", style: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" };
+    }
+    if (companyApps.some(app => app.stageId === "interview_scheduled" || app.stageId === "interviewed" || app.stageId === "interview")) {
+      return { label: "Interview", style: "bg-amber-500/10 text-amber-600 border-amber-500/20" };
     }
     if (companyApps.some(app => app.stageId === "shortlisted")) {
-      return { label: "Shortlisted", style: "bg-primary/10 text-primary border-primary/20" };
+      return { label: "Shortlisted", style: "bg-purple-500/10 text-purple-600 border-purple-500/20" };
+    }
+    if (companyApps.some(app => app.stageId === "pending" || app.stageId === "applied")) {
+      return { label: "Applied", style: "bg-blue-500/10 text-blue-600 border-blue-500/20" };
     }
     if (companyApps.some(app => app.stageId === "on_hold")) {
       return { label: "On Hold", style: "bg-orange-500/10 text-orange-600 border-orange-500/20" };
-    }
-    if (companyApps.some(app => app.stageId === "pending")) {
-      return { label: "Pending", style: "bg-warning/10 text-warning border-warning/20" };
-    }
-    if (companyApps.some(app => app.stageId === "selected")) {
-      return { label: "Selected", style: "bg-success/10 text-success border-success/20" };
     }
     return { label: "—", style: "text-muted-foreground bg-transparent border-transparent" };
   };
@@ -1292,6 +1322,21 @@ const Companies = () => {
               </select>
               <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
             </div>
+
+            <div className="relative w-full md:w-40">
+              <select
+                value={pipelineStageFilter}
+                onChange={(e) => setPipelineStageFilter(e.target.value)}
+                className="w-full pl-3 pr-8 py-2 rounded-xl bg-card border border-border/50 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all shadow-sm appearance-none cursor-pointer"
+              >
+                {["Pipeline Stage", "All Stages", "Applied", "Shortlisted", "Interview", "Selected", "Joined"].map((st) => (
+                  <option key={st} value={st}>
+                    {st}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+            </div>
           </div>
 
           <button
@@ -1301,6 +1346,7 @@ const Companies = () => {
               setMainTab("All Companies");
               setCompanyFilter("Company");
               setStatusFilter("Status");
+              setPipelineStageFilter("Pipeline Stage");
             }}
             className="px-4 py-2 rounded-xl border border-border/50 bg-card text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-secondary/40 transition-all flex items-center gap-1.5 shadow-sm"
           >
@@ -1425,8 +1471,10 @@ const Companies = () => {
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              selectCompany(c.id);
-                              handleTabChange("candidates");
+                              const stageParam = pipelineStageFilter && pipelineStageFilter !== "Pipeline Stage" && pipelineStageFilter !== "All Stages" && pipelineStageFilter !== "All"
+                                ? `&stage=${pipelineStageFilter.toLowerCase()}`
+                                : "";
+                              navigate(`/candidates?company_id=${c.id}${stageParam}`);
                             }}
                             className="text-[10px] text-primary hover:underline font-bold mt-1 text-left"
                           >

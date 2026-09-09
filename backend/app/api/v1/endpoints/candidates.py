@@ -72,6 +72,7 @@ def list_candidates(
     unassigned_only: bool = Query(default=False),
     interviewer_id: int | None = Query(default=None),
     applicant_status: str | None = Query(default=None),
+    stage: str | None = Query(default=None),
     db: Session = Depends(get_db),
     current_user: Any = Depends(get_current_user),
 ) -> dict:
@@ -91,6 +92,7 @@ def list_candidates(
         unassigned_only=unassigned_only,
         interviewer_id=interviewer_id,
         applicant_status=applicant_status,
+        stage=stage,
     )
     return {
         "items": [CandidateResponse.model_validate(item) for item in items],

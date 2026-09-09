@@ -252,6 +252,7 @@ export const getCandidates = async (params?: {
   unassigned_only?: boolean;
   interviewer_id?: number;
   applicant_status?: string;
+  stage?: string;
 }): Promise<CandidateListResponse> => {
   const { data } = await client.get<CandidateListResponse>("/candidates", { params });
   return data;
