@@ -1389,7 +1389,7 @@ const Dashboard = () => {
       </div>
 
       {/* ─── Rows 2 & 3: Primary grid components ─────── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
         {/* Recruitment Statistics */}
         <motion.div variants={item} className="bg-white border border-blue-200/80 hover:border-blue-300 transition-colors rounded-2xl p-5 shadow-sm flex flex-col h-[390px] overflow-hidden justify-between">
@@ -1494,7 +1494,7 @@ const Dashboard = () => {
 
 
         {/* Positions (2-column wide) */}
-        <motion.div variants={item} className="bg-white border border-blue-200/80 hover:border-blue-300 transition-colors rounded-2xl p-6 shadow-sm flex flex-col justify-between h-[390px] md:col-span-2 lg:col-span-2">
+        <motion.div variants={item} className="bg-white border border-blue-200/80 hover:border-blue-300 transition-colors rounded-2xl p-6 shadow-sm flex flex-col justify-between h-[390px]">
           <div>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-black text-slate-800 tracking-tight">Positions</h3>

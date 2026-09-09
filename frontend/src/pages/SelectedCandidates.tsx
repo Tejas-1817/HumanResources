@@ -324,7 +324,7 @@ const SelectedCandidates = () => {
           <div className="p-3 border-b border-border/50 bg-secondary/20">
             <div className="grid grid-cols-12 gap-3 px-6 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
               <div className="col-span-2">Candidate</div>
-              <div className="col-span-2">Client</div>
+              <div className="col-span-2 pl-10">Client</div>
               <div className="col-span-2">Job Role</div>
               <div className="col-span-1 text-center">Duration</div>
               <div className="col-span-1 text-center">Cost</div>
@@ -370,7 +370,7 @@ const SelectedCandidates = () => {
                   </div>
 
                   {/* Company */}
-                  <div className="col-span-2 min-w-0">
+                  <div className="col-span-2 min-w-0 pl-10">
                     <div className="flex items-center gap-2">
                       <Building2 className="w-3.5 h-3.5 text-primary opacity-60" />
                       <span className="text-xs font-bold text-foreground truncate">{cand.companyName}</span>
