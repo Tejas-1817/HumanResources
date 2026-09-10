@@ -62,17 +62,31 @@ def update_me(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ) -> AuthUserResponse:
-    if payload.name is not None:
-        current_user.name = payload.name
-    if payload.email is not None:
-        existing = db.query(User).filter(User.email == payload.email, User.id != current_user.id).first()
-        if existing:
-            from fastapi import HTTPException
-            raise HTTPException(status_code=400, detail="Email already taken")
-        current_user.email = payload.email
-    if payload.password is not None and payload.password:
-        from app.core.security import get_password_hash
-        current_user.hashed_password = get_password_hash(payload.password)
+    email_changed = False
+    if payload.name is not None and payload.name.strip():
+        current_user.name = payload.name.strip()
+    if payload.email is not None and payload.email.strip():
+        new_email = payload.email.strip().lower()
+        if new_email != current_user.email.lower():
+            existing = db.query(User).filter(User.email == new_email, User.id != current_user.id).first()
+            if existing:
+                from fastapi import HTTPException
+                raise HTTPException(status_code=400, detail="Email already taken")
+            current_user.email = new_email
+            email_changed = True
+    if payload.password is not None and payload.password.strip():
+        from app.core.security import hash_password
+        current_user.hashed_password = hash_password(payload.password.strip())
     db.commit()
     db.refresh(current_user)
-    return AuthUserResponse.model_validate(current_user)
+
+    res = AuthUserResponse.model_validate(current_user)
+    if email_changed:
+        from datetime import timedelta
+        from app.core.config import settings
+        from app.core.security import create_access_token
+        res.access_token = create_access_token(
+            data={"sub": current_user.email, "role": current_user.role},
+            expires_delta=timedelta(minutes=settings.access_token_expire_minutes),
+        )
+    return res

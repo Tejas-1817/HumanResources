@@ -51,16 +51,18 @@ class VendorLoginRequest(BaseModel):
     email: str = Field(..., min_length=1, max_length=255)
     password: str = Field(..., min_length=1, max_length=128)
 
+from typing import Any, List, Optional
+
 class VendorAuthResponse(BaseModel):
     id: int
     name: str
     email: str
     company_name: str
     role: str = "vendor"
+    access_token: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 
-from typing import Any, List, Optional
 
 class VendorTokenResponse(BaseModel):
     access_token: str

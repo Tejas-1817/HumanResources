@@ -347,5 +347,15 @@ def update_me(
     db: Session = Depends(get_db),
     current_vendor: Vendor = Depends(get_current_vendor)
 ):
+    old_email = current_vendor.email
     updated = VendorService.update_vendor(db, current_vendor.id, **payload.model_dump(exclude_none=True))
-    return VendorAuthResponse.model_validate(updated)
+    res = VendorAuthResponse.model_validate(updated)
+    if payload.email and payload.email.strip().lower() != old_email.lower():
+        from datetime import timedelta
+        from app.core.config import settings
+        from app.core.security import create_access_token
+        res.access_token = create_access_token(
+            data={"sub": updated.email, "role": "vendor"},
+            expires_delta=timedelta(minutes=settings.access_token_expire_minutes),
+        )
+    return res

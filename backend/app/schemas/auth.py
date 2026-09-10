@@ -16,6 +16,8 @@ class LoginRequest(BaseModel):
     password: str = Field(min_length=1, max_length=128)
 
 
+from typing import Any, Optional
+
 class AuthUserResponse(BaseModel):
     id: int
     name: str
@@ -24,6 +26,7 @@ class AuthUserResponse(BaseModel):
     is_active: bool
     company_id: int | None = None
     created_at: datetime
+    access_token: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -33,6 +36,7 @@ class VendorLoginResponse(BaseModel):
     email: str
     company_name: str
     role: str = "vendor"
+    access_token: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -43,11 +47,10 @@ class InterviewerLoginResponse(BaseModel):
     email: str
     phone: str | None = None
     role: str = "interviewer"
+    access_token: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 
-
-from typing import Any, Optional
 
 class TokenResponse(BaseModel):
     access_token: str

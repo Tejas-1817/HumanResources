@@ -32,26 +32,39 @@ def update_me(
     current_interviewer: Interviewer = Depends(get_current_interviewer),
     db: Session = Depends(get_db)
 ) -> InterviewerLoginResponse:
-    if payload.name is not None:
+    email_changed = False
+    if payload.name is not None and payload.name.strip():
         current_interviewer.name = payload.name.strip()
-    if payload.email is not None:
+    if payload.email is not None and payload.email.strip():
         payload_email = payload.email.strip().lower()
-        existing = db.query(Interviewer).filter(
-            Interviewer.email == payload_email,
-            Interviewer.id != current_interviewer.id
-        ).first()
-        if existing:
-            from fastapi import HTTPException
-            raise HTTPException(status_code=400, detail="Email already taken")
-        current_interviewer.email = payload_email
+        if payload_email != current_interviewer.email.lower():
+            existing = db.query(Interviewer).filter(
+                Interviewer.email == payload_email,
+                Interviewer.id != current_interviewer.id
+            ).first()
+            if existing:
+                from fastapi import HTTPException
+                raise HTTPException(status_code=400, detail="Email already taken")
+            current_interviewer.email = payload_email
+            email_changed = True
     if payload.phone is not None:
         current_interviewer.phone = payload.phone.strip() if payload.phone else None
-    if payload.password is not None and payload.password:
+    if payload.password is not None and payload.password.strip():
         from app.core.security import hash_password
-        current_interviewer.hashed_password = hash_password(payload.password)
+        current_interviewer.hashed_password = hash_password(payload.password.strip())
     db.commit()
     db.refresh(current_interviewer)
-    return InterviewerLoginResponse.model_validate(current_interviewer)
+
+    res = InterviewerLoginResponse.model_validate(current_interviewer)
+    if email_changed:
+        from datetime import timedelta
+        from app.core.config import settings
+        from app.core.security import create_access_token
+        res.access_token = create_access_token(
+            data={"sub": current_interviewer.email, "role": "interviewer"},
+            expires_delta=timedelta(minutes=settings.access_token_expire_minutes),
+        )
+    return res
 
 
 @router.get("/interviews", response_model=List[InterviewScheduleResponse], status_code=status.HTTP_200_OK)
