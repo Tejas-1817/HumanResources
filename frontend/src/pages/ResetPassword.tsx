@@ -54,7 +54,7 @@ const ResetPassword = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-8">
+    <div className="min-h-screen flex items-center justify-center bg-background p-4 sm:p-8">
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -62,7 +62,7 @@ const ResetPassword = () => {
         className="w-full max-w-md"
       >
         {success ? (
-          <div className="glass-card p-10 text-center animate-in fade-in zoom-in duration-500">
+          <div className="glass-card p-6 sm:p-10 text-center animate-in fade-in zoom-in duration-500">
             <div className="w-16 h-16 rounded-full bg-success/10 flex items-center justify-center text-success mx-auto mb-6">
               <CheckCircle2 className="w-8 h-8" />
             </div>
@@ -78,7 +78,7 @@ const ResetPassword = () => {
             </Link>
           </div>
         ) : (
-          <div className="glass-card p-10 border border-white/5">
+          <div className="glass-card p-6 sm:p-10 border border-white/5">
             <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary mb-6">
               <ShieldCheck className="w-6 h-6" />
             </div>

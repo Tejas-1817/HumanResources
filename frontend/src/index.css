@@ -414,7 +414,7 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground overflow-x-hidden;
   }
 
   /* Scrollbar */
@@ -454,15 +454,15 @@
   }
 
   .heading-lg {
-    @apply text-3xl font-bold tracking-tight text-foreground bg-clip-text;
+    @apply text-2xl sm:text-3xl font-bold tracking-tight text-foreground bg-clip-text;
   }
 
   .heading-md {
-    @apply text-xl font-bold tracking-tight text-foreground;
+    @apply text-lg sm:text-xl font-bold tracking-tight text-foreground;
   }
 
   .body-text {
-    @apply text-sm text-muted-foreground leading-relaxed;
+    @apply text-xs sm:text-sm text-muted-foreground leading-relaxed;
   }
 
   /* Glow Effects */
@@ -486,6 +486,23 @@
     @apply animate-pulse bg-muted rounded;
   }
 
+  /* Reusable Natural Text Wrapping for Data Columns (Client, Job Role, Source, etc.) */
+  .cell-text-wrap {
+    white-space: normal !important;
+    word-break: normal !important;
+    overflow-wrap: break-word !important;
+    hyphens: manual;
+    min-width: 0;
+  }
+
+  /* Reusable Zero-Overflow Table Layout to eliminate horizontal scrollbars */
+  .table-responsive-fit {
+    width: 100% !important;
+    max-width: 100% !important;
+    table-layout: fixed !important;
+    border-collapse: collapse !important;
+  }
+
   .custom-scrollbar::-webkit-scrollbar {
     width: 6px;
     height: 6px;
@@ -498,5 +515,14 @@
   }
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     @apply bg-muted-foreground/45;
+  }
+
+  /* Hide scrollbar for clean horizontal tab strips */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
 }

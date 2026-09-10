@@ -55,14 +55,14 @@ const ForgotPassword = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-8">
+    <div className="min-h-screen flex items-center justify-center bg-background p-4 sm:p-8">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
         className="w-full max-w-md"
       >
-        <div className="mb-8 flex justify-between items-center text-xs">
+        <div className="mb-6 sm:mb-8 flex justify-between items-center text-xs">
           <Link to="/login" className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors group font-bold">
             <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform" />
             HR Login

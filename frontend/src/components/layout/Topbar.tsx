@@ -264,7 +264,7 @@ export const Topbar = ({
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 10, scale: 0.95 }}
                   transition={{ duration: 0.15, ease: "easeOut" }}
-                  className="absolute right-0 mt-3 w-80 md:w-96 glass-card border border-border/50 shadow-2xl p-4 z-[70] overflow-hidden flex flex-col max-h-[480px]"
+                  className="absolute right-0 mt-3 w-[calc(100vw-2rem)] sm:w-80 md:w-96 max-w-sm glass-card border border-border/50 shadow-2xl p-4 z-[70] overflow-hidden flex flex-col max-h-[480px]"
                 >
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="text-sm font-bold text-foreground">Notifications</h3>
@@ -309,12 +309,12 @@ export const Topbar = ({
                                 <span className="w-2 h-2 rounded-full bg-primary shrink-0 mt-1" />
                               )}
                             </div>
-                            <p className="text-[11px] mt-1 leading-relaxed break-words font-medium">
+                            <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">
                               {notif.message}
                             </p>
-                            <div className="flex items-center gap-1 mt-2 text-[10px] text-muted-foreground/75 font-semibold">
+                            <div className="flex items-center gap-1 mt-1.5 text-[10px] text-muted-foreground/70">
                               <Clock className="w-3 h-3" />
-                              {formatTimeAgo(notif.created_at)}
+                              <span>{formatTimeAgo(notif.created_at)}</span>
                             </div>
                           </div>
                         </div>
@@ -327,6 +327,7 @@ export const Topbar = ({
           </AnimatePresence>
         </div>
 
+        {/* Profile Avatar / Menu */}
         <div className="relative">
           <button
             onClick={() => setShowProfile(!showProfile)}
@@ -349,7 +350,7 @@ export const Topbar = ({
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 10, scale: 0.95 }}
                   transition={{ duration: 0.15, ease: "easeOut" }}
-                  className="absolute right-0 mt-3 w-64 glass-card border border-border/50 shadow-2xl p-4 z-[70] overflow-hidden"
+                  className="absolute right-0 mt-3 w-[calc(100vw-2rem)] sm:w-64 max-w-xs glass-card border border-border/50 shadow-2xl p-4 z-[70] overflow-hidden"
                 >
                   <div className="flex items-center gap-3 mb-4">
                     <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary text-lg font-bold">

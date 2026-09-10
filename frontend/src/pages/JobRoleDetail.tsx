@@ -127,25 +127,34 @@ const JobRoleDetail = () => {
   };
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4 sm:space-y-6">
+      {/* Back button */}
+      <div>
+        <button
+          onClick={() => navigate(-1)}
+          className="inline-flex items-center gap-2 text-xs sm:text-sm font-semibold text-muted-foreground hover:text-primary transition-colors group"
+        >
+          <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
+          Back
+        </button>
+      </div>
 
       <PageHeader
         title={roleData.title}
         description={`${roleData.company_name} · Role #${roleData.id}`}
         actions={
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
             <StatusBadge status={roleData.status} />
             <button
               onClick={handleEditClick}
-              className="px-4 py-2 rounded-none font-bold text-sm transition-all flex items-center gap-2 bg-secondary text-foreground hover:bg-secondary/80 border border-border"
+              className="flex-1 sm:flex-initial px-3 sm:px-4 py-2 rounded-lg font-bold text-xs sm:text-sm transition-all flex items-center justify-center gap-2 bg-secondary text-foreground hover:bg-secondary/80 border border-border"
             >
               <Edit2 className="w-4 h-4" />
               Edit Details
             </button>
             <button
               onClick={() => setConfirmOpen(true)}
-              className={`px-4 py-2 rounded-none font-bold text-sm transition-all flex items-center gap-2 ${
+              className={`flex-1 sm:flex-initial px-3 sm:px-4 py-2 rounded-lg font-bold text-xs sm:text-sm transition-all flex items-center justify-center gap-2 ${
                 isOpen
                   ? "bg-destructive/10 text-destructive hover:bg-destructive/20 border border-destructive/20"
                   : "bg-success/10 text-success hover:bg-success/20 border border-success/20"
@@ -158,7 +167,7 @@ const JobRoleDetail = () => {
         }
       />
 
-      <div className="glass-card p-6 mb-6 rounded-xl border border-border/50 bg-card">
+      <div className="glass-card p-4 sm:p-6 rounded-xl border border-border/50 bg-card">
 
         {/* ── Job Details Strip ── */}
         {(roleData.location || roleData.work_mode || roleData.experience_required != null || roleData.deadline || roleData.project_time_period) && (
@@ -256,7 +265,7 @@ const JobRoleDetail = () => {
         </div>
       </div>
 
-      <div className="glass-card p-6 mb-6 rounded-xl border border-border/50">
+      <div className="glass-card p-4 sm:p-6 mb-6 rounded-xl border border-border/50">
         <UploadPage
           prefilledRole={{ id: roleData.id, title: roleData.title }}
           onSuccess={() => {
@@ -266,10 +275,10 @@ const JobRoleDetail = () => {
         />
       </div>
 
-      <div className="glass-card p-6 rounded-xl border border-border/50">
+      <div className="glass-card p-4 sm:p-6 rounded-xl border border-border/50">
         <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-4">Applications ({applications.length})</h3>
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="w-full min-w-[650px]">
             <thead>
               <tr className="border-b border-border">
                 <th className="text-left py-3 px-4 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Candidate</th>

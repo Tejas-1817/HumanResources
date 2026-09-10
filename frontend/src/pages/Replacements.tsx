@@ -108,8 +108,8 @@ const Replacements = () => {
           title="Staffing Replacements"
           description="Candidates hired to fill existing staffing gaps and role vacancies"
           actions={
-            <div className="flex items-center gap-3">
-              <div className="relative group w-full md:w-64">
+            <div className="flex items-center gap-3 w-full sm:w-auto">
+              <div className="relative group w-full sm:w-64">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
                 <input
                   type="text"
@@ -192,8 +192,9 @@ const Replacements = () => {
         </div>
 
         {/* Desktop View (Table) */}
-        <div className="hidden md:block glass-card overflow-hidden">
-          <div className="p-3 border-b border-border/50 bg-secondary/20">
+        <div className="hidden md:block glass-card overflow-x-auto">
+          <div className="min-w-[750px]">
+            <div className="p-3 border-b border-border/50 bg-secondary/20">
             <div className="grid grid-cols-12 gap-3 px-6 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
               <div className="col-span-4">New Hire</div>
               <div className="col-span-3">Company & Role</div>
@@ -239,13 +240,13 @@ const Replacements = () => {
 
                   {/* Company & Role */}
                   <div className="col-span-3 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Building2 className="w-3.5 h-3.5 text-primary opacity-60" />
-                      <span className="text-xs font-bold text-foreground truncate">{cand.companyName}</span>
+                    <div className="flex items-start gap-2 mb-1">
+                      <Building2 className="w-3.5 h-3.5 text-primary opacity-60 shrink-0 mt-0.5" />
+                      <span className="text-xs font-bold text-foreground cell-text-wrap leading-tight">{cand.companyName}</span>
                     </div>
-                    <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                      <Briefcase className="w-3 h-3" />
-                      <span className="truncate">{cand.roleTitle}</span>
+                    <div className="flex items-start gap-2 text-[11px] text-muted-foreground">
+                      <Briefcase className="w-3 h-3 shrink-0 mt-0.5" />
+                      <span className="cell-text-wrap leading-tight">{cand.roleTitle}</span>
                     </div>
                   </div>
 
@@ -272,10 +273,11 @@ const Replacements = () => {
                         e.stopPropagation();
                         navigate(`/candidates/${cand.candidate_id}`);
                       }}
-                      className="px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/20 text-primary text-[10px] font-bold hover:bg-primary/20 transition-all flex items-center gap-1.5 ml-auto group/btn"
+                      className="p-1.5 rounded-lg bg-primary/10 border border-primary/20 text-primary hover:bg-primary/20 transition-all inline-flex items-center justify-center ml-auto shadow-xs group/btn cursor-pointer"
+                      title="View"
+                      aria-label="View"
                     >
-                      <Eye className="w-3 h-3 group-hover/btn:scale-110 transition-transform" />
-                      View Profile
+                      <Eye className="w-3.5 h-3.5 group-hover/btn:scale-110 transition-transform" />
                     </button>
                   </div>
                 </motion.div>
@@ -284,6 +286,7 @@ const Replacements = () => {
           </div>
         </div>
       </div>
+    </div>
     </motion.div>
   );
 };

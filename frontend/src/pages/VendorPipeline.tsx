@@ -49,23 +49,23 @@ const VendorPipeline = () => {
   }, [pipeline, selectedRoleId]);
 
   return (
-    <div className="h-[calc(100vh-110px)] md:h-[calc(100vh-130px)] flex flex-col overflow-hidden space-y-4">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="min-h-[calc(100dvh-110px)] md:h-[calc(100vh-130px)] flex flex-col space-y-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-foreground mb-2">Pipeline Visibility</h1>
-          <p className="text-muted-foreground">Track the progress of your submitted candidates in real-time.</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-1">Pipeline Visibility</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground">Track the progress of your submitted candidates in real-time.</p>
         </div>
 
-        <div className="relative">
+        <div className="relative w-full sm:w-auto">
           <button
             onClick={() => setRoleDropdownOpen(!roleDropdownOpen)}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-secondary border border-border text-sm font-medium text-foreground hover:bg-secondary/80 transition-all min-w-[220px]"
+            className="w-full sm:w-auto flex items-center justify-between gap-2 px-4 py-2.5 rounded-xl bg-secondary border border-border text-sm font-medium text-foreground hover:bg-secondary/80 transition-all min-w-[200px]"
           >
-            <Briefcase className="w-4 h-4 text-muted-foreground" />
+            <Briefcase className="w-4 h-4 text-muted-foreground shrink-0" />
             <span className="flex-1 text-left truncate">
               {selectedRoleId ? jobs.find(j => j.id === selectedRoleId)?.title : "All Assigned Jobs"}
             </span>
-            <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${roleDropdownOpen ? "rotate-180" : ""}`} />
+            <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform shrink-0 ${roleDropdownOpen ? "rotate-180" : ""}`} />
           </button>
 
           {roleDropdownOpen && (
@@ -74,7 +74,7 @@ const VendorPipeline = () => {
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="absolute right-0 top-full mt-2 z-50 w-full glass-card p-2 shadow-2xl max-h-64 overflow-y-auto"
+                className="absolute right-0 left-0 sm:left-auto top-full mt-2 z-50 w-full sm:w-64 glass-card p-2 shadow-2xl max-h-64 overflow-y-auto"
               >
                 <button
                   onClick={() => { setSelectedRoleId(null); setRoleDropdownOpen(false); }}
@@ -97,10 +97,10 @@ const VendorPipeline = () => {
         </div>
       </div>
 
-      <div className="flex-1 overflow-x-auto pb-6 custom-scrollbar max-h-[calc(100vh-220px)]">
+      <div className="flex-1 overflow-x-auto pb-6 custom-scrollbar md:max-h-[calc(100vh-220px)]">
         <div className="flex gap-4 h-full min-h-[300px]">
           {columns.map(col => (
-            <div key={col.id} className="min-w-[260px] flex flex-col">
+            <div key={col.id} className="min-w-[85vw] sm:min-w-[260px] flex flex-col">
               <div className="flex items-center gap-2 mb-4 px-2">
                 <div className={`w-2.5 h-2.5 rounded-full ${col.color}`} />
                 <h3 className="text-sm font-bold text-foreground">{col.title}</h3>

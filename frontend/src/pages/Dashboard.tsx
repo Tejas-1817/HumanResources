@@ -1068,10 +1068,10 @@ const Dashboard = () => {
       variants={container}
       initial="hidden"
       animate="show"
-      className="space-y-6 bg-slate-50/50 -m-4 md:-m-6 p-4 md:p-6 min-h-screen"
+      className="space-y-6 bg-slate-50/50 p-3.5 sm:p-5 md:p-6 rounded-2xl min-h-screen"
     >
       {/* ─── Header ────────────────────────────────────── */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 pb-6 border-b border-slate-100 bg-white -mx-4 md:-mx-6 px-4 md:px-6 pt-4 md:pt-6 shadow-sm">
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 pb-6 border-b border-slate-100 bg-white rounded-2xl px-4 sm:px-6 pt-4 sm:pt-6 shadow-sm">
         <div>
           <div className="flex items-center gap-3">
             <button
@@ -1248,7 +1248,7 @@ const Dashboard = () => {
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 10, scale: 0.95 }}
                     transition={{ duration: 0.15, ease: "easeOut" }}
-                    className="absolute right-0 mt-2 w-80 md:w-96 bg-white border border-slate-100 shadow-2xl rounded-2xl p-4 z-50 overflow-hidden flex flex-col max-h-[400px]"
+                    className="absolute right-0 mt-2 w-[calc(100vw-2rem)] sm:w-80 md:w-96 max-w-sm bg-white border border-slate-100 shadow-2xl rounded-2xl p-4 z-50 overflow-hidden flex flex-col max-h-[400px]"
                   >
                     <div className="flex items-center justify-between mb-3">
                       <h3 className="text-xs font-black text-slate-800">Notifications</h3>
@@ -1322,7 +1322,7 @@ const Dashboard = () => {
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 10, scale: 0.95 }}
                     transition={{ duration: 0.15, ease: "easeOut" }}
-                    className="absolute right-0 mt-2 w-56 bg-white border border-slate-100 shadow-2xl rounded-2xl p-4 z-50 overflow-hidden"
+                    className="absolute right-0 mt-2 w-[calc(100vw-2rem)] sm:w-56 max-w-xs bg-white border border-slate-100 shadow-2xl rounded-2xl p-4 z-50 overflow-hidden"
                   >
                     <div className="flex items-center gap-3 mb-3">
                       <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-md font-black shrink-0">
@@ -1350,7 +1350,7 @@ const Dashboard = () => {
       </div>
 
       {/* ─── Row 1: Metrics Cards ─────────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-3.5 sm:gap-4">
         <MetricCard
           label="Total Candidates"
           value={data?.total_candidates ?? 0}
@@ -1392,7 +1392,7 @@ const Dashboard = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
         {/* Recruitment Statistics */}
-        <motion.div variants={item} className="bg-white border border-blue-200/80 hover:border-blue-300 transition-colors rounded-2xl p-5 shadow-sm flex flex-col h-[390px] overflow-hidden justify-between">
+        <motion.div variants={item} className="bg-white border border-blue-200/80 hover:border-blue-300 transition-colors rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col min-h-[380px] h-full justify-between">
           {/* Header */}
           <div className="flex justify-between items-center mb-3">
              <h3 className="text-sm font-black text-slate-800 tracking-tight">Recruitment Statistics</h3>
@@ -1434,7 +1434,7 @@ const Dashboard = () => {
           </div>
 
           {/* Top 5 Cards */}
-          <div className="grid grid-cols-5 gap-4 mb-2 flex-1">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2.5 sm:gap-3 mb-2 flex-1">
             {overallStats.map((stat) => (
               <div
                 key={stat.name}
@@ -1456,9 +1456,9 @@ const Dashboard = () => {
           <div className="bg-slate-50/50 rounded-xl pt-3 pb-3 px-5 border border-slate-100">
 
             {/* Bottom Metrics */}
-            <div className="flex items-center justify-between pt-3 border-t border-slate-200/60">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 pt-3 border-t border-slate-200/60">
                <div className="flex items-center gap-3 flex-1">
-                  <div className="w-8 h-8 rounded-lg bg-indigo-500 flex items-center justify-center shadow-md shadow-indigo-200">
+                  <div className="w-8 h-8 rounded-lg bg-indigo-500 flex items-center justify-center shadow-md shadow-indigo-200 shrink-0">
                      <BarChart3 className="w-4 h-4 text-white" />
                   </div>
                   <div>
@@ -1467,10 +1467,10 @@ const Dashboard = () => {
                   </div>
                </div>
 
-               <div className="w-px h-6 bg-slate-200" />
+               <div className="hidden sm:block w-px h-6 bg-slate-200" />
 
-               <div className="flex items-center gap-3 flex-1 justify-center">
-                  <div className="w-8 h-8 rounded-full bg-purple-50 flex items-center justify-center">
+               <div className="flex items-center gap-3 flex-1 sm:justify-center">
+                  <div className="w-8 h-8 rounded-full bg-purple-50 flex items-center justify-center shrink-0">
                      <TrendingUp className="w-4 h-4 text-purple-600" />
                   </div>
                   <div>
@@ -1479,11 +1479,11 @@ const Dashboard = () => {
                   </div>
                </div>
 
-               <div className="w-px h-6 bg-slate-200" />
+               <div className="hidden sm:block w-px h-6 bg-slate-200" />
 
-               <div className="flex items-center gap-3 flex-1 justify-end">
+               <div className="flex items-center gap-3 flex-1 sm:justify-end">
                   <div className="bg-emerald-50 rounded-xl flex items-center gap-2 px-3 py-1.5 border border-emerald-100/60">
-                     <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center">
+                     <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
                        <BadgeCheck className="w-3.5 h-3.5 text-emerald-600" />
                      </div>
                      <div>
@@ -1499,7 +1499,7 @@ const Dashboard = () => {
 
 
         {/* Positions (2-column wide) */}
-        <motion.div variants={item} className="bg-white border border-blue-200/80 hover:border-blue-300 transition-colors rounded-2xl p-6 shadow-sm flex flex-col justify-between h-[390px]">
+        <motion.div variants={item} className="bg-white border border-blue-200/80 hover:border-blue-300 transition-colors rounded-2xl p-4 sm:p-6 shadow-sm flex flex-col justify-between min-h-[380px] h-full">
           <div>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-black text-slate-800 tracking-tight">Positions</h3>
@@ -1522,9 +1522,9 @@ const Dashboard = () => {
                 </div>
               ) : (
                 companyPositionsList.map((c) => (
-                  <div key={c.companyId} className="pb-3.5 border-b border-slate-100 last:border-0 last:pb-0 flex items-center justify-between gap-4">
+                  <div key={c.companyId} className="pb-3.5 border-b border-slate-100 last:border-0 last:pb-0 flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4">
                     {/* Company Details */}
-                    <div className="shrink-0 min-w-[160px] max-w-[220px]">
+                    <div className="shrink-0 sm:min-w-[140px] sm:max-w-[200px]">
                       <h4
                         className="text-xs font-black text-slate-800 hover:text-blue-600 transition-colors cursor-pointer truncate"
                         onClick={() => navigate(`/companies?id=${c.companyId}`)}
@@ -1621,7 +1621,7 @@ const Dashboard = () => {
         </motion.div>
 
         {/* Upcoming Interviews */}
-        <motion.div variants={item} className="bg-white border border-blue-200/80 hover:border-blue-300 transition-colors rounded-2xl p-6 shadow-sm flex flex-col justify-between h-[390px]">
+        <motion.div variants={item} className="bg-white border border-blue-200/80 hover:border-blue-300 transition-colors rounded-2xl p-4 sm:p-6 shadow-sm flex flex-col justify-between min-h-[380px] h-full">
           <div>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-black text-slate-800 tracking-tight">Upcoming Interviews</h3>
@@ -1769,7 +1769,7 @@ const Dashboard = () => {
         <motion.div
           id="todays-interviews"
           variants={item}
-          className={`bg-white border rounded-2xl p-6 shadow-sm flex flex-col justify-between h-[390px] transition-all duration-500 ${highlightTodaysInterviews
+          className={`bg-white border rounded-2xl p-4 sm:p-6 shadow-sm flex flex-col justify-between min-h-[380px] h-full transition-all duration-500 ${highlightTodaysInterviews
               ? "border-amber-400 ring-4 ring-amber-400/30 shadow-xl shadow-amber-500/10 scale-[1.02]"
               : "border-blue-200/80 hover:border-blue-300"
             }`}
@@ -1833,7 +1833,7 @@ const Dashboard = () => {
         </motion.div>
 
         {/* Interview Schedule Calendar */}
-        <motion.div variants={item} className="bg-white border border-blue-200/80 hover:border-blue-300 transition-colors rounded-2xl p-6 shadow-sm flex flex-col justify-between h-[390px]">
+        <motion.div variants={item} className="bg-white border border-blue-200/80 hover:border-blue-300 transition-colors rounded-2xl p-4 sm:p-6 shadow-sm flex flex-col justify-between min-h-[380px] h-full">
           <DashboardCalendar
             selectedDate={selectedCalendarDate}
             onSelectDate={setSelectedCalendarDate}
@@ -1848,7 +1848,7 @@ const Dashboard = () => {
         </motion.div>
 
         {/* Activity Feed */}
-        <motion.div variants={item} className="bg-white border border-blue-200/80 hover:border-blue-300 transition-colors rounded-2xl p-6 shadow-sm flex flex-col justify-between h-[390px]">
+        <motion.div variants={item} className="bg-white border border-blue-200/80 hover:border-blue-300 transition-colors rounded-2xl p-4 sm:p-6 shadow-sm flex flex-col justify-between min-h-[380px] h-full">
           <div>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-black text-slate-800 tracking-tight">Activity Feed</h3>
@@ -1883,7 +1883,7 @@ const Dashboard = () => {
         {/* Upcoming Holidays */}
         <motion.div
           variants={item}
-          className="bg-white border border-blue-200/80 hover:border-blue-300 transition-colors rounded-2xl p-6 shadow-sm flex flex-col justify-between h-[390px]"
+          className="bg-white border border-blue-200/80 hover:border-blue-300 transition-colors rounded-2xl p-4 sm:p-6 shadow-sm flex flex-col justify-between min-h-[380px] h-full"
         >
           <div>
             <div className="flex items-center justify-between mb-4">

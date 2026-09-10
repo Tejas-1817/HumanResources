@@ -393,29 +393,29 @@ const Pipeline = () => {
   const selectedCompany = selectedCompanyId ? companyById.get(selectedCompanyId) : null;
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="h-[calc(100vh-110px)] md:h-[calc(100vh-130px)] flex flex-col overflow-hidden">
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="min-h-[calc(100dvh-110px)] md:h-[calc(100vh-130px)] flex flex-col">
       <PageHeader
         title="Recruitment Pipeline"
         description="Manage candidates across different roles and companies"
         actions={
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
             <button
               onClick={() => queryClient.invalidateQueries({ queryKey: ["pipeline"] })}
-              className="p-2.5 rounded-lg bg-secondary border border-border text-muted-foreground hover:text-foreground hover:bg-secondary/80 transition-all"
+              className="p-2.5 rounded-lg bg-secondary border border-border text-muted-foreground hover:text-foreground hover:bg-secondary/80 transition-all flex-shrink-0"
               title="Refresh Board"
             >
               <Filter className="w-4 h-4" />
             </button>
-            <div className="relative">
+            <div className="relative flex-1 sm:flex-none">
               <button
                 onClick={() => setCompanyDropdownOpen(!companyDropdownOpen)}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-secondary border border-border text-sm font-medium text-foreground hover:bg-secondary/80 transition-all min-w-[200px]"
+                className="w-full flex items-center justify-between gap-2 px-3 sm:px-4 py-2.5 rounded-xl bg-secondary border border-border text-xs sm:text-sm font-medium text-foreground hover:bg-secondary/80 transition-all min-w-[140px] sm:min-w-[180px]"
               >
-                <Building2 className="w-4 h-4 text-muted-foreground" />
+                <Building2 className="w-4 h-4 text-muted-foreground shrink-0" />
                 <span className="flex-1 text-left truncate">
                   {selectedCompany ? selectedCompany.name : "All Companies"}
                 </span>
-                <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${companyDropdownOpen ? "rotate-180" : ""}`} />
+                <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform shrink-0 ${companyDropdownOpen ? "rotate-180" : ""}`} />
               </button>
 
               <AnimatePresence>
@@ -469,16 +469,16 @@ const Pipeline = () => {
               </AnimatePresence>
             </div>
 
-            <div className="relative">
+            <div className="relative flex-1 sm:flex-none">
               <button
                 onClick={() => setRoleDropdownOpen(!roleDropdownOpen)}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-secondary border border-border text-sm font-medium text-foreground hover:bg-secondary/80 transition-all min-w-[200px]"
+                className="w-full flex items-center justify-between gap-2 px-3 sm:px-4 py-2.5 rounded-xl bg-secondary border border-border text-xs sm:text-sm font-medium text-foreground hover:bg-secondary/80 transition-all min-w-[140px] sm:min-w-[180px]"
               >
-                <Briefcase className="w-4 h-4 text-muted-foreground" />
+                <Briefcase className="w-4 h-4 text-muted-foreground shrink-0" />
                 <span className="flex-1 text-left truncate">
                   {selectedRoleId ? roleById.get(selectedRoleId)?.title : "Select specific role..."}
                 </span>
-                <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${roleDropdownOpen ? "rotate-180" : ""}`} />
+                <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform shrink-0 ${roleDropdownOpen ? "rotate-180" : ""}`} />
               </button>
 
               <AnimatePresence>
@@ -590,11 +590,11 @@ const Pipeline = () => {
         </motion.div>
       )}
 
-      <div className="flex items-center gap-2 mb-6 flex-wrap" key={`summary-${selectedCompanyId}-${selectedRoleId}`}>
+      <div className="flex items-center gap-2 mb-4 md:mb-6 overflow-x-auto no-scrollbar pb-1 flex-nowrap md:flex-wrap" key={`summary-${selectedCompanyId}-${selectedRoleId}`}>
         {columns.map((col, idx) => {
           const stage = stageMap.find((s) => s.id === col.id)!;
           return (
-            <div key={col.id} className="flex items-center gap-2">
+            <div key={col.id} className="flex items-center gap-2 shrink-0">
               <div className={`flex items-center gap-2 px-3 py-2.5 rounded-lg bg-gradient-to-r ${stage.bgGlow} to-transparent border border-border/50`}>
                 <div className={`w-2 h-2 rounded-full ${stage.color}`} />
                 <span className="text-xs font-medium text-foreground truncate">{col.title}</span>
@@ -608,7 +608,7 @@ const Pipeline = () => {
         })}
       </div>
 
-      <div className="flex-1 overflow-x-auto pb-6 custom-scrollbar snap-x snap-mandatory max-h-[calc(100vh-240px)]">
+      <div className="flex-1 overflow-x-auto pb-6 custom-scrollbar snap-x snap-mandatory">
         {!selectedRoleId ? (
           <div className="h-full min-h-[500px] flex flex-col items-center justify-center text-center">
             <motion.div

@@ -130,13 +130,13 @@ const JobRoles = () => {
         title="Job Roles"
         description="Manage job openings across companies"
         actions={
-          <button onClick={openCreate} className="px-4 py-2.5 rounded-lg bg-primary text-primary-foreground font-medium text-sm hover:bg-primary/90 transition-all flex items-center gap-2">
+          <button onClick={openCreate} className="w-full sm:w-auto justify-center px-4 py-2.5 rounded-lg bg-primary text-primary-foreground font-medium text-sm hover:bg-primary/90 transition-all flex items-center gap-2">
             <Plus className="w-4 h-4" /> Create Role
           </button>
         }
       />
 
-      <div className="flex gap-2 mb-6">
+      <div className="flex flex-wrap gap-2 mb-6">
         {["All", "Open", "Closed"].map((f) => (
           <button
             key={f}

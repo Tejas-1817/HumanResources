@@ -35,12 +35,12 @@ const VendorDashboard = () => {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-8">
       <div>
-        <h1 className="text-3xl font-bold text-foreground mb-2">
+        <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-2">
           Welcome, {vendor?.name}
         </h1>
-        <p className="text-muted-foreground">
+        <p className="text-sm sm:text-base text-muted-foreground">
           Here is an overview of your recruitment activity.
         </p>
       </div>
@@ -88,42 +88,42 @@ const VendorDashboard = () => {
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 glass-card p-8">
-          <div className="flex items-center justify-between mb-8">
-            <h2 className="text-xl font-bold flex items-center gap-3">
-              <Users className="w-6 h-6 text-primary" />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
+        <div className="lg:col-span-2 glass-card p-4 sm:p-6 lg:p-8">
+          <div className="flex items-center justify-between mb-6 sm:mb-8">
+            <h2 className="text-lg sm:text-xl font-bold flex items-center gap-3">
+              <Users className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
               Recent Guidelines
             </h2>
           </div>
 
-          <div className="space-y-6">
-            <div className="flex gap-4">
-              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold shrink-0">1</div>
+          <div className="space-y-4 sm:space-y-6">
+            <div className="flex gap-3 sm:gap-4">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold shrink-0 text-sm sm:text-base">1</div>
               <div>
-                <h4 className="font-bold text-foreground mb-1">Quality Over Quantity</h4>
-                <p className="text-sm text-muted-foreground">Ensure candidates match at least 70% of the required skills before uploading.</p>
+                <h4 className="font-bold text-foreground mb-1 text-sm sm:text-base">Quality Over Quantity</h4>
+                <p className="text-xs sm:text-sm text-muted-foreground">Ensure candidates match at least 70% of the required skills before uploading.</p>
               </div>
             </div>
-            <div className="flex gap-4">
-              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold shrink-0">2</div>
+            <div className="flex gap-3 sm:gap-4">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold shrink-0 text-sm sm:text-base">2</div>
               <div>
-                <h4 className="font-bold text-foreground mb-1">Update Statuses</h4>
-                <p className="text-sm text-muted-foreground">Keep track of your candidates in the pipeline view. HR will update statuses as they progress.</p>
+                <h4 className="font-bold text-foreground mb-1 text-sm sm:text-base">Update Statuses</h4>
+                <p className="text-xs sm:text-sm text-muted-foreground">Keep track of your candidates in the pipeline view. HR will update statuses as they progress.</p>
               </div>
             </div>
-            <div className="flex gap-4">
-              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold shrink-0">3</div>
+            <div className="flex gap-3 sm:gap-4">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold shrink-0 text-sm sm:text-base">3</div>
               <div>
-                <h4 className="font-bold text-foreground mb-1">Bulk Uploads</h4>
-                <p className="text-sm text-muted-foreground">You can upload multiple resumes at once for a specific job opening.</p>
+                <h4 className="font-bold text-foreground mb-1 text-sm sm:text-base">Bulk Uploads</h4>
+                <p className="text-xs sm:text-sm text-muted-foreground">You can upload multiple resumes at once for a specific job opening.</p>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="glass-card p-8 bg-primary/5 border-primary/20">
-          <h2 className="text-xl font-bold mb-6">Quick Actions</h2>
+        <div className="glass-card p-4 sm:p-6 lg:p-8 bg-primary/5 border-primary/20">
+          <h2 className="text-lg sm:text-xl font-bold mb-4 sm:mb-6">Quick Actions</h2>
           <div className="space-y-4">
             <Link
               to="/vendor/upload"

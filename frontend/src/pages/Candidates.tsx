@@ -9,6 +9,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Candidate, deleteCandidate, getCandidates, getCompanies, getVendors, getJobRoles, getPipeline } from "@/api/resumeiq";
 import UploadPage from "./Upload";
 import { toast } from "sonner";
+import { formatJobRoleTitle } from "@/components/ui/TableDataCell";
 
 const PAGE_SIZE = 50;
 
@@ -221,7 +222,7 @@ const Candidates = () => {
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="glass-card p-6 rounded-xl border border-primary/10 bg-primary/5 shadow-2xl shadow-primary/5"
+            className="glass-card p-4 sm:p-6 rounded-xl border border-primary/10 bg-primary/5 shadow-2xl shadow-primary/5"
           >
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <div>
@@ -444,21 +445,21 @@ const Candidates = () => {
 
         {/* Desktop View (Table) */}
         <div className="hidden md:block glass-card rounded-xl border border-border/50 overflow-hidden shadow-sm">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+          <div className="w-full overflow-hidden">
+            <table className="w-full table-fixed text-left border-collapse table-responsive-fit">
               <thead>
                 <tr className="border-b border-border bg-secondary/30">
-                  <th className="py-3 px-4 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Candidate</th>
-                  <th className="py-3 px-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Contact Information</th>
-                  <th className="py-3 pl-0 pr-4 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Experience</th>
-                  <th className="py-3 px-4 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Top Skills</th>
+                  <th className={`py-3.5 px-3 text-[10px] font-bold text-muted-foreground uppercase tracking-widest text-left ${unassignedOnly ? 'w-[28%]' : 'w-[18%]'}`}>Candidate</th>
+                  <th className={`py-3.5 px-3 text-[10px] font-bold text-muted-foreground uppercase tracking-widest text-left ${unassignedOnly ? 'w-[28%]' : 'w-[20%]'}`}>Contact Information</th>
+                  <th className={`py-3.5 px-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest text-center ${unassignedOnly ? 'w-[14%]' : 'w-[10%]'}`}>Experience</th>
+                  <th className={`py-3.5 px-3 text-[10px] font-bold text-muted-foreground uppercase tracking-widest text-left ${unassignedOnly ? 'w-[22%]' : 'w-[17%]'}`}>Top Skills</th>
                   {!unassignedOnly && (
                     <>
-                      <th className="py-3 px-4 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Source</th>
-                      <th className="py-3 px-4 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Applied To</th>
+                      <th className="py-3.5 px-3 text-[10px] font-bold text-muted-foreground uppercase tracking-widest text-left w-[12%]">Source</th>
+                      <th className="py-3.5 px-3 text-[10px] font-bold text-muted-foreground uppercase tracking-widest text-left w-[16%]">Applied To</th>
                     </>
                   )}
-                  <th className="py-3 px-4 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Actions</th>
+                  <th className={`py-3.5 px-3 text-[10px] font-bold text-muted-foreground uppercase tracking-widest text-right ${unassignedOnly ? 'w-[8%]' : 'w-[7%]'}`}>Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/50">
@@ -487,94 +488,107 @@ const Candidates = () => {
                       onClick={() => !unassignedOnly && navigate(`/candidates/${c.id}`)}
                       className={`${!unassignedOnly ? 'hover:bg-primary/[0.02] cursor-pointer' : 'cursor-default'} transition-colors group`}
                     >
-                      <td className="py-3 px-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-secondary border border-border flex items-center justify-center text-[10px] font-bold text-primary group-hover:border-primary/30 transition-all">
-                            {c.name?.split(" ").filter(Boolean).map(n => n[0]).join("").toUpperCase().slice(0, 2) || "??"}
+                      <td className="py-3 px-3 align-middle">
+                        <div className="min-w-0 max-w-full">
+                          <p className="text-sm font-bold text-foreground group-hover:text-primary transition-colors cell-text-wrap leading-tight">{c.name || "Unknown Candidate"}</p>
+                          {c.is_replacement && (
+                            <span className="text-[8px] font-black text-amber-500 uppercase tracking-widest">REPLACEMENT</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="py-3 px-3 align-middle">
+                        <div className="space-y-1 min-w-0 max-w-full">
+                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground leading-tight">
+                            <Mail className="w-3.5 h-3.5 shrink-0" />
+                            <span className="cell-text-wrap break-all text-[11px]">{c.email || "No email"}</span>
                           </div>
-                          <div>
-                            <p className="text-sm font-bold text-foreground group-hover:text-primary transition-colors">{c.name || "Unknown Candidate"}</p>
-                            {c.is_replacement && (
-                              <span className="text-[8px] font-black text-amber-500 uppercase tracking-widest">REPLACEMENT</span>
-                            )}
+                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground leading-tight">
+                            <Phone className="w-3.5 h-3.5 text-primary/60 shrink-0" />
+                            <span className="cell-text-wrap break-all text-[11px]">{c.phone || "No phone number"}</span>
                           </div>
                         </div>
                       </td>
-                      <td className="py-3 px-2">
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <Mail className="w-3 h-3" /> {c.email || "No email"}
-                          </div>
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <Phone className="w-3 h-3 text-primary/60" /> {c.phone || "No phone number"}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="py-3 pl-0 pr-4">
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-secondary text-[11px] font-bold text-foreground">
-                          <Calendar className="w-3 h-3" /> {c.experience_years || 0} Years
+                      <td className="py-3 px-2 align-middle text-center">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-secondary text-[11px] font-bold text-foreground whitespace-nowrap">
+                          <Calendar className="w-3 h-3 text-primary shrink-0" /> {c.experience_years || 0} Yrs
                         </span>
                       </td>
-                      <td className="py-3 px-4">
-                        <div className="flex flex-wrap gap-1.5 max-w-[200px]">
+                      <td className="py-3 px-3 align-middle">
+                        <div className="flex flex-wrap gap-1 max-w-full">
                           {(c.skills || "").split(",").slice(0, 3).map((s, idx) => (
-                            <span key={idx} className="px-2 py-0.5 rounded bg-primary/5 text-primary text-[9px] font-bold border border-primary/10">
+                            <span key={idx} className="px-1.5 py-0.5 rounded bg-primary/5 text-primary text-[9px] font-bold border border-primary/10 whitespace-nowrap">
                               {s.trim()}
                             </span>
                           ))}
                           {(c.skills || "").split(",").length > 3 && (
-                            <span className="text-[9px] text-muted-foreground font-bold">+{((c.skills || "").split(",").length - 3)} more</span>
+                            <span className="text-[9px] text-muted-foreground font-bold">+{((c.skills || "").split(",").length - 3)}</span>
                           )}
-                          {!(c.skills || "").trim() && <span className="text-[10px] text-muted-foreground italic">No skills listed</span>}
+                          {!(c.skills || "").trim() && <span className="text-[10px] text-muted-foreground italic">None</span>}
                         </div>
                       </td>
                       {!unassignedOnly && (
                         <>
-                          <td className="py-3 px-4">
-                            <span className="text-[11px] font-bold text-foreground">{c.source_label}</span>
+                          <td className="py-3 px-3 align-middle">
+                            <span className="inline-block text-[11px] font-bold text-foreground cell-text-wrap leading-tight">{c.source_label}</span>
                           </td>
-                          <td className="py-3 px-4">
+                          <td className="py-3 px-3 align-middle">
                             {appsByCandidate.has(c.id) ? (
-                              <div>
-                                <div className="flex items-center gap-1.5 mb-0.5">
-                                  <Building2 className="w-3 h-3 text-primary opacity-60" />
-                                  <span className="text-[11px] font-bold text-foreground truncate max-w-[120px]">
-                                    {roleById.get(appsByCandidate.get(c.id).job_role_id)?.company_name || "Unknown"}
+                              <div className="min-w-0 max-w-full">
+                                <div className="flex items-start gap-1.5 mb-0.5">
+                                  <Building2 className="w-3.5 h-3.5 text-primary opacity-70 shrink-0 mt-0.5" />
+                                  <span
+                                    className="text-xs font-bold text-foreground cell-text-wrap leading-snug"
+                                    style={{
+                                      whiteSpace: "normal",
+                                      wordBreak: "normal",
+                                      overflowWrap: "break-word",
+                                    }}
+                                  >
+                                    {roleById.get(appsByCandidate.get(c.id).job_role_id)?.company_name || "Unknown Company"}
                                   </span>
                                 </div>
-                                <p className="text-[10px] text-muted-foreground pl-4 truncate max-w-[120px]">
-                                  {roleById.get(appsByCandidate.get(c.id).job_role_id)?.title || "Unknown Role"}
-                                </p>
+                                <div
+                                  className="text-[11px] pl-5 cell-text-wrap leading-snug text-muted-foreground"
+                                  style={{
+                                    whiteSpace: "normal",
+                                    wordBreak: "normal",
+                                    overflowWrap: "break-word",
+                                  }}
+                                >
+                                  {formatJobRoleTitle(roleById.get(appsByCandidate.get(c.id).job_role_id)?.title)}
+                                </div>
                               </div>
                             ) : (
-                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-500 text-[9px] font-black uppercase tracking-widest ring-1 ring-emerald-500/20 ml-4">
-                                <span className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 text-[9px] font-black uppercase tracking-widest ring-1 ring-emerald-500/20 whitespace-nowrap">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                                 Available
                               </span>
                             )}
                           </td>
                         </>
                       )}
-                      <td className="py-3 px-4">
-                        <div className="flex items-center gap-3">
+                      <td className="py-3 px-3 align-middle text-right">
+                        <div className="flex items-center justify-end gap-1.5">
                           {!unassignedOnly && (
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
                                 navigate(`/candidates/${c.id}`);
                               }}
-                              className="px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/20 text-primary text-[10px] font-bold hover:bg-primary/20 transition-all flex items-center gap-1.5 group/btn"
+                              className="p-1.5 rounded-lg bg-primary/10 border border-primary/20 text-primary hover:bg-primary/20 transition-all inline-flex items-center justify-center shadow-xs group/btn cursor-pointer"
+                              title="View"
+                              aria-label="View"
                             >
-                              <Eye className="w-3 h-3 group-hover/btn:scale-110 transition-transform" />
-                              View Profile
+                              <Eye className="w-3.5 h-3.5 group-hover/btn:scale-110 transition-transform" />
                             </button>
                           )}
                           <button
                             onClick={(e) => handleDeleteCandidate(e, c.id, c.name)}
-                            className="p-2 rounded-lg bg-destructive/10 text-destructive hover:bg-destructive hover:text-white transition-all shadow-sm"
+                            className="p-1.5 rounded-lg bg-destructive/10 text-destructive hover:bg-destructive hover:text-white transition-all shadow-xs inline-flex items-center justify-center cursor-pointer"
                             title="Delete Candidate"
+                            aria-label="Delete Candidate"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
                       </td>
@@ -587,12 +601,12 @@ const Candidates = () => {
         </div>
 
         {/* Pagination Footer */}
-        <div className="p-4 bg-secondary/20 border-t border-border flex items-center justify-between">
-          <p className="text-xs text-muted-foreground font-medium">
+        <div className="p-4 bg-secondary/20 border border-border/50 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-3">
+          <p className="text-xs text-muted-foreground font-medium text-center sm:text-left">
             Showing <span className="text-foreground">{candidates.length}</span> of <span className="text-foreground">{totalFromServer}</span> candidates
           </p>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 sm:gap-4">
             <button
               disabled={page <= 1}
               onClick={() => setPage(p => Math.max(1, p - 1))}

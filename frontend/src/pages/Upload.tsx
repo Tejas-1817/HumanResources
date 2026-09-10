@@ -179,7 +179,7 @@ const UploadPage = ({ prefilledRole, prefilledCompanyId, onSuccess }: UploadProp
       <div className="glass-card p-5 rounded-xl border border-primary/5 space-y-5">
         <div>
           <label className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mb-2.5 block">Source Channel</label>
-          <div className="grid grid-cols-3 gap-1.5">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
             {SOURCES.map((s) => (
               <button
                 key={s.id}

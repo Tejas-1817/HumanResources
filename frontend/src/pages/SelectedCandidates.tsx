@@ -11,13 +11,13 @@ import {
   ExternalLink,
   Clock,
   Eye,
-  EyeOff,
   ListFilter,
   ChevronDown,
   Trash2,
 } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Modal } from "@/components/ui/Modal";
+import { TableDataCellWithIcon, SourceBadge, formatJobRoleTitle } from "@/components/ui/TableDataCell";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getCompanies,
@@ -136,7 +136,7 @@ const SelectedCandidates = () => {
           title="Successful Hires"
           description="A comprehensive list of candidates successfully selected across all clients"
           actions={
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5 sm:gap-3 w-full sm:w-auto">
               <div className="relative" ref={sortRef}>
                 <button
                   onClick={() => setIsSortOpen(!isSortOpen)}
@@ -181,11 +181,11 @@ const SelectedCandidates = () => {
                   )}
                 </AnimatePresence>
               </div>
-              <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-primary/10 border border-primary/20 ml-2">
+              <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-primary/10 border border-primary/20">
                 <span className="text-xs font-bold text-primary">{selectedCandidates.length}</span>
                 <span className="text-[10px] font-bold text-primary/60 uppercase tracking-widest">Total</span>
               </div>
-              <div className="relative group w-full md:w-64">
+              <div className="relative group w-full sm:w-64">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
                 <input
                   type="text"
@@ -247,71 +247,37 @@ const SelectedCandidates = () => {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 pt-2.5 border-t border-border/50 mb-2.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2.5 border-t border-border/50 mb-2.5">
                   <div className="space-y-1">
                     <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Client</p>
-                    <p className="text-xs font-semibold text-foreground flex items-center gap-1.5 truncate">
-                      <Building2 className="w-3 h-3 text-primary opacity-60" /> {cand.companyName}
-                    </p>
+                    <TableDataCellWithIcon
+                      icon={<Building2 className="w-3.5 h-3.5 text-primary opacity-60" />}
+                      text={cand.companyName}
+                      textClassName="text-xs font-semibold"
+                    />
                   </div>
                   <div className="space-y-1">
                     <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Job Role</p>
-                    <p className="text-xs font-semibold text-foreground flex items-center gap-1.5 truncate">
-                      <Briefcase className="w-3 h-3 text-primary opacity-60" /> {cand.technology}
-                    </p>
+                    <TableDataCellWithIcon
+                      icon={<Briefcase className="w-3.5 h-3.5 text-primary opacity-60" />}
+                      text={cand.technology}
+                      textClassName="text-xs font-semibold"
+                    />
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 pt-2.5 border-t border-border/50">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2.5 border-t border-border/50">
                   <div className="space-y-1">
                     <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Duration</p>
                     <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                      <Clock className="w-3 h-3 text-primary opacity-60" /> {cand.duration}
+                      <Clock className="w-3.5 h-3.5 text-primary opacity-60 shrink-0" /> {cand.duration}
                     </p>
                   </div>
                   <div className="space-y-1">
                     <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Source</p>
-                    <p className="text-xs font-bold text-foreground">
+                    <div className="text-xs font-bold text-foreground cell-text-wrap">
                       {cand.source}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3 pt-2.5 border-t border-border/50">
-                  <div className="space-y-1">
-                    <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Hired Date</p>
-                    <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                      <Calendar className="w-3 h-3 text-primary opacity-60" /> {cand.date ? new Date(cand.date).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) : "—"}
-                    </p>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Cost</p>
-                    {cand.cost === "N/A" ? (
-                      <p className="text-xs font-semibold text-muted-foreground">N/A</p>
-                    ) : (
-                      <div className="flex items-center gap-1.5 mt-0.5">
-                        <span className="text-xs font-bold text-success">
-                          {revealedCosts[cand.id] ? cand.cost : "••••••"}
-                        </span>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setRevealedCosts(prev => ({
-                              ...prev,
-                              [cand.id]: !prev[cand.id]
-                            }));
-                          }}
-                          className="p-1 rounded bg-secondary/50 text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-                          title={revealedCosts[cand.id] ? "Hide Cost" : "Show Cost"}
-                        >
-                          {revealedCosts[cand.id] ? (
-                            <EyeOff className="w-3 h-3" />
-                          ) : (
-                            <Eye className="w-3 h-3" />
-                          )}
-                        </button>
-                      </div>
-                    )}
+                    </div>
                   </div>
                 </div>
               </motion.div>
@@ -320,141 +286,139 @@ const SelectedCandidates = () => {
         </div>
 
         {/* Desktop View (Table) */}
-        <div className="hidden md:block glass-card overflow-hidden">
-          <div className="p-3 border-b border-border/50 bg-secondary/20">
-            <div className="grid grid-cols-12 gap-3 px-6 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-              <div className="col-span-2">Candidate</div>
-              <div className="col-span-2 pl-10">Client</div>
-              <div className="col-span-2">Job Role</div>
-              <div className="col-span-1 text-center">Duration</div>
-              <div className="col-span-1 text-center">Cost</div>
-              <div className="col-span-1 text-center">Source</div>
-              <div className="col-span-2 text-center">Hired Date</div>
-              <div className="col-span-1 text-center">Action</div>
-            </div>
-          </div>
+        <div className="hidden md:block glass-card rounded-xl border border-border/50 overflow-hidden shadow-sm">
+          <div className="w-full overflow-hidden">
+            <table className="w-full table-fixed text-left border-collapse table-responsive-fit">
+              <thead>
+                <tr className="border-b border-border bg-secondary/30">
+                  <th className="py-3.5 px-3 text-[10px] font-bold text-muted-foreground uppercase tracking-widest text-left w-[23%]">Candidate</th>
+                  <th className="py-3.5 px-3 text-[10px] font-bold text-muted-foreground uppercase tracking-widest text-left w-[19%]">Client</th>
+                  <th className="py-3.5 px-3 text-[10px] font-bold text-muted-foreground uppercase tracking-widest text-left w-[25%]">Job Role</th>
+                  <th className="py-3.5 px-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest text-center w-[11%]">Duration</th>
+                  <th className="py-3.5 px-3 text-[10px] font-bold text-muted-foreground uppercase tracking-widest text-left w-[14%]">Source</th>
+                  <th className="py-3.5 px-3 text-[10px] font-bold text-muted-foreground uppercase tracking-widest text-center w-[8%]">Action</th>
+                </tr>
+              </thead>
 
-          <div className="divide-y divide-border/50">
-            {selectedCandidates.length === 0 ? (
-              <div className="p-12 text-center">
-                <div className="w-16 h-16 rounded-2xl bg-secondary flex items-center justify-center text-muted-foreground/30 mx-auto mb-4">
-                  <UserCheck className="w-8 h-8" />
-                </div>
-                <h3 className="text-lg font-bold text-foreground mb-1">No selections found</h3>
-                <p className="text-sm text-muted-foreground">
-                  {searchQuery ? `No results match "${searchQuery}"` : "You haven't marked any candidates as selected yet."}
-                </p>
-              </div>
-            ) : (
-              selectedCandidates.map((cand) => (
-                <motion.div
-                  key={cand.id}
-                  variants={item}
-                  onClick={() => navigate(`/candidates/${cand.candidate_id}`)}
-                  className="grid grid-cols-12 gap-3 py-3 px-6 items-center hover:bg-secondary/30 transition-colors group cursor-pointer"
-                >
-                  {/* Candidate Info */}
-                  <div className="col-span-2 flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-success/10 flex items-center justify-center text-success font-bold text-xs shadow-sm ring-1 ring-success/20">
-                      {cand.name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)}
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-foreground group-hover:text-primary transition-colors truncate max-w-[100px]">
-                        {cand.name}
+              <tbody className="divide-y divide-border/50">
+                {selectedCandidates.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="p-12 text-center">
+                      <div className="w-16 h-16 rounded-2xl bg-secondary flex items-center justify-center text-muted-foreground/30 mx-auto mb-4">
+                        <UserCheck className="w-8 h-8" />
+                      </div>
+                      <h3 className="text-lg font-bold text-foreground mb-1">No selections found</h3>
+                      <p className="text-sm text-muted-foreground">
+                        {searchQuery ? `No results match "${searchQuery}"` : "You haven't marked any candidates as selected yet."}
                       </p>
-                      <div className="flex flex-col">
-                        <p className="text-[11px] text-muted-foreground">{cand.email}</p>
-                        {cand.phone && <p className="text-[11px] text-primary/80 font-medium">{cand.phone}</p>}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Company */}
-                  <div className="col-span-2 min-w-0 pl-10">
-                    <div className="flex items-center gap-2">
-                      <Building2 className="w-3.5 h-3.5 text-primary opacity-60" />
-                      <span className="text-xs font-bold text-foreground truncate">{cand.companyName}</span>
-                    </div>
-                  </div>
-
-                  {/* Job Role */}
-                  <div className="col-span-2 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <Briefcase className="w-3.5 h-3.5 text-primary opacity-60" />
-                      <span className="text-xs font-bold text-foreground truncate">{cand.technology}</span>
-                    </div>
-                  </div>
-
-                  {/* Duration */}
-                  <div className="col-span-1 text-center">
-                    <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full bg-secondary/50 text-foreground text-[10px] font-bold border border-border/50">
-                      <Clock className="w-3 h-3 text-primary" />
-                      {cand.duration}
-                    </div>
-                  </div>
-
-                  {/* Cost */}
-                  <div className="col-span-1 text-center">
-                    {cand.cost === "N/A" ? (
-                      <span className="text-xs font-semibold text-muted-foreground">N/A</span>
-                    ) : (
-                      <div className="inline-flex items-center gap-1.5 justify-center">
-                        <span className="text-sm font-bold text-success">
-                          {revealedCosts[cand.id] ? cand.cost : "••••••"}
-                        </span>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setRevealedCosts(prev => ({
-                              ...prev,
-                              [cand.id]: !prev[cand.id]
-                            }));
-                          }}
-                          className="p-1 rounded bg-secondary/50 text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-                          title={revealedCosts[cand.id] ? "Hide Cost" : "Show Cost"}
-                        >
-                          {revealedCosts[cand.id] ? (
-                            <EyeOff className="w-3.5 h-3.5" />
-                          ) : (
-                            <Eye className="w-3.5 h-3.5" />
-                          )}
-                        </button>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Source */}
-                  <div className="col-span-1 text-center">
-                    <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-secondary/50 border border-border text-[10px] font-bold text-muted-foreground max-w-full truncate">
-                      <Building2 className="w-3 h-3 shrink-0" />
-                      <span className="truncate">{cand.source}</span>
-                    </span>
-                  </div>
-
-                  {/* Hired Date */}
-                  <div className="col-span-2 text-center">
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-[10px] font-bold border border-primary/20">
-                      <Calendar className="w-3 h-3" />
-                      {cand.date ? new Date(cand.date).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) : "—"}
-                    </span>
-                  </div>
-
-                  {/* Action */}
-                  <div className="col-span-1 text-center" onClick={(e) => e.stopPropagation()}>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setDropApp({ id: cand.id, candidateName: cand.name });
-                      }}
-                      className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                      title="Drop Candidate"
+                    </td>
+                  </tr>
+                ) : (
+                  selectedCandidates.map((cand) => (
+                    <tr
+                      key={cand.id}
+                      onClick={() => navigate(`/candidates/${cand.candidate_id}`)}
+                      className="hover:bg-primary/[0.02] transition-colors group cursor-pointer"
                     >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </motion.div>
-              ))
-            )}
+                      {/* Candidate */}
+                      <td className="py-3 px-3 align-middle text-left">
+                        <div className="flex items-center gap-2.5 min-w-0 max-w-full">
+                          <div className="w-8 h-8 rounded-xl bg-success/10 flex items-center justify-center text-success font-bold text-xs shadow-sm ring-1 ring-success/20 shrink-0">
+                            {cand.name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p
+                              className="text-xs font-bold text-foreground group-hover:text-primary transition-colors leading-tight cell-text-wrap"
+                            >
+                              {cand.name}
+                            </p>
+                            <div className="flex flex-col mt-0.5">
+                              <p className="text-[10px] text-muted-foreground truncate">{cand.email}</p>
+                              {cand.phone && <p className="text-[10px] text-primary/80 font-medium truncate">{cand.phone}</p>}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Client */}
+                      <td className="py-3 px-3 align-middle text-left">
+                        <div className="flex items-start gap-1.5 min-w-0 max-w-full">
+                          <Building2 className="w-3.5 h-3.5 text-primary opacity-60 shrink-0 mt-0.5" />
+                          <span
+                            className="text-xs font-bold text-foreground leading-snug cell-text-wrap"
+                            title={cand.companyName}
+                          >
+                            {cand.companyName}
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* Job Role */}
+                      <td className="py-3 px-3 align-middle text-left">
+                        <div className="flex items-start gap-1.5 min-w-0 max-w-full">
+                          <Briefcase className="w-3.5 h-3.5 text-primary opacity-60 shrink-0 mt-0.5" />
+                          <span
+                            className="text-xs font-bold text-foreground leading-snug cell-text-wrap"
+                            title={cand.technology}
+                          >
+                            {formatJobRoleTitle(cand.technology)}
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* Duration */}
+                      <td className="py-3 px-2 align-middle text-center">
+                        <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-secondary/50 text-foreground text-[10px] font-bold border border-border/50 whitespace-nowrap">
+                          <Clock className="w-3 h-3 text-primary shrink-0" />
+                          {cand.duration}
+                        </div>
+                      </td>
+
+                      {/* Source */}
+                      <td className="py-3 px-3 align-middle text-left">
+                        <div
+                          className="inline-flex items-start gap-1.5 px-2 py-0.5 rounded-lg bg-secondary/50 border border-border text-[11px] font-semibold text-muted-foreground text-left max-w-full cell-text-wrap leading-tight"
+                          title={cand.source}
+                        >
+                          <Building2 className="w-3 h-3 shrink-0 mt-0.5 opacity-60" />
+                          <span className="cell-text-wrap">
+                            {cand.source}
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* Action */}
+                      <td className="py-3 px-3 align-middle text-center" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-center gap-1.5">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/candidates/${cand.candidate_id}`);
+                            }}
+                            className="p-1.5 rounded-lg bg-primary/10 border border-primary/20 text-primary hover:bg-primary/20 transition-all inline-flex items-center justify-center shadow-xs group/btn cursor-pointer"
+                            title="View"
+                            aria-label="View"
+                          >
+                            <Eye className="w-3.5 h-3.5 group-hover/btn:scale-110 transition-transform" />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDropApp({ id: cand.id, candidateName: cand.name });
+                            }}
+                            className="p-1.5 rounded-lg bg-destructive/10 text-destructive hover:bg-destructive hover:text-white transition-all shadow-xs inline-flex items-center justify-center cursor-pointer"
+                            title="Drop Candidate"
+                            aria-label="Drop Candidate"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>

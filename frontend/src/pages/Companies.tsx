@@ -1190,8 +1190,8 @@ const Companies = () => {
               <Plus className="w-4 h-4" /> Add New Company
             </button>
           ) : (
-            <div className="flex items-center gap-3">
-              <div className="relative group w-64">
+            <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
+              <div className="relative group w-full sm:w-60 md:w-64">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
                 <input
                   type="text"
@@ -1216,7 +1216,7 @@ const Companies = () => {
 
       {/* ─── KPI Cards (Only for List View) ─────────────────── */}
       {!selectedCompanyId && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-4 mb-6">
           <div className="bg-card border border-border/50 rounded-xl p-4 flex items-center gap-4 shadow-sm">
             <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 border border-blue-100 dark:border-blue-900/50">
               <Building2 className="w-6 h-6" />
@@ -1251,7 +1251,7 @@ const Companies = () => {
 
       {/* ─── Tabs Filter (Only for List View) ─────────────────── */}
       {!selectedCompanyId && (
-        <div className="flex items-center gap-6 border-b border-border/50 mb-6 overflow-x-auto scrollbar-none">
+        <div className="flex items-center gap-4 sm:gap-6 border-b border-border/50 mb-6 overflow-x-auto no-scrollbar py-1">
           {[
             { id: "All Companies", label: "All Companies", icon: Building2 },
             { id: "Active Positions", label: "Active Positions", icon: Briefcase },
@@ -1280,8 +1280,8 @@ const Companies = () => {
 
       {/* ─── Filters & Search Row (Only for List View) ─────────────────── */}
       {!selectedCompanyId && (
-        <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex flex-wrap items-center gap-3 flex-1">
+        <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:flex md:flex-wrap items-center gap-3 flex-1">
             <div className="relative group w-full md:w-60">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
               <input
@@ -1348,218 +1348,343 @@ const Companies = () => {
               setStatusFilter("Status");
               setPipelineStageFilter("Pipeline Stage");
             }}
-            className="px-4 py-2 rounded-xl border border-border/50 bg-card text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-secondary/40 transition-all flex items-center gap-1.5 shadow-sm"
+            className="w-full sm:w-auto px-4 py-2 rounded-xl border border-border/50 bg-card text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-secondary/40 transition-all flex items-center justify-center gap-1.5 shadow-sm"
           >
             <Filter className="w-3.5 h-3.5" /> Clear Filters
           </button>
         </div>
       )}
 
-      {/* ─── CATALOG VIEW (Redesigned Table View) ─────────────────── */}
+      {/* ─── CATALOG VIEW ─────────────────── */}
       {!selectedCompanyId && (
-        <div className="bg-card border border-border/50 rounded-2xl shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-left">
-              <thead>
-                <tr className="border-b border-border/50 bg-secondary/10 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                  <th className="p-4 pl-6">Company</th>
-                  <th className="p-4">Active Positions</th>
-                  <th className="p-4">Positions Filled</th>
-                  <th className="p-4">Total Candidates</th>
-                  <th className="p-4">Pipeline Stage</th>
-                  <th className="p-4">Status</th>
-                  <th className="p-4 pr-6 text-right">Quick Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/30 text-sm">
-                {filteredCompanies.map((c) => {
-                  const openRoles = openRoleCountByCompany.get(c.id) || 0;
-                  const totalCand = candidateCountByCompany.get(c.id) || 0;
-                  const { filled, required } = positionsFilledByCompany.get(c.id) || { filled: 0, required: 0 };
-                  const percentage = Math.min(100, required > 0 ? (filled / required) * 100 : 0);
-                  const stageInfo = getCompanyPipelineStage(c.id);
+        <div className="space-y-4">
+          {/* Mobile Card List (< md) */}
+          <div className="md:hidden space-y-3">
+            {filteredCompanies.map((c) => {
+              const openRoles = openRoleCountByCompany.get(c.id) || 0;
+              const totalCand = candidateCountByCompany.get(c.id) || 0;
+              const { filled, required } = positionsFilledByCompany.get(c.id) || { filled: 0, required: 0 };
+              const percentage = Math.min(100, required > 0 ? (filled / required) * 100 : 0);
+              const stageInfo = getCompanyPipelineStage(c.id);
 
-                  // Get department or fall back to description/mock
-                  const companyDepts = jobRoles.filter(r => r.company_id === c.id).map(r => r.department).filter(Boolean);
-                  const dept = companyDepts[0] || c.description || "Software Development";
+              const hasOnHold = (pipeline["on_hold"] || []).some((app: any) => jobRoles.filter(r => r.company_id === c.id).some(r => r.id === app.job_role_id));
+              const totalRoles = roleCountByCompany.get(c.id) || 0;
+              const allFilled = totalRoles > 0 && filled >= required && required > 0;
+              const companyStatus = hasOnHold
+                ? "On Hold"
+                : allFilled
+                  ? "Closed"
+                  : (openRoles > 0
+                      ? "Active"
+                      : (totalRoles > 0 ? "Closed" : "Inactive")
+                    );
+              const companyStatusStyle = companyStatus === "On Hold"
+                ? "bg-orange-500/10 text-orange-600 border-orange-500/20"
+                : (companyStatus === "Active"
+                    ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
+                    : (companyStatus === "Closed"
+                        ? "bg-red-500/10 text-red-600 border-red-500/20"
+                        : "bg-muted text-muted-foreground border-border"
+                      )
+                  );
 
-                  // Status
-                  const hasOnHold = (pipeline["on_hold"] || []).some((app: any) => jobRoles.filter(r => r.company_id === c.id).some(r => r.id === app.job_role_id));
-                  const totalRoles = roleCountByCompany.get(c.id) || 0;
-                  const allFilled = totalRoles > 0 && filled >= required && required > 0;
-                  const companyStatus = hasOnHold
-                    ? "On Hold"
-                    : allFilled
-                      ? "Closed"
-                      : (openRoles > 0
-                          ? "Active"
-                          : (totalRoles > 0 ? "Closed" : "Inactive")
-                        );
-                  const companyStatusStyle = companyStatus === "On Hold"
-                    ? "bg-orange-500/10 text-orange-600 border-orange-500/20"
-                    : (companyStatus === "Active"
-                        ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
-                        : (companyStatus === "Closed"
-                            ? "bg-red-500/10 text-red-600 border-red-500/20"
-                            : "bg-muted text-muted-foreground border-border"
-                          )
-                      );
-
-                  return (
-                    <tr
-                      key={c.id}
-                      className="hover:bg-primary/[0.01] transition-all group"
-                    >
-                      {/* Company Info */}
-                      <td className="p-4 pl-6">
-                        <div className="flex items-center gap-3.5">
-                          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0 transition-transform group-hover:scale-105">
-                            <Building2 className="w-5 h-5" />
-                          </div>
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-1.5">
-                              <span
-                                onClick={() => selectCompany(c.id)}
-                                className="font-bold text-sm text-foreground hover:text-primary transition-colors cursor-pointer truncate max-w-[150px] sm:max-w-none"
-                              >
-                                {c.name}
-                              </span>
-                              <span className="inline-flex items-center justify-center bg-blue-500 text-white rounded-full w-3.5 h-3.5 shrink-0 animate-fade-in" title="Verified Partner">
-                                <Check className="w-2.5 h-2.5 stroke-[3.5]" />
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-
-                      {/* Active Positions */}
-                      <td className="p-4">
-                        <div className="flex flex-col">
-                          <span className="text-sm font-bold text-foreground">{openRoles}</span>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              selectCompany(c.id);
-                              handleTabChange("roles");
-                            }}
-                            className="text-[10px] text-primary hover:underline font-bold mt-1 text-left"
+              return (
+                <div
+                  key={c.id}
+                  className="bg-card border border-border/50 rounded-xl p-4 shadow-sm space-y-3.5 hover:border-primary/30 transition-all"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                        <Building2 className="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <h4
+                            onClick={() => selectCompany(c.id)}
+                            className="font-bold text-sm text-foreground hover:text-primary transition-colors cursor-pointer truncate"
                           >
-                            View Positions →
-                          </button>
-                        </div>
-                      </td>
-
-                      {/* Positions Filled */}
-                      <td className="p-4">
-                        <div className="flex flex-col w-28">
-                          <span className="text-sm font-bold text-foreground">
-                            {filled}/{required}
+                            {c.name}
+                          </h4>
+                          <span className="inline-flex items-center justify-center bg-blue-500 text-white rounded-full w-3.5 h-3.5 shrink-0" title="Verified Partner">
+                            <Check className="w-2.5 h-2.5 stroke-[3.5]" />
                           </span>
-                          <div className="w-full h-1.5 bg-secondary/60 rounded-full mt-1.5 overflow-hidden">
-                            <div
-                              className="h-full bg-primary rounded-full transition-all duration-500"
-                              style={{ width: `${percentage}%` }}
-                            />
-                          </div>
                         </div>
-                      </td>
-
-                      {/* Total Candidates */}
-                      <td className="p-4">
-                        <div className="flex flex-col">
-                          <span className="text-sm font-bold text-foreground">{totalCand}</span>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              const stageParam = pipelineStageFilter && pipelineStageFilter !== "Pipeline Stage" && pipelineStageFilter !== "All Stages" && pipelineStageFilter !== "All"
-                                ? `&stage=${pipelineStageFilter.toLowerCase()}`
-                                : "";
-                              navigate(`/candidates?company_id=${c.id}${stageParam}`);
-                            }}
-                            className="text-[10px] text-primary hover:underline font-bold mt-1 text-left"
-                          >
-                            View Candidates →
-                          </button>
-                        </div>
-                      </td>
-
-                      {/* Pipeline Stage */}
-                      <td className="p-4">
-                        <span className={`inline-flex items-center rounded-full font-semibold border text-[11px] px-2.5 py-0.5 ${stageInfo.style}`}>
-                          {stageInfo.label}
-                        </span>
-                      </td>
-
-                      {/* Status */}
-                      <td className="p-4">
-                        <span
-                          className={`inline-flex items-center rounded-full font-semibold border text-[11px] px-2.5 py-0.5 ${companyStatusStyle}`}
-                        >
+                        <span className={`inline-flex items-center rounded-full font-semibold border text-[10px] px-2 py-0.5 mt-1 ${companyStatusStyle}`}>
                           {companyStatus}
                         </span>
-                      </td>
+                      </div>
+                    </div>
+                    <span className={`inline-flex items-center rounded-full font-semibold border text-[10px] px-2 py-0.5 shrink-0 ${stageInfo.style}`}>
+                      {stageInfo.label}
+                    </span>
+                  </div>
 
-                      {/* Quick Actions */}
-                      <td className="p-4 pr-6 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openEditCompany(c);
-                            }}
-                            className="p-2 rounded-lg border border-border/50 bg-card hover:bg-secondary/40 text-muted-foreground hover:text-foreground transition-all shadow-sm"
-                            title="Edit Company"
+                  <div className="grid grid-cols-3 gap-2 bg-secondary/20 rounded-lg p-2.5 text-center">
+                    <div>
+                      <div className="text-xs font-bold text-foreground">{openRoles}</div>
+                      <div className="text-[10px] text-muted-foreground">Open Roles</div>
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-foreground">{filled}/{required}</div>
+                      <div className="w-full h-1 bg-secondary/60 rounded-full mt-1 overflow-hidden">
+                        <div className="h-full bg-primary rounded-full" style={{ width: `${percentage}%` }} />
+                      </div>
+                      <div className="text-[10px] text-muted-foreground mt-0.5">Filled</div>
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-foreground">{totalCand}</div>
+                      <div className="text-[10px] text-muted-foreground">Candidates</div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-1 border-t border-border/30">
+                    <button
+                      onClick={() => selectCompany(c.id)}
+                      className="flex-1 py-2 text-xs font-bold border border-blue-200 dark:border-blue-800/40 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 rounded-lg hover:bg-blue-100 transition-all flex items-center justify-center gap-1.5 min-h-[38px]"
+                    >
+                      Details <ExternalLink className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => openEditCompany(c)}
+                      className="p-2 rounded-lg border border-border/50 bg-secondary/40 hover:bg-secondary text-muted-foreground hover:text-foreground transition-all min-h-[38px] min-w-[38px] flex items-center justify-center"
+                      title="Edit Company"
+                    >
+                      <Edit className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => setDeleteId(c.id)}
+                      className="p-2 rounded-lg border border-border/50 bg-secondary/40 hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-all min-h-[38px] min-w-[38px] flex items-center justify-center"
+                      title="Delete Company"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+
+            {filteredCompanies.length === 0 && (
+              <div className="p-8 text-center text-muted-foreground bg-card border border-border/50 rounded-xl">
+                <Building2 className="w-10 h-10 text-muted-foreground/20 mx-auto mb-3" />
+                <p className="text-xs font-medium">No partner companies match your criteria.</p>
+                <button
+                  onClick={() => {
+                    setCompanySearch("");
+                    setGlobalSearch("");
+                    setMainTab("All Companies");
+                    setCompanyFilter("Company");
+                    setStatusFilter("Status");
+                  }}
+                  className="mt-3 text-xs text-primary font-bold hover:underline"
+                >
+                  Reset Filters
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Desktop Table View (>= md) */}
+          <div className="hidden md:block bg-card border border-border/50 rounded-2xl shadow-sm overflow-hidden">
+            <div className="overflow-x-auto custom-scrollbar">
+              <table className="w-full min-w-[760px] border-collapse text-left">
+                <thead>
+                  <tr className="border-b border-border/50 bg-secondary/10 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                    <th className="p-4 pl-6">Company</th>
+                    <th className="p-4">Active Positions</th>
+                    <th className="p-4">Positions Filled</th>
+                    <th className="p-4">Total Candidates</th>
+                    <th className="p-4">Pipeline Stage</th>
+                    <th className="p-4">Status</th>
+                    <th className="p-4 pr-6 text-right">Quick Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/30 text-sm">
+                  {filteredCompanies.map((c) => {
+                    const openRoles = openRoleCountByCompany.get(c.id) || 0;
+                    const totalCand = candidateCountByCompany.get(c.id) || 0;
+                    const { filled, required } = positionsFilledByCompany.get(c.id) || { filled: 0, required: 0 };
+                    const percentage = Math.min(100, required > 0 ? (filled / required) * 100 : 0);
+                    const stageInfo = getCompanyPipelineStage(c.id);
+
+                    // Status
+                    const hasOnHold = (pipeline["on_hold"] || []).some((app: any) => jobRoles.filter(r => r.company_id === c.id).some(r => r.id === app.job_role_id));
+                    const totalRoles = roleCountByCompany.get(c.id) || 0;
+                    const allFilled = totalRoles > 0 && filled >= required && required > 0;
+                    const companyStatus = hasOnHold
+                      ? "On Hold"
+                      : allFilled
+                        ? "Closed"
+                        : (openRoles > 0
+                            ? "Active"
+                            : (totalRoles > 0 ? "Closed" : "Inactive")
+                          );
+                    const companyStatusStyle = companyStatus === "On Hold"
+                      ? "bg-orange-500/10 text-orange-600 border-orange-500/20"
+                      : (companyStatus === "Active"
+                          ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
+                          : (companyStatus === "Closed"
+                              ? "bg-red-500/10 text-red-600 border-red-500/20"
+                              : "bg-muted text-muted-foreground border-border"
+                            )
+                        );
+
+                    return (
+                      <tr
+                        key={c.id}
+                        className="hover:bg-primary/[0.01] transition-all group"
+                      >
+                        {/* Company Info */}
+                        <td className="p-4 pl-6">
+                          <div className="flex items-center gap-3.5">
+                            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0 transition-transform group-hover:scale-105">
+                              <Building2 className="w-5 h-5" />
+                            </div>
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5">
+                                <span
+                                  onClick={() => selectCompany(c.id)}
+                                  className="font-bold text-sm text-foreground hover:text-primary transition-colors cursor-pointer truncate max-w-[150px] sm:max-w-none"
+                                >
+                                  {c.name}
+                                </span>
+                                <span className="inline-flex items-center justify-center bg-blue-500 text-white rounded-full w-3.5 h-3.5 shrink-0 animate-fade-in" title="Verified Partner">
+                                  <Check className="w-2.5 h-2.5 stroke-[3.5]" />
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Active Positions */}
+                        <td className="p-4">
+                          <div className="flex flex-col">
+                            <span className="text-sm font-bold text-foreground">{openRoles}</span>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                selectCompany(c.id);
+                                handleTabChange("roles");
+                              }}
+                              className="text-[10px] text-primary hover:underline font-bold mt-1 text-left"
+                            >
+                              View Positions →
+                            </button>
+                          </div>
+                        </td>
+
+                        {/* Positions Filled */}
+                        <td className="p-4">
+                          <div className="flex flex-col w-28">
+                            <span className="text-sm font-bold text-foreground">
+                              {filled}/{required}
+                            </span>
+                            <div className="w-full h-1.5 bg-secondary/60 rounded-full mt-1.5 overflow-hidden">
+                              <div
+                                className="h-full bg-primary rounded-full transition-all duration-500"
+                                style={{ width: `${percentage}%` }}
+                              />
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Total Candidates */}
+                        <td className="p-4">
+                          <div className="flex flex-col">
+                            <span className="text-sm font-bold text-foreground">{totalCand}</span>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const stageParam = pipelineStageFilter && pipelineStageFilter !== "Pipeline Stage" && pipelineStageFilter !== "All Stages" && pipelineStageFilter !== "All"
+                                  ? `&stage=${pipelineStageFilter.toLowerCase()}`
+                                  : "";
+                                navigate(`/candidates?company_id=${c.id}${stageParam}`);
+                              }}
+                              className="text-[10px] text-primary hover:underline font-bold mt-1 text-left"
+                            >
+                              View Candidates →
+                            </button>
+                          </div>
+                        </td>
+
+                        {/* Pipeline Stage */}
+                        <td className="p-4">
+                          <span className={`inline-flex items-center rounded-full font-semibold border text-[11px] px-2.5 py-0.5 ${stageInfo.style}`}>
+                            {stageInfo.label}
+                          </span>
+                        </td>
+
+                        {/* Status */}
+                        <td className="p-4">
+                          <span
+                            className={`inline-flex items-center rounded-full font-semibold border text-[11px] px-2.5 py-0.5 ${companyStatusStyle}`}
                           >
-                            <Edit className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setDeleteId(c.id);
-                            }}
-                            className="p-2 rounded-lg border border-border/50 bg-card hover:bg-secondary/40 text-muted-foreground hover:text-destructive transition-all shadow-sm"
-                            title="Delete Company"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              selectCompany(c.id);
-                            }}
-                            className="px-3 py-1.5 text-[11px] font-bold border border-blue-200 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 hover:text-blue-700 transition-all flex items-center gap-1 shadow-sm shrink-0"
-                          >
-                            Details
-                            <ExternalLink className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
+                            {companyStatus}
+                          </span>
+                        </td>
+
+                        {/* Quick Actions */}
+                        <td className="p-4 pr-6 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openEditCompany(c);
+                              }}
+                              className="p-2 rounded-lg border border-border/50 bg-card hover:bg-secondary/40 text-muted-foreground hover:text-foreground transition-all shadow-sm"
+                              title="Edit Company"
+                            >
+                              <Edit className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDeleteId(c.id);
+                              }}
+                              className="p-2 rounded-lg border border-border/50 bg-card hover:bg-secondary/40 text-muted-foreground hover:text-destructive transition-all shadow-sm"
+                              title="Delete Company"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                selectCompany(c.id);
+                              }}
+                              className="px-3 py-1.5 text-[11px] font-bold border border-blue-200 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 hover:text-blue-700 transition-all flex items-center gap-1 shadow-sm shrink-0"
+                            >
+                              Details
+                              <ExternalLink className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+
+                  {filteredCompanies.length === 0 && (
+                    <tr>
+                      <td colSpan={7} className="p-20 text-center text-muted-foreground">
+                        <Building2 className="w-12 h-12 text-muted-foreground/20 mx-auto mb-4" />
+                        <p className="text-sm font-medium">No partner companies match your criteria.</p>
+                        <button
+                          onClick={() => {
+                            setCompanySearch("");
+                            setGlobalSearch("");
+                            setMainTab("All Companies");
+                            setCompanyFilter("Company");
+                            setStatusFilter("Status");
+                          }}
+                          className="mt-4 text-xs text-primary font-bold hover:underline"
+                        >
+                          Reset Filters
+                        </button>
                       </td>
                     </tr>
-                  );
-                })}
-
-                {filteredCompanies.length === 0 && (
-                  <tr>
-                    <td colSpan={7} className="p-20 text-center text-muted-foreground">
-                      <Building2 className="w-12 h-12 text-muted-foreground/20 mx-auto mb-4" />
-                      <p className="text-sm font-medium">No partner companies match your criteria.</p>
-                      <button
-                        onClick={() => {
-                          setCompanySearch("");
-                          setGlobalSearch("");
-                          setMainTab("All Companies");
-                          setCompanyFilter("Company");
-                          setStatusFilter("Status");
-                        }}
-                        className="mt-4 text-xs text-primary font-bold hover:underline"
-                      >
-                        Reset Filters
-                      </button>
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
@@ -1612,22 +1737,22 @@ const Companies = () => {
                   </div>
                   <p className="text-xs text-muted-foreground">Added {new Date(selectedCompany.created_at).toLocaleDateString()}</p>
                 </div>
-                <div className="ml-auto flex gap-2">
+                <div className="w-full sm:w-auto sm:ml-auto grid grid-cols-3 sm:flex gap-2">
                   {[
                     { label: "Roles", value: roleCountByCompany.get(selectedCompanyId!) || 0 },
                     { label: "Open", value: openRoleCountByCompany.get(selectedCompanyId!) || 0 },
                     { label: "In Progress", value: pipelineTotalCount },
                   ].map((s) => (
-                    <div key={s.label} className="bg-secondary/60 rounded-lg px-4 py-2 text-center">
-                      <div className="text-lg font-bold text-primary">{s.value}</div>
-                      <div className="text-[10px] text-muted-foreground uppercase tracking-wider">{s.label}</div>
+                    <div key={s.label} className="bg-secondary/60 rounded-lg px-2.5 sm:px-4 py-2 text-center">
+                      <div className="text-base sm:text-lg font-bold text-primary">{s.value}</div>
+                      <div className="text-[9px] sm:text-[10px] text-muted-foreground uppercase tracking-wider">{s.label}</div>
                     </div>
                   ))}
                 </div>
               </div>
 
               {/* Tabs */}
-              <div className="flex items-center border-b border-border px-5 pt-1">
+              <div className="flex items-center border-b border-border px-3 sm:px-5 pt-1 overflow-x-auto no-scrollbar">
                 {([
                   { key: "roles" as const, label: "Job Roles", icon: Briefcase, count: null },
                   { key: "candidates" as const, label: "Candidates", icon: Users, count: candTotal },
@@ -1636,12 +1761,12 @@ const Companies = () => {
                   <button
                     key={t.key}
                     onClick={() => handleTabChange(t.key)}
-                    className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-all -mb-px ${activeTab === t.key ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+                    className={`flex items-center gap-2 px-3 sm:px-4 py-3 text-xs sm:text-sm font-medium border-b-2 transition-all -mb-px whitespace-nowrap ${activeTab === t.key ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}
                   >
-                    <t.icon className="w-4 h-4" />
+                    <t.icon className="w-4 h-4 shrink-0" />
                     {t.label}
                     {t.count !== null && (
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${activeTab === t.key ? "bg-primary/10 text-primary" : "bg-secondary text-muted-foreground"}`}>
+                      <span className={`text-[10px] sm:text-xs px-2 py-0.5 rounded-full ${activeTab === t.key ? "bg-primary/10 text-primary" : "bg-secondary text-muted-foreground"}`}>
                         {t.count}
                       </span>
                     )}
@@ -1650,37 +1775,39 @@ const Companies = () => {
               </div>
 
               {/* Tab Content */}
-              <div className={`p-5 ${isPipeline ? "flex-1 flex flex-col min-h-0 overflow-hidden" : ""}`}>
+              <div className={`p-3 sm:p-5 ${isPipeline ? "flex-1 flex flex-col min-h-0 overflow-hidden" : ""}`}>
                 {/* ═══ JOB ROLES TAB ═══ */}
                 {activeTab === "roles" && (
                   <div>
-                    <div className="flex items-center gap-2 mb-4">
-                      {["All", "Open", "In Progress", "Closed"].map((f) => (
-                        <button
-                          key={f}
-                          onClick={() => setRoleFilter(f as any)}
-                          className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${roleFilter === f ? "bg-primary/10 text-primary" : "bg-secondary text-muted-foreground hover:text-foreground"}`}
-                        >
-                          {f}
-                        </button>
-                      ))}
-                      <div className="ml-auto flex items-center gap-2">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                      <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 sm:pb-0">
+                        {["All", "Open", "In Progress", "Closed"].map((f) => (
+                          <button
+                            key={f}
+                            onClick={() => setRoleFilter(f as any)}
+                            className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${roleFilter === f ? "bg-primary/10 text-primary" : "bg-secondary text-muted-foreground hover:text-foreground"}`}
+                          >
+                            {f}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
                         <button
                           onClick={() => setIsAssignVendorOpen(true)}
                           disabled={selectedRoleIds.length === 0}
-                          className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 border border-border/60 ${selectedRoleIds.length > 0
+                          className={`flex-1 sm:flex-initial px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center justify-center gap-2 border border-border/60 ${selectedRoleIds.length > 0
                               ? "bg-violet-600 border-violet-600 text-white hover:bg-violet-700 shadow-md shadow-violet-600/15"
                               : "bg-transparent text-muted-foreground hover:text-foreground hover:bg-secondary/40"
                             }`}
                         >
-                          <UserCheck className="w-4 h-4" /> Assign to Vendor {selectedRoleIds.length > 0 && `(${selectedRoleIds.length})`}
-                          <ChevronDown className="w-3.5 h-3.5 opacity-60" />
+                          <UserCheck className="w-4 h-4 shrink-0" /> <span className="truncate">Assign to Vendor</span> {selectedRoleIds.length > 0 && `(${selectedRoleIds.length})`}
+                          <ChevronDown className="w-3.5 h-3.5 opacity-60 shrink-0" />
                         </button>
                         <button
                           onClick={() => setAddPositionModalOpen(true)}
-                          className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition-all flex items-center gap-2 shadow-md shadow-blue-600/10"
+                          className="flex-1 sm:flex-initial px-3 sm:px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm font-semibold transition-all flex items-center justify-center gap-1.5 sm:gap-2 shadow-md shadow-blue-600/10 whitespace-nowrap"
                         >
-                          <Plus className="w-4 h-4" /> Add Position
+                          <Plus className="w-4 h-4 shrink-0" /> Add Position
                         </button>
                       </div>
                     </div>
@@ -1693,48 +1820,23 @@ const Companies = () => {
                         </button>
                       </div>
                     ) : (
-                      <div className="overflow-x-auto rounded-xl border border-border bg-secondary/10">
-                        <table className="w-full border-collapse text-left">
-                          <thead>
-                            <tr className="border-b border-border bg-secondary/30 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                              <th className="p-4 w-12">
-                                <div
-                                  className="p-1 cursor-pointer"
-                                  onClick={() => {
-                                    if (selectedRoleIds.length === companyRoles.length) {
-                                      setSelectedRoleIds([]);
-                                    } else {
-                                      setSelectedRoleIds(companyRoles.map(r => r.id));
-                                    }
-                                  }}
-                                >
-                                  <div className={`w-4 h-4 rounded border transition-colors flex items-center justify-center ${selectedRoleIds.length === companyRoles.length && companyRoles.length > 0 ? "bg-primary border-primary text-white" : "border-muted-foreground/30"}`}>
-                                    {selectedRoleIds.length === companyRoles.length && companyRoles.length > 0 && <Check className="w-3 h-3 text-white" />}
-                                  </div>
-                                </div>
-                              </th>
-                              <th className="p-4">Job Role</th>
-                              <th className="p-4 text-center">Openings</th>
-                              <th className="p-4">Status</th>
-                              <th className="p-4 text-right">Actions</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-border/50 text-sm">
-                            {companyRoles.map((r) => {
-                              const roleIsOpen = r.status.toLowerCase() === "open";
-                              const tags = getRoleTags(r);
-                              const iconDetails = getRoleIconDetails(r.title);
-                              const IconComponent = iconDetails.icon;
-                              const filledCount = r.filledCount;
-                              const openingsCount = r.positions_required || 1;
-                              const isGeneral = r.title.toLowerCase().includes("general");
+                      <div className="space-y-3">
+                        {/* Mobile Cards for Job Roles (< md) */}
+                        <div className="md:hidden space-y-3">
+                          {companyRoles.map((r) => {
+                            const roleIsOpen = r.status.toLowerCase() === "open";
+                            const tags = getRoleTags(r);
+                            const filledCount = r.filledCount;
+                            const openingsCount = r.positions_required || 1;
+                            const isGeneral = r.title.toLowerCase().includes("general");
 
-                              return (
-                                <tr
-                                  key={r.id}
-                                  className={`hover:bg-primary/[0.02] transition-colors ${!roleIsOpen ? "opacity-60" : ""} ${selectedRoleIds.includes(r.id) ? "bg-primary/[0.01]" : ""}`}
-                                >
-                                  <td className="p-4">
+                            return (
+                              <div
+                                key={r.id}
+                                className={`p-4 rounded-xl border border-border/60 bg-card space-y-3 transition-all ${!roleIsOpen ? "opacity-70" : ""} ${selectedRoleIds.includes(r.id) ? "border-primary/50 bg-primary/[0.02]" : ""}`}
+                              >
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="flex items-center gap-2.5">
                                     <div
                                       className="p-1 cursor-pointer"
                                       onClick={() => {
@@ -1743,87 +1845,200 @@ const Companies = () => {
                                         );
                                       }}
                                     >
-                                      <div className={`w-4 h-4 rounded border transition-colors flex items-center justify-center ${selectedRoleIds.includes(r.id) ? "bg-primary border-primary text-white" : "border-muted-foreground/30 hover:border-primary/50"}`}>
-                                        {selectedRoleIds.includes(r.id) && <Check className="w-3 h-3 text-white" />}
+                                      <div className={`w-5 h-5 rounded border transition-colors flex items-center justify-center ${selectedRoleIds.includes(r.id) ? "bg-primary border-primary text-white" : "border-muted-foreground/30"}`}>
+                                        {selectedRoleIds.includes(r.id) && <Check className="w-3.5 h-3.5 text-white" />}
                                       </div>
                                     </div>
-                                  </td>
-                                  <td className="p-4">
-                                    <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate(`/job-roles/${r.id}`)}>
-                                      <div className="min-w-0">
-                                        <div className="flex items-center gap-2">
-                                          <h4 className="font-bold text-foreground hover:text-primary transition-colors truncate max-w-[220px]">{r.title}</h4>
-                                          <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border ${
-                                            r.computedStatus === "closed"
-                                              ? "bg-red-500/10 text-red-500 border-red-500/20"
-                                              : r.computedStatus === "in progress"
-                                                ? "bg-amber-500/10 text-amber-500 border-amber-500/20"
-                                                : "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
-                                          }`}>
-                                            {r.computedStatus === "closed" ? "Closed" : r.computedStatus === "in progress" ? "In Progress" : "Open"}
-                                          </span>
+                                    <div>
+                                      <h4
+                                        onClick={() => navigate(`/job-roles/${r.id}`)}
+                                        className="font-bold text-sm text-foreground hover:text-primary transition-colors cursor-pointer"
+                                      >
+                                        {r.title}
+                                      </h4>
+                                      <p className="text-xs text-muted-foreground mt-0.5">
+                                        Filled: {filledCount} / {r.positions_required}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <StatusBadge status={r.computedStatus} className="scale-90 origin-right shrink-0" />
+                                </div>
+
+                                {isGeneral ? (
+                                  <p className="text-xs text-muted-foreground/80">{tags[0]}</p>
+                                ) : (
+                                  <div className="flex flex-wrap gap-1">
+                                    {tags.map((tag, idx) => (
+                                      <span key={idx} className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-secondary text-muted-foreground border border-border/50 uppercase">
+                                        {tag}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+
+                                <div className="flex items-center justify-between gap-2 pt-2 border-t border-border/40">
+                                  <span className="text-xs text-muted-foreground font-medium">
+                                    Openings: <strong className="text-foreground">{openingsCount}</strong>
+                                  </span>
+                                  <div className="flex items-center gap-1.5">
+                                    <button
+                                      onClick={() => openEditRole(r)}
+                                      className="p-2 rounded-lg border border-border/50 bg-secondary/40 text-muted-foreground hover:text-foreground"
+                                      title="Edit Role"
+                                    >
+                                      <Edit className="w-3.5 h-3.5" />
+                                    </button>
+                                    <button
+                                      onClick={() => setRoleDeleteId(r.id)}
+                                      className="p-2 rounded-lg border border-border/50 bg-secondary/40 text-muted-foreground hover:text-destructive"
+                                      title="Delete Role"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                    <button
+                                      onClick={() => navigate(`/job-roles/${r.id}`)}
+                                      className="px-3 py-1.5 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center gap-1"
+                                    >
+                                      View <ChevronRight className="w-3 h-3" />
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {/* Desktop Table (>= md) */}
+                        <div className="hidden md:block overflow-x-auto rounded-xl border border-border bg-secondary/10">
+                          <table className="w-full border-collapse text-left">
+                            <thead>
+                              <tr className="border-b border-border bg-secondary/30 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                                <th className="p-4 w-12">
+                                  <div
+                                    className="p-1 cursor-pointer"
+                                    onClick={() => {
+                                      if (selectedRoleIds.length === companyRoles.length) {
+                                        setSelectedRoleIds([]);
+                                      } else {
+                                        setSelectedRoleIds(companyRoles.map(r => r.id));
+                                      }
+                                    }}
+                                  >
+                                    <div className={`w-4 h-4 rounded border transition-colors flex items-center justify-center ${selectedRoleIds.length === companyRoles.length && companyRoles.length > 0 ? "bg-primary border-primary text-white" : "border-muted-foreground/30"}`}>
+                                      {selectedRoleIds.length === companyRoles.length && companyRoles.length > 0 && <Check className="w-3 h-3 text-white" />}
+                                    </div>
+                                  </div>
+                                </th>
+                                <th className="p-4">Job Role</th>
+                                <th className="p-4 text-center">Openings</th>
+                                <th className="p-4">Status</th>
+                                <th className="p-4 text-right">Actions</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-border/50 text-sm">
+                              {companyRoles.map((r) => {
+                                const roleIsOpen = r.status.toLowerCase() === "open";
+                                const tags = getRoleTags(r);
+                                const filledCount = r.filledCount;
+                                const openingsCount = r.positions_required || 1;
+                                const isGeneral = r.title.toLowerCase().includes("general");
+
+                                return (
+                                  <tr
+                                    key={r.id}
+                                    className={`hover:bg-primary/[0.02] transition-colors ${!roleIsOpen ? "opacity-60" : ""} ${selectedRoleIds.includes(r.id) ? "bg-primary/[0.01]" : ""}`}
+                                  >
+                                    <td className="p-4">
+                                      <div
+                                        className="p-1 cursor-pointer"
+                                        onClick={() => {
+                                          setSelectedRoleIds(prev =>
+                                            prev.includes(r.id) ? prev.filter(id => id !== r.id) : [...prev, r.id]
+                                          );
+                                        }}
+                                      >
+                                        <div className={`w-4 h-4 rounded border transition-colors flex items-center justify-center ${selectedRoleIds.includes(r.id) ? "bg-primary border-primary text-white" : "border-muted-foreground/30 hover:border-primary/50"}`}>
+                                          {selectedRoleIds.includes(r.id) && <Check className="w-3 h-3 text-white" />}
                                         </div>
-                                        <p className="text-[11px] text-muted-foreground mt-0.5">
-                                          Filled: {filledCount} / {r.positions_required}
-                                        </p>
-                                        {isGeneral ? (
-                                          <span className="text-[11px] text-muted-foreground/80 mt-1 block font-medium">
-                                            {tags[0]}
-                                          </span>
-                                        ) : (
-                                          <div className="flex flex-wrap gap-1 mt-1">
-                                            {tags.map((tag, idx) => (
-                                              <span key={idx} className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-secondary text-muted-foreground border border-border/50 uppercase tracking-wider">
-                                                {tag}
-                                              </span>
-                                            ))}
-                                          </div>
-                                        )}
                                       </div>
-                                    </div>
-                                  </td>
-                                  <td className="p-4 text-center font-bold text-foreground">
-                                    {openingsCount}
-                                  </td>
-                                  <td className="p-4">
-                                    <StatusBadge status={r.computedStatus} className="scale-90 origin-left" />
-                                  </td>
-                                  <td className="p-4 text-right">
-                                    <div className="flex items-center justify-end gap-1.5">
-                                      <button
-                                        onClick={(e) => { e.stopPropagation(); navigate(`/job-roles/${r.id}`); }}
-                                        className="p-1.5 rounded-lg border border-border/50 bg-card hover:bg-secondary/40 text-blue-500 hover:text-blue-600 transition-colors shadow-sm"
-                                        title="View Details"
-                                      >
-                                        <Eye className="w-3.5 h-3.5" />
-                                      </button>
-                                      <button
-                                        onClick={(e) => { e.stopPropagation(); openEditRole(r); }}
-                                        className="p-1.5 rounded-lg border border-border/50 bg-card hover:bg-secondary/40 text-muted-foreground hover:text-foreground transition-colors shadow-sm"
-                                        title="Edit Role"
-                                      >
-                                        <Edit className="w-3.5 h-3.5" />
-                                      </button>
-                                      <button
-                                        onClick={(e) => { e.stopPropagation(); setRoleDeleteId(r.id); }}
-                                        className="p-1.5 rounded-lg border border-border/50 bg-card hover:bg-secondary/40 text-muted-foreground hover:text-destructive transition-colors shadow-sm"
-                                        title="Delete Role"
-                                      >
-                                        <Trash2 className="w-3.5 h-3.5" />
-                                      </button>
-                                      <button
-                                        onClick={(e) => { e.stopPropagation(); navigate(`/job-roles/${r.id}`); }}
-                                        className="px-3.5 py-1.5 text-[11px] font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center gap-1 shadow-sm ml-2"
-                                      >
-                                        View Details <ChevronRight className="w-3 h-3" />
-                                      </button>
-                                    </div>
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
+                                    </td>
+                                    <td className="p-4">
+                                      <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate(`/job-roles/${r.id}`)}>
+                                        <div className="min-w-0">
+                                          <div className="flex items-center gap-2">
+                                            <h4 className="font-bold text-foreground hover:text-primary transition-colors truncate max-w-[220px]">{r.title}</h4>
+                                            <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border ${
+                                              r.computedStatus === "closed"
+                                                ? "bg-red-500/10 text-red-500 border-red-500/20"
+                                                : r.computedStatus === "in progress"
+                                                  ? "bg-amber-500/10 text-amber-500 border-amber-500/20"
+                                                  : "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
+                                            }`}>
+                                              {r.computedStatus === "closed" ? "Closed" : r.computedStatus === "in progress" ? "In Progress" : "Open"}
+                                            </span>
+                                          </div>
+                                          <p className="text-[11px] text-muted-foreground mt-0.5">
+                                            Filled: {filledCount} / {r.positions_required}
+                                          </p>
+                                          {isGeneral ? (
+                                            <span className="text-[11px] text-muted-foreground/80 mt-1 block font-medium">
+                                              {tags[0]}
+                                            </span>
+                                          ) : (
+                                            <div className="flex flex-wrap gap-1 mt-1">
+                                              {tags.map((tag, idx) => (
+                                                <span key={idx} className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-secondary text-muted-foreground border border-border/50 uppercase tracking-wider">
+                                                  {tag}
+                                                </span>
+                                              ))}
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </td>
+                                    <td className="p-4 text-center font-bold text-foreground">
+                                      {openingsCount}
+                                    </td>
+                                    <td className="p-4">
+                                      <StatusBadge status={r.computedStatus} className="scale-90 origin-left" />
+                                    </td>
+                                    <td className="p-4 text-right">
+                                      <div className="flex items-center justify-end gap-1.5">
+                                        <button
+                                          onClick={(e) => { e.stopPropagation(); navigate(`/job-roles/${r.id}`); }}
+                                          className="p-1.5 rounded-lg border border-border/50 bg-card hover:bg-secondary/40 text-blue-500 hover:text-blue-600 transition-colors shadow-sm"
+                                          title="View Details"
+                                        >
+                                          <Eye className="w-3.5 h-3.5" />
+                                        </button>
+                                        <button
+                                          onClick={(e) => { e.stopPropagation(); openEditRole(r); }}
+                                          className="p-1.5 rounded-lg border border-border/50 bg-card hover:bg-secondary/40 text-muted-foreground hover:text-foreground transition-colors shadow-sm"
+                                          title="Edit Role"
+                                        >
+                                          <Edit className="w-3.5 h-3.5" />
+                                        </button>
+                                        <button
+                                          onClick={(e) => { e.stopPropagation(); setRoleDeleteId(r.id); }}
+                                          className="p-1.5 rounded-lg border border-border/50 bg-card hover:bg-secondary/40 text-muted-foreground hover:text-destructive transition-colors shadow-sm"
+                                          title="Delete Role"
+                                        >
+                                          <Trash2 className="w-3.5 h-3.5" />
+                                        </button>
+                                        <button
+                                          onClick={(e) => { e.stopPropagation(); navigate(`/job-roles/${r.id}`); }}
+                                          className="px-3.5 py-1.5 text-[11px] font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center gap-1 shadow-sm ml-2"
+                                        >
+                                          View Details <ChevronRight className="w-3 h-3" />
+                                        </button>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
                       </div>
                     )}
                   </div>

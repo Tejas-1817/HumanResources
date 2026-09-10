@@ -118,14 +118,14 @@ const VendorBench = () => {
       />
 
       {/* ─── Search & Metrics ─── */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-4 bg-secondary/30 p-1 px-2 rounded-2xl border border-border/50 w-full md:w-auto">
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-card border border-border shadow-sm">
-            <Users className="w-4 h-4 text-primary" />
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
+        <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-4 bg-secondary/30 p-1.5 rounded-2xl border border-border/50 w-full md:w-auto">
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-card border border-border shadow-sm flex-1 sm:flex-initial justify-center sm:justify-start">
+            <Users className="w-4 h-4 text-primary shrink-0" />
             <span className="text-xs font-bold text-foreground">{candidates.length} Total Talent</span>
           </div>
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-card border border-border shadow-sm">
-            <Clock className="w-4 h-4 text-orange-500" />
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-card border border-border shadow-sm flex-1 sm:flex-initial justify-center sm:justify-start">
+            <Clock className="w-4 h-4 text-orange-500 shrink-0" />
             <span className="text-xs font-bold text-foreground">{candidates.filter(c => new Date(c.created_at).getTime() > Date.now() - 7 * 24 * 60 * 60 * 1000).length} New this week</span>
           </div>
         </div>
@@ -150,83 +150,141 @@ const VendorBench = () => {
           ))}
         </div>
       ) : filteredCandidates.length > 0 ? (
-        <div className="glass-card overflow-hidden border-border/50 shadow-2xl shadow-black/5">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b border-border/50 bg-secondary/20">
-                  <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.1em] text-muted-foreground/60">Candidate Profile</th>
-                  <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.1em] text-muted-foreground/60">Experience</th>
-                  <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.1em] text-muted-foreground/60">Skills Palette</th>
-                  <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.1em] text-muted-foreground/60">Ingested</th>
-                  <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.1em] text-muted-foreground/60 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/30">
-                {filteredCandidates.map((candidate) => (
-                  <motion.tr
-                    layout
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    key={candidate.id}
-                    className="hover:bg-primary/[0.02] transition-colors group cursor-pointer"
-                    onClick={() => navigate(`/vendor/candidates/${candidate.id}`)}
+        <>
+          {/* Mobile Card List (< md) */}
+          <div className="md:hidden space-y-3">
+            {filteredCandidates.map((candidate) => (
+              <div
+                key={candidate.id}
+                className="glass-card p-4 rounded-xl border border-border/50 space-y-3 cursor-pointer hover:border-primary/40 transition-colors"
+                onClick={() => navigate(`/vendor/candidates/${candidate.id}`)}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-bold shrink-0">
+                      {candidate.name.charAt(0)}
+                    </div>
+                    <div className="min-w-0">
+                      <h4 className="font-bold text-sm text-foreground truncate">{candidate.name}</h4>
+                      <p className="text-[11px] text-muted-foreground truncate">{candidate.email}</p>
+                    </div>
+                  </div>
+                  <button
+                    className="p-2 rounded-lg bg-card border border-border text-muted-foreground hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-all shrink-0"
+                    onClick={(e) => handleDelete(e, candidate.id)}
+                    title="Delete Candidate"
                   >
-                    <td className="px-6 py-5">
-                      <div className="flex items-center gap-4">
-                        <div className="w-11 h-11 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-bold shadow-inner group-hover:scale-105 transition-transform duration-300 shrink-0">
-                          {candidate.name.charAt(0)}
-                        </div>
-                        <div className="min-w-0">
-                          <div className="font-bold text-sm text-foreground group-hover:text-primary transition-colors truncate">{candidate.name}</div>
-                          <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground mt-0.5 truncate">
-                            <Mail className="w-3 h-3 opacity-50" />
-                            {candidate.email}
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-secondary text-[11px] font-bold text-foreground border border-border">
+                    <Calendar className="w-3 h-3 text-primary" />
+                    {candidate.experience_years} Years Exp
+                  </span>
+                  <span className="text-[10px] text-muted-foreground ml-auto">
+                    {new Date(candidate.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                  </span>
+                </div>
+
+                {candidate.skills && (
+                  <div className="flex flex-wrap gap-1 pt-1">
+                    {candidate.skills.split(",").slice(0, 4).map((skill, i) => (
+                      <span key={i} className="px-2 py-0.5 rounded bg-secondary/70 text-foreground text-[10px] font-medium border border-border/50">
+                        {skill.trim()}
+                      </span>
+                    ))}
+                    {candidate.skills.split(",").length > 4 && (
+                      <span className="text-[10px] text-muted-foreground font-bold px-1 self-center">
+                        +{candidate.skills.split(",").length - 4}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop Table (>= md) */}
+          <div className="hidden md:block glass-card overflow-hidden border-border/50 shadow-2xl shadow-black/5">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[650px] text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-border/50 bg-secondary/20">
+                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.1em] text-muted-foreground/60">Candidate Profile</th>
+                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.1em] text-muted-foreground/60">Experience</th>
+                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.1em] text-muted-foreground/60">Skills Palette</th>
+                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.1em] text-muted-foreground/60">Ingested</th>
+                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.1em] text-muted-foreground/60 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/30">
+                  {filteredCandidates.map((candidate) => (
+                    <motion.tr
+                      layout
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      key={candidate.id}
+                      className="hover:bg-primary/[0.02] transition-colors group cursor-pointer"
+                      onClick={() => navigate(`/vendor/candidates/${candidate.id}`)}
+                    >
+                      <td className="px-6 py-5">
+                        <div className="flex items-center gap-4">
+                          <div className="w-11 h-11 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-bold shadow-inner group-hover:scale-105 transition-transform duration-300 shrink-0">
+                            {candidate.name.charAt(0)}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="font-bold text-sm text-foreground group-hover:text-primary transition-colors truncate">{candidate.name}</div>
+                            <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground mt-0.5 truncate">
+                              <Mail className="w-3 h-3 opacity-50" />
+                              {candidate.email}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-5">
-                      <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-lg bg-secondary/50 text-[11px] font-bold text-foreground border border-border/50">
-                        <Calendar className="w-3.5 h-3.5 text-primary" />
-                        {candidate.experience_years} Years
-                      </div>
-                    </td>
-                    <td className="px-6 py-5">
-                      <div className="flex flex-wrap gap-1.5 max-w-[280px]">
-                        {candidate.skills?.split(",").slice(0, 5).map((skill, i) => (
-                          <span key={i} className="px-2 py-0.5 rounded-md bg-secondary text-foreground text-[10px] font-bold border border-border">
-                            {skill.trim()}
-                          </span>
-                        ))}
-                        {candidate.skills && candidate.skills.split(",").length > 5 && (
-                          <span className="text-[10px] text-muted-foreground font-black px-1">
-                            +{candidate.skills.split(",").length - 5}
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-5">
-                      <div className="text-xs font-bold text-muted-foreground">
-                        {new Date(candidate.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                      </div>
-                    </td>
-                    <td className="px-6 py-5 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          className="p-2.5 rounded-xl bg-card border border-border text-muted-foreground hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-all shadow-sm"
-                          onClick={(e) => handleDelete(e, candidate.id)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </motion.tr>
-                ))}
-              </tbody>
-            </table>
+                      </td>
+                      <td className="px-6 py-5">
+                        <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-lg bg-secondary/50 text-[11px] font-bold text-foreground border border-border/50">
+                          <Calendar className="w-3.5 h-3.5 text-primary" />
+                          {candidate.experience_years} Years
+                        </div>
+                      </td>
+                      <td className="px-6 py-5">
+                        <div className="flex flex-wrap gap-1.5 max-w-[280px]">
+                          {candidate.skills?.split(",").slice(0, 5).map((skill, i) => (
+                            <span key={i} className="px-2 py-0.5 rounded-md bg-secondary text-foreground text-[10px] font-bold border border-border">
+                              {skill.trim()}
+                            </span>
+                          ))}
+                          {candidate.skills && candidate.skills.split(",").length > 5 && (
+                            <span className="text-[10px] text-muted-foreground font-black px-1">
+                              +{candidate.skills.split(",").length - 5}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-5">
+                        <div className="text-xs font-bold text-muted-foreground">
+                          {new Date(candidate.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </div>
+                      </td>
+                      <td className="px-6 py-5 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            className="p-2.5 rounded-xl bg-card border border-border text-muted-foreground hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-all shadow-sm"
+                            onClick={(e) => handleDelete(e, candidate.id)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </motion.tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
+        </>
       ) : (
         <div className="flex flex-col items-center justify-center py-20 glass-card bg-secondary/5 border-dashed border-border">
           <div className="w-16 h-16 rounded-3xl bg-secondary flex items-center justify-center mb-4 text-muted-foreground">
@@ -260,26 +318,26 @@ const VendorBench = () => {
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               className="relative w-full max-w-xl bg-card border border-border shadow-2xl rounded-3xl overflow-hidden"
             >
-              <div className="p-6 border-b border-border flex items-center justify-between bg-secondary/20">
+              <div className="p-4 sm:p-6 border-b border-border flex items-center justify-between bg-secondary/20">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
+                  <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
                     <Sparkles className="w-5 h-5 animate-pulse" />
                   </div>
-                  <div>
-                    <h2 className="text-lg font-bold text-foreground">Bench Talent Ingestion</h2>
-                    <p className="text-[10px] text-muted-foreground uppercase font-black mt-0.5 tracking-wider">Independent sync to talent pool</p>
+                  <div className="min-w-0">
+                    <h2 className="text-base sm:text-lg font-bold text-foreground truncate">Bench Talent Ingestion</h2>
+                    <p className="text-[9px] sm:text-[10px] text-muted-foreground uppercase font-black mt-0.5 tracking-wider truncate">Independent sync to talent pool</p>
                   </div>
                 </div>
                 <button
                   onClick={() => setIsUploadModalOpen(false)}
                   disabled={uploading}
-                  className="p-2 rounded-xl hover:bg-secondary transition-colors"
+                  className="p-2 rounded-xl hover:bg-secondary transition-colors shrink-0"
                 >
                   <X className="w-5 h-5 text-muted-foreground" />
                 </button>
               </div>
 
-              <div className="p-8 space-y-6">
+              <div className="p-4 sm:p-8 space-y-4 sm:space-y-6 max-h-[80vh] overflow-y-auto">
                 <div className="relative">
                   <input
                     type="file"
@@ -289,7 +347,7 @@ const VendorBench = () => {
                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
                     disabled={uploading}
                   />
-                  <div className={`p-12 border-2 border-dashed rounded-3xl flex flex-col items-center justify-center gap-4 transition-all ${uploading ? "opacity-30" : "bg-secondary/10 border-border hover:border-primary/50 hover:bg-secondary/20"
+                  <div className={`p-6 sm:p-12 border-2 border-dashed rounded-3xl flex flex-col items-center justify-center gap-4 transition-all ${uploading ? "opacity-30" : "bg-secondary/10 border-border hover:border-primary/50 hover:bg-secondary/20"
                     }`}>
                     <Upload className="w-10 h-10 text-primary animate-bounce-slow" />
                     <div className="text-center">

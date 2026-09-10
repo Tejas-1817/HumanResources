@@ -78,7 +78,7 @@ const Login = () => {
       </div>
 
       {/* Right form */}
-      <div className="flex-1 flex items-center justify-center p-8 relative overflow-hidden">
+      <div className="flex-1 flex items-center justify-center p-4 sm:p-8 relative overflow-hidden">
         {/* Decorative background for mobile */}
         <div className="lg:hidden absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-secondary/5 -z-10" />
 
@@ -88,8 +88,17 @@ const Login = () => {
           transition={{ duration: 0.4 }}
           className="w-full max-w-md"
         >
-          <div className="text-center mb-8">
-            <h2 className="text-2xl font-bold text-foreground">
+          {/* Mobile logo */}
+          <div className="lg:hidden flex justify-center mb-6">
+            <img
+              src={altzorLogo}
+              alt="Altzor Logo"
+              className="h-10 w-auto object-contain"
+            />
+          </div>
+
+          <div className="text-center mb-6 sm:mb-8">
+            <h2 className="text-xl sm:text-2xl font-bold text-foreground">
               {isSignUp ? "Create your account" : "Welcome back"}
             </h2>
             <p className="text-sm text-muted-foreground mt-1">

@@ -6,6 +6,7 @@ import { Topbar } from "./Topbar";
 import { Modal } from "@/components/ui/Modal";
 import UploadPage from "@/pages/Upload";
 import { AddCandidateForm, ScheduleInterviewForm, CreateJobPostForm, AddCompanyForm, SettingsForm } from "@/components/forms/QuickActionForms";
+import { TabLoadingContainer } from "./TabLoadingContainer";
 
 export const DashboardLayout = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -70,14 +71,16 @@ export const DashboardLayout = () => {
         {location.pathname !== "/" && (
           <Topbar onMenuClick={() => setIsSidebarOpen(prev => !prev)} />
         )}
-        <main ref={mainRef} className="flex-1 overflow-y-auto">
+        <main ref={mainRef} className="flex-1 overflow-y-auto overflow-x-hidden min-w-0">
           <motion.div
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, ease: "easeOut" }}
-            className="p-4 md:p-6 w-full"
+            className="p-3.5 sm:p-5 md:p-6 lg:p-8 w-full max-w-[1600px] mx-auto min-w-0"
           >
-            <Outlet />
+            <TabLoadingContainer>
+              <Outlet />
+            </TabLoadingContainer>
           </motion.div>
         </main>
       </div>

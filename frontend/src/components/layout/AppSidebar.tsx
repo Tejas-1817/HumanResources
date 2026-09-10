@@ -91,14 +91,13 @@ export const AppSidebar = ({ onMobileClose, onQuickAction }: { onMobileClose?: (
           )}
         </button>
 
-        {!collapsed && (
-          <button
-            onClick={onMobileClose}
-            className="lg:hidden p-1.5 rounded-lg bg-white/5 text-white/40 hover:text-white transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        )}
+        <button
+          onClick={onMobileClose}
+          className="lg:hidden p-2 rounded-lg bg-white/5 text-white/60 hover:text-white hover:bg-white/10 transition-colors shrink-0"
+          aria-label="Close navigation"
+        >
+          <X className="w-4 h-4" />
+        </button>
       </div>
 
       <nav className="flex-1 py-2 px-3.5 space-y-0.5 overflow-y-auto custom-scrollbar">

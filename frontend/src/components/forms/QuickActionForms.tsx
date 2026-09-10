@@ -81,7 +81,7 @@ export const AddCandidateForm = ({ onSuccess }: { onSuccess: () => void }) => {
           placeholder="e.g. john@example.com"
         />
       </div>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
         <div>
           <label className="label-text mb-2 block font-medium">Phone</label>
           <input
@@ -258,7 +258,7 @@ export const ScheduleInterviewForm = ({ onSuccess }: { onSuccess: () => void }) 
         </select>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
         <div>
           <label className="label-text mb-2 block font-medium">Date *</label>
           <input
@@ -315,10 +315,22 @@ export const CreateJobPostForm = ({ onSuccess }: { onSuccess: () => void }) => {
     description: "",
     positions_required: "1",
     location: "",
-    work_mode: "hybrid",
+    work_mode: "Onsite",
     experience_required: "",
     deadline: "",
   });
+  const [selectedWorkModes, setSelectedWorkModes] = useState<string[]>(["Onsite"]);
+
+  const handleWorkModeToggle = (mode: string) => {
+    setSelectedWorkModes((prev) => {
+      const next = prev.includes(mode)
+        ? prev.filter((m) => m !== mode)
+        : [...prev, mode];
+      setForm((f) => ({ ...f, work_mode: next.join(" / ") }));
+      return next;
+    });
+  };
+
   const [loading, setLoading] = useState(false);
 
   const { data: companiesData, isLoading: loadingCompanies } = useQuery({
@@ -397,7 +409,7 @@ export const CreateJobPostForm = ({ onSuccess }: { onSuccess: () => void }) => {
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
         <div>
           <label className="label-text mb-2 block font-medium">Positions Required</label>
           <input
@@ -420,28 +432,46 @@ export const CreateJobPostForm = ({ onSuccess }: { onSuccess: () => void }) => {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="label-text mb-2 block font-medium">Work Mode</label>
-          <select
-            value={form.work_mode}
-            onChange={(e) => setForm({ ...form, work_mode: e.target.value })}
-            className="w-full px-4 py-3 rounded-lg bg-secondary border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-          >
-            <option value="remote">Remote</option>
-            <option value="hybrid">Hybrid</option>
-            <option value="onsite">On-site</option>
-          </select>
+      <div className="space-y-1.5">
+        <label className="label-text mb-1 block font-medium">Location</label>
+        <input
+          type="text"
+          value={form.location}
+          onChange={(e) => setForm({ ...form, location: e.target.value })}
+          className="w-full px-4 py-3 rounded-lg bg-secondary border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+          placeholder="e.g. Pune, Bengaluru"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <label className="label-text block font-medium">Employment Type</label>
+          <span className="text-[11px] text-primary font-bold">
+            {selectedWorkModes.length > 0 ? selectedWorkModes.join(" / ") : "None selected"}
+          </span>
         </div>
-        <div>
-          <label className="label-text mb-2 block font-medium">Location</label>
-          <input
-            type="text"
-            value={form.location}
-            onChange={(e) => setForm({ ...form, location: e.target.value })}
-            className="w-full px-4 py-3 rounded-lg bg-secondary border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-            placeholder="e.g. Bangalore"
-          />
+        <div className="flex flex-wrap items-center gap-2.5">
+          {["Onsite", "Hybrid", "Remote"].map((mode) => {
+            const isSelected = selectedWorkModes.includes(mode);
+            return (
+              <label
+                key={mode}
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl border text-xs font-bold cursor-pointer transition-all select-none ${
+                  isSelected
+                    ? "bg-primary/10 border-primary text-primary shadow-sm ring-1 ring-primary/20"
+                    : "bg-secondary/40 border-border text-muted-foreground hover:text-foreground hover:bg-secondary/70"
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  checked={isSelected}
+                  onChange={() => handleWorkModeToggle(mode)}
+                  className="w-4 h-4 rounded border-border text-primary focus:ring-primary/50 cursor-pointer accent-primary"
+                />
+                <span>{mode}</span>
+              </label>
+            );
+          })}
         </div>
       </div>
 
@@ -596,8 +626,9 @@ export const SettingsForm = ({ onSuccess }: { onSuccess: () => void }) => {
     }
     setLoading(true);
     try {
+      let res: any;
       if (vendor) {
-        await updateVendorMe({
+        res = await updateVendorMe({
           name: form.name.trim(),
           email: form.email.trim(),
           company_name: form.companyName.trim(),
@@ -605,24 +636,29 @@ export const SettingsForm = ({ onSuccess }: { onSuccess: () => void }) => {
           password: form.password.trim() || undefined,
         });
       } else if (interviewer) {
-        await updateInterviewerMe({
+        res = await updateInterviewerMe({
           name: form.name.trim(),
           email: form.email.trim(),
           phone: form.phone.trim() || undefined,
           password: form.password.trim() || undefined,
         });
       } else {
-        await updateMe({
+        res = await updateMe({
           name: form.name.trim(),
           email: form.email.trim(),
           password: form.password.trim() || undefined,
         });
       }
+
+      if (res?.access_token) {
+        localStorage.setItem("resumeiq_token", res.access_token);
+      }
+
       await checkAuth();
       toast.success("Settings updated successfully");
       onSuccess();
     } catch (err: any) {
-      toast.error(err.response?.data?.detail || err.response?.data?.message || "Failed to update profile settings");
+      toast.error(err.response?.data?.detail || err.response?.data?.message || err.message || "Failed to update profile settings");
     } finally {
       setLoading(false);
     }
@@ -690,6 +726,7 @@ export const SettingsForm = ({ onSuccess }: { onSuccess: () => void }) => {
           <label className="label-text mb-2 block font-medium">Change Password (optional)</label>
           <input
             type="password"
+            autoComplete="new-password"
             value={form.password}
             onChange={(e) => setForm({ ...form, password: e.target.value })}
             className="w-full px-4 py-3 rounded-lg bg-secondary border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
@@ -738,7 +775,7 @@ export const SettingsForm = ({ onSuccess }: { onSuccess: () => void }) => {
         </div>
 
         {/* Theme Accent Grid */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {[
             { id: "slate", name: "Slate Default", desc: "Classic corporate design", color: "bg-[#6366f1]", bgLight: "bg-slate-50 border border-slate-200 text-slate-800", bgDark: "bg-[#0b0f19] border border-slate-800 text-slate-200" },
             { id: "ocean", name: "Ocean Deep", desc: "Teal accented theme", color: "bg-[#14b8a6]", bgLight: "bg-cyan-50/50 border border-cyan-100 text-cyan-800", bgDark: "bg-[#050f14] border border-[#0c242c] text-teal-100" },

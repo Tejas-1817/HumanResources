@@ -410,6 +410,9 @@ const OpenPositions = () => {
     }
 
     if (loc && formattedMode) {
+      if (formattedMode.toLowerCase().includes(locLower)) {
+        return formattedMode;
+      }
       return `${loc} (${formattedMode})`;
     }
     if (loc) return loc;
@@ -578,8 +581,8 @@ const OpenPositions = () => {
           title="Positions"
           description="Track and manage position requisitions and candidate hiring funnels"
           actions={
-            <div className="flex flex-col md:flex-row items-center gap-3 w-full md:w-auto">
-              <div className="relative group w-full md:w-64">
+            <div className="flex flex-col sm:flex-row items-center gap-2.5 sm:gap-3 w-full sm:w-auto">
+              <div className="relative group w-full sm:w-64 md:w-72">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
                 <input
                   type="text"
@@ -591,7 +594,7 @@ const OpenPositions = () => {
               </div>
               <button
                 onClick={() => setIsModalOpen(true)}
-                className="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-semibold text-sm shadow-sm flex items-center justify-center gap-2 transition-all whitespace-nowrap"
+                className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-semibold text-sm shadow-sm flex items-center justify-center gap-2 transition-all whitespace-nowrap"
               >
                 <Plus className="w-4 h-4" />
                 Add Position
@@ -602,92 +605,116 @@ const OpenPositions = () => {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
         <div
           onClick={() => setActiveTabFilter("all")}
-          className={`glass-card p-4 rounded-2xl border transition-all cursor-pointer flex items-center gap-3.5 hover:shadow-md ${
+          className={`glass-card p-3.5 sm:p-4 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between min-h-[112px] h-full hover:shadow-md ${
             activeTabFilter === "all" ? "border-blue-500/50 bg-blue-500/5 ring-1 ring-blue-500/20" : "border-border/50"
           }`}
         >
-          <div className="w-11 h-11 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0">
-            <Briefcase className="w-5 h-5" />
+          <div className="flex items-center justify-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0">
+              <Briefcase className="w-5 h-5" />
+            </div>
+            <span className="text-2xl font-black text-foreground leading-none">{statsSummary.totalPositions ?? 0}</span>
           </div>
-          <div className="min-w-0">
-            <h3 className="text-xl font-bold text-foreground leading-none">{statsSummary.totalPositions ?? 0}</h3>
-            <p className="text-[11px] text-muted-foreground font-semibold mt-1 truncate">Total Positions</p>
+          <div className="min-h-[28px] flex items-center justify-center mt-2.5">
+            <p className="text-[13px] sm:text-sm font-semibold text-muted-foreground text-center leading-tight whitespace-normal">
+              Total Positions
+            </p>
           </div>
         </div>
 
         <div
           onClick={() => setActiveTabFilter("active")}
-          className={`glass-card p-4 rounded-2xl border transition-all cursor-pointer flex items-center gap-3.5 hover:shadow-md ${
+          className={`glass-card p-3.5 sm:p-4 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between min-h-[112px] h-full hover:shadow-md ${
             activeTabFilter === "active" ? "border-emerald-500/50 bg-emerald-500/5 ring-1 ring-emerald-500/20" : "border-border/50"
           }`}
         >
-          <div className="w-11 h-11 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
-            <Clock className="w-5 h-5" />
+          <div className="flex items-center justify-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
+              <Clock className="w-5 h-5" />
+            </div>
+            <span className="text-2xl font-black text-foreground leading-none">{statsSummary.activePositions ?? 0}</span>
           </div>
-          <div className="min-w-0">
-            <h3 className="text-xl font-bold text-foreground leading-none">{statsSummary.activePositions ?? 0}</h3>
-            <p className="text-[11px] text-muted-foreground font-semibold mt-1 truncate">Active Positions</p>
+          <div className="min-h-[28px] flex items-center justify-center mt-2.5">
+            <p className="text-[13px] sm:text-sm font-semibold text-muted-foreground text-center leading-tight whitespace-normal">
+              Active Positions
+            </p>
           </div>
         </div>
 
         <div
           onClick={() => setActiveTabFilter("loss")}
-          className={`glass-card p-4 rounded-2xl border transition-all cursor-pointer flex items-center gap-3.5 hover:shadow-md ${
+          className={`glass-card p-3.5 sm:p-4 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between min-h-[112px] h-full hover:shadow-md ${
             activeTabFilter === "loss" ? "border-amber-500/50 bg-amber-500/5 ring-1 ring-amber-500/20" : "border-border/50"
           }`}
         >
-          <div className="w-11 h-11 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0">
-            <X className="w-5 h-5" />
+          <div className="flex items-center justify-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0">
+              <X className="w-5 h-5" />
+            </div>
+            <span className="text-2xl font-black text-foreground leading-none">{statsSummary.lossPositions ?? 0}</span>
           </div>
-          <div className="min-w-0">
-            <h3 className="text-xl font-bold text-foreground leading-none">{statsSummary.lossPositions ?? 0}</h3>
-            <p className="text-[11px] text-muted-foreground font-semibold mt-1 truncate">Loss Position</p>
+          <div className="min-h-[28px] flex items-center justify-center mt-2.5">
+            <p className="text-[13px] sm:text-sm font-semibold text-muted-foreground text-center leading-tight whitespace-normal">
+              Loss Positions
+            </p>
           </div>
         </div>
 
         <div
           onClick={() => setActiveTabFilter("on_hold")}
-          className={`glass-card p-4 rounded-2xl border transition-all cursor-pointer flex items-center gap-3.5 hover:shadow-md ${
+          className={`glass-card p-3.5 sm:p-4 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between min-h-[112px] h-full hover:shadow-md ${
             activeTabFilter === "on_hold" ? "border-yellow-500/50 bg-yellow-500/5 ring-1 ring-yellow-500/20" : "border-border/50"
           }`}
         >
-          <div className="w-11 h-11 rounded-xl bg-yellow-500/10 text-yellow-600 flex items-center justify-center shrink-0">
-            <PauseCircle className="w-5 h-5" />
+          <div className="flex items-center justify-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-yellow-500/10 text-yellow-600 flex items-center justify-center shrink-0">
+              <PauseCircle className="w-5 h-5" />
+            </div>
+            <span className="text-2xl font-black text-foreground leading-none">{statsSummary.onHoldPositions ?? 0}</span>
           </div>
-          <div className="min-w-0">
-            <h3 className="text-xl font-bold text-foreground leading-none">{statsSummary.onHoldPositions ?? 0}</h3>
-            <p className="text-[11px] text-muted-foreground font-semibold mt-1 truncate">On-Hold</p>
+          <div className="min-h-[28px] flex items-center justify-center mt-2.5">
+            <p className="text-[13px] sm:text-sm font-semibold text-muted-foreground text-center leading-tight whitespace-normal">
+              On-Hold
+            </p>
           </div>
         </div>
 
         <div
           onClick={() => setActiveTabFilter("closed")}
-          className={`glass-card p-4 rounded-2xl border transition-all cursor-pointer flex items-center gap-3.5 hover:shadow-md ${
+          className={`glass-card p-3.5 sm:p-4 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between min-h-[112px] h-full hover:shadow-md ${
             activeTabFilter === "closed" ? "border-rose-500/50 bg-rose-500/5 ring-1 ring-rose-500/20" : "border-border/50"
           }`}
         >
-          <div className="w-11 h-11 rounded-xl bg-rose-500/10 text-rose-500 flex items-center justify-center shrink-0">
-            <Calendar className="w-5 h-5" />
+          <div className="flex items-center justify-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-rose-500/10 text-rose-500 flex items-center justify-center shrink-0">
+              <Calendar className="w-5 h-5" />
+            </div>
+            <span className="text-2xl font-black text-foreground leading-none">{statsSummary.closedPositions ?? 0}</span>
           </div>
-          <div className="min-w-0">
-            <h3 className="text-xl font-bold text-foreground leading-none">{statsSummary.closedPositions ?? 0}</h3>
-            <p className="text-[11px] text-muted-foreground font-semibold mt-1 truncate">Closed Position</p>
+          <div className="min-h-[28px] flex items-center justify-center mt-2.5">
+            <p className="text-[13px] sm:text-sm font-semibold text-muted-foreground text-center leading-tight whitespace-normal">
+              Closed Positions
+            </p>
           </div>
         </div>
 
         <div
           onClick={() => setActiveTabFilter("recent")}
-          className={`glass-card p-4 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between gap-2.5 hover:shadow-md ${
+          className={`glass-card p-3.5 sm:p-4 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between min-h-[112px] h-full hover:shadow-md ${
             activeTabFilter === "recent" ? "border-indigo-500/50 bg-indigo-500/5 ring-1 ring-indigo-500/20" : "border-border/50"
           }`}
         >
-          <div className="flex items-center justify-between gap-1.5">
-            <div className="w-9 h-9 rounded-xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center shrink-0">
-              <Clock className="w-4.5 h-4.5" />
+          <div className="flex items-center justify-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center shrink-0">
+              <Clock className="w-5 h-5" />
             </div>
+            <span className="text-2xl font-black text-foreground leading-none">{statsSummary.recentlyAdded ?? 0}</span>
+          </div>
+          <div className="min-h-[28px] flex items-center justify-center gap-1.5 mt-2.5">
+            <span className="text-[13px] sm:text-sm font-semibold text-muted-foreground whitespace-nowrap">Added</span>
             <select
               value={recentTimeline}
               onClick={(e) => e.stopPropagation()}
@@ -695,24 +722,18 @@ const OpenPositions = () => {
                 e.stopPropagation();
                 setRecentTimeline(e.target.value as any);
               }}
-              className="text-[10px] font-bold bg-secondary/80 hover:bg-secondary text-foreground border border-border/80 rounded-lg px-2 py-1 focus:outline-none cursor-pointer"
+              className="text-xs font-semibold bg-secondary/80 hover:bg-secondary text-foreground border border-border/80 rounded-lg px-2 py-0.5 focus:outline-none cursor-pointer shrink-0 transition-colors shadow-xs"
             >
               <option value="today">Today</option>
               <option value="this_week">This Week</option>
               <option value="this_month">This Month</option>
             </select>
           </div>
-          <div className="min-w-0">
-            <h3 className="text-xl font-bold text-foreground leading-none">{statsSummary.recentlyAdded ?? 0}</h3>
-            <p className="text-[11px] text-muted-foreground font-semibold mt-1 truncate">
-              {recentTimeline === "today" ? "Added Today" : recentTimeline === "this_week" ? "Added This Week" : "Added This Month"}
-            </p>
-          </div>
         </div>
       </div>
 
       {/* Filter Tabs */}
-      <div className="flex flex-wrap items-center gap-6 border-b border-border/40 pb-px text-sm">
+      <div className="flex items-center gap-4 sm:gap-6 border-b border-border/40 pb-px text-sm overflow-x-auto no-scrollbar">
         {[
           { id: "all", label: "All Positions", icon: Briefcase },
           { id: "active", label: "Open Only", icon: Check },
@@ -726,7 +747,7 @@ const OpenPositions = () => {
             <button
               key={tab.id}
               onClick={() => setActiveTabFilter(tab.id as any)}
-              className={`pb-3 font-semibold transition-all flex items-center gap-2 relative ${activeTabFilter === tab.id
+              className={`pb-3 font-semibold transition-all flex items-center gap-2 relative whitespace-nowrap shrink-0 ${activeTabFilter === tab.id
                   ? "text-blue-600 border-b-2 border-blue-600"
                   : "text-muted-foreground hover:text-foreground"
                 }`}
@@ -993,57 +1014,65 @@ const OpenPositions = () => {
         </div>
       ) : (
         <div className="glass-card overflow-hidden">
-          <div className="p-4 px-6 md:px-8 border-b border-border/50 bg-secondary/20">
-            <div className="grid grid-cols-12 gap-4 text-[10px] font-bold text-muted-foreground uppercase tracking-widest items-center">
-              <div className="col-span-4">Position Name</div>
-              <div className="col-span-3">Client</div>
-              <div className="col-span-2 text-center">Openings</div>
-              <div className="col-span-2 text-center">Status</div>
-              <div className="col-span-1 text-right pr-1">Action</div>
-            </div>
-          </div>
-
-          <div className="divide-y divide-border/50">
+          {/* Mobile Card View (< md) */}
+          <div className="md:hidden divide-y divide-border/50">
             {paginatedPositions.map((pos) => (
               <motion.div
                 key={pos.id}
                 variants={item}
                 onClick={() => setSelectedPosition(pos)}
-                className="grid grid-cols-12 gap-4 p-4 px-6 md:px-8 items-center hover:bg-primary/[0.02] transition-colors group cursor-pointer"
+                className="p-4 hover:bg-primary/[0.02] transition-colors cursor-pointer space-y-3"
               >
-                <div className="col-span-4 flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center font-bold text-xs shrink-0">
-                    <Briefcase className="w-4 h-4" />
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center font-bold text-xs shrink-0">
+                      <Briefcase className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <h4 className="text-sm font-bold text-foreground truncate">{pos.title}</h4>
+                      {formatDisplayLocationMode(pos.work_mode, pos.location) && (
+                        <p className="text-[10px] text-muted-foreground font-semibold mt-0.5">
+                          {formatDisplayLocationMode(pos.work_mode, pos.location)}
+                        </p>
+                      )}
+                    </div>
                   </div>
-                  <div className="min-w-0">
-                    <p className="text-sm font-bold text-foreground group-hover:text-primary transition-colors truncate">
-                      {pos.title}
-                    </p>
-                    {formatDisplayLocationMode(pos.work_mode, pos.location) ? (
-                      <p className="text-[10px] text-muted-foreground font-semibold mt-0.5">
-                        {formatDisplayLocationMode(pos.work_mode, pos.location)}
-                      </p>
-                    ) : null}
+                  <div className="shrink-0">{renderStatusBadge(pos.status)}</div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-border/40 text-xs">
+                  <div>
+                    <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider block">Client</span>
+                    <span className="font-semibold text-foreground truncate block">{pos.clientName}</span>
+                  </div>
+                  <div>
+                    <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider block">Openings</span>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="font-bold text-foreground text-sm">{pos.positions_required}</span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedPosition(pos);
+                          setModalTab("candidates");
+                        }}
+                        className="text-[10px] font-bold text-primary hover:underline flex items-center gap-1"
+                      >
+                        <Users className="w-3 h-3" /> {pos.totalCandidates} Candidates
+                      </button>
+                    </div>
                   </div>
                 </div>
 
-                <div className="col-span-3 text-xs font-semibold text-foreground truncate">{pos.clientName}</div>
-                <div className="col-span-2 text-center flex flex-col items-center justify-center">
-                  <span className="text-sm font-bold text-foreground">{pos.positions_required}</span>
+                <div className="flex items-center justify-between pt-2 border-t border-border/40" onClick={(e) => e.stopPropagation()}>
                   <button
-                    onClick={(e) => {
-                      e.stopPropagation();
+                    onClick={() => {
                       setSelectedPosition(pos);
-                      setModalTab("candidates");
+                      setModalTab("specifications");
                     }}
-                    className="text-[10px] font-bold text-primary hover:underline mt-0.5 flex items-center gap-1"
+                    className="text-xs font-semibold text-primary hover:underline flex items-center gap-1"
                   >
-                    <Users className="w-3 h-3" /> {pos.totalCandidates} Candidates
+                    <FileText className="w-3.5 h-3.5" /> View Specifications
                   </button>
-                </div>
-                <div className="col-span-2 text-center">{renderStatusBadge(pos.status)}</div>
-
-                <div className="col-span-1 flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
                   <div className="relative">
                     <button
                       onClick={(e) => {
@@ -1055,7 +1084,7 @@ const OpenPositions = () => {
                       <MoreVertical className="w-3.5 h-3.5" />
                     </button>
                     {activeDropdown === pos.id && (
-                      <div className="absolute right-0 mt-2 w-48 bg-card border border-border rounded-xl shadow-lg overflow-hidden z-10 py-1">
+                      <div className="absolute right-0 bottom-full mb-2 w-48 bg-card border border-border rounded-xl shadow-lg overflow-hidden z-20 py-1">
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -1117,9 +1146,136 @@ const OpenPositions = () => {
             ))}
           </div>
 
+          {/* Desktop Table View (>= md) */}
+          <div className="hidden md:block">
+            <div className="p-4 px-6 md:px-8 border-b border-border/50 bg-secondary/20">
+              <div className="grid grid-cols-12 gap-4 text-[10px] font-bold text-muted-foreground uppercase tracking-widest items-center">
+                <div className="col-span-4">Position Name</div>
+                <div className="col-span-3">Client</div>
+                <div className="col-span-2 text-center">Openings</div>
+                <div className="col-span-2 text-center">Status</div>
+                <div className="col-span-1 text-right pr-1">Action</div>
+              </div>
+            </div>
+
+            <div className="divide-y divide-border/50">
+              {paginatedPositions.map((pos) => (
+                <motion.div
+                  key={pos.id}
+                  variants={item}
+                  onClick={() => setSelectedPosition(pos)}
+                  className="grid grid-cols-12 gap-4 p-4 px-6 md:px-8 items-center hover:bg-primary/[0.02] transition-colors group cursor-pointer"
+                >
+                  <div className="col-span-4 flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center font-bold text-xs shrink-0">
+                      <Briefcase className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold text-foreground group-hover:text-primary transition-colors truncate">
+                        {pos.title}
+                      </p>
+                      {formatDisplayLocationMode(pos.work_mode, pos.location) ? (
+                        <p className="text-[10px] text-muted-foreground font-semibold mt-0.5">
+                          {formatDisplayLocationMode(pos.work_mode, pos.location)}
+                        </p>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  <div className="col-span-3 text-xs font-semibold text-foreground truncate">{pos.clientName}</div>
+                  <div className="col-span-2 text-center flex flex-col items-center justify-center">
+                    <span className="text-sm font-bold text-foreground">{pos.positions_required}</span>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedPosition(pos);
+                        setModalTab("candidates");
+                      }}
+                      className="text-[10px] font-bold text-primary hover:underline mt-0.5 flex items-center gap-1"
+                    >
+                      <Users className="w-3 h-3" /> {pos.totalCandidates} Candidates
+                    </button>
+                  </div>
+                  <div className="col-span-2 text-center">{renderStatusBadge(pos.status)}</div>
+
+                  <div className="col-span-1 flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
+                    <div className="relative">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveDropdown(activeDropdown === pos.id ? null : pos.id);
+                        }}
+                        className="p-1.5 rounded-lg border border-border hover:bg-secondary/40 text-muted-foreground hover:text-foreground transition-colors shadow-sm"
+                      >
+                        <MoreVertical className="w-3.5 h-3.5" />
+                      </button>
+                      {activeDropdown === pos.id && (
+                        <div className="absolute right-0 mt-2 w-48 bg-card border border-border rounded-xl shadow-lg overflow-hidden z-10 py-1">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setPositionToEdit(pos);
+                              setActiveDropdown(null);
+                            }}
+                            className="w-full px-3.5 py-2 text-left text-xs font-semibold hover:bg-secondary/40 text-foreground flex items-center gap-2"
+                          >
+                            <Edit className="w-3.5 h-3.5 text-primary" />
+                            Edit Position
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setCandidateModalPosition(pos);
+                              setActiveDropdown(null);
+                            }}
+                            className="w-full px-3.5 py-2 text-left text-xs font-semibold hover:bg-secondary/40 text-foreground flex items-center gap-2"
+                          >
+                            <Plus className="w-3.5 h-3.5 text-primary" />
+                            Add Candidate
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedPosition(pos);
+                              setModalTab("candidates");
+                              setActiveDropdown(null);
+                            }}
+                            className="w-full px-3.5 py-2 text-left text-xs font-semibold hover:bg-secondary/40 text-foreground flex items-center gap-2"
+                          >
+                            <Users className="w-3.5 h-3.5 text-primary" />
+                            View Candidates ({pos.totalCandidates})
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedPosition(pos);
+                              setModalTab("specifications");
+                              setActiveDropdown(null);
+                            }}
+                            className="w-full px-3.5 py-2 text-left text-xs font-semibold hover:bg-secondary/40 text-foreground flex items-center gap-2 border-b border-border/50"
+                          >
+                            <FileText className="w-3.5 h-3.5 text-primary" />
+                            Specifications
+                          </button>
+                          <button
+                            onClick={(e) => handleDelete(pos.id, e)}
+                            className="w-full px-3.5 py-2 text-left text-xs font-semibold hover:bg-secondary/40 text-destructive flex items-center gap-2"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            Delete Position
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+
           {/* Pagination Footer */}
-          <div className="flex items-center justify-between p-4 border-t border-border/50 bg-secondary/10 rounded-b-xl">
-            <p className="text-xs text-muted-foreground font-medium">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 border-t border-border/50 bg-secondary/10 rounded-b-xl">
+            <p className="text-xs text-muted-foreground font-medium text-center sm:text-left">
               Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1} to {Math.min(currentPage * ITEMS_PER_PAGE, filteredPositions.length)} of {filteredPositions.length} positions
             </p>
             {totalPages > 1 && (

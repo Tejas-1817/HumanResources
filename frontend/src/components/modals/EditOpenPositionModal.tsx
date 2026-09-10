@@ -93,7 +93,7 @@ export const EditOpenPositionModal = ({ open, onClose, position, onSuccess }: Ed
   const { register, handleSubmit, setValue, watch, reset } = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      work_mode: "on-site",
+      work_mode: "Onsite",
       positions_required: "1",
       project_duration_unit: "Months",
       description: "",
@@ -102,6 +102,19 @@ export const EditOpenPositionModal = ({ open, onClose, position, onSuccess }: Ed
       status: "open",
     },
   });
+
+  // Employment Type / Work Mode selection (Onsite, Hybrid, Remote)
+  const [selectedWorkModes, setSelectedWorkModes] = useState<string[]>(["Onsite"]);
+
+  const handleWorkModeToggle = (mode: string) => {
+    setSelectedWorkModes((prev) => {
+      const next = prev.includes(mode)
+        ? prev.filter((m) => m !== mode)
+        : [...prev, mode];
+      setValue("work_mode", next.join(" / "));
+      return next;
+    });
+  };
 
   const descriptionText = watch("description") || "";
   const [activePage, setActivePage] = useState<1 | 2>(1);
@@ -117,13 +130,18 @@ export const EditOpenPositionModal = ({ open, onClose, position, onSuccess }: Ed
         if (parts[1]) durUnit = parts[1];
       }
 
-      let normalizedWorkMode = "on-site";
+      let parsedModes: string[] = [];
       if (position.work_mode) {
-        const wm = position.work_mode.toLowerCase().trim();
-        if (wm === "remote") normalizedWorkMode = "remote";
-        else if (wm === "hybrid") normalizedWorkMode = "hybrid";
-        else normalizedWorkMode = "on-site";
+        const wm = position.work_mode.toLowerCase();
+        if (wm.includes("pune") || wm.includes("on-site") || wm.includes("onsite")) parsedModes.push("Onsite");
+        if (wm.includes("hybrid")) parsedModes.push("Hybrid");
+        if (wm.includes("remote")) parsedModes.push("Remote");
       }
+      if (parsedModes.length === 0) parsedModes = ["Onsite"];
+      setSelectedWorkModes(parsedModes);
+
+      let normalizedWorkMode = parsedModes.join(" / ");
+
 
       let normalizedStatus = "open";
       if (position.status) {
@@ -483,8 +501,8 @@ ${values.description || ""}`;
                 />
               </div>
 
-              {/* Row 4: Experience, Mode, Location & Status */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              {/* Row 4: Experience, Location & Status */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Experience (Years)</label>
                   <input
@@ -496,22 +514,10 @@ ${values.description || ""}`;
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Employment</label>
-                  <select
-                    {...register("work_mode")}
-                    className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all font-semibold"
-                  >
-                    <option value="on-site">On-site</option>
-                    <option value="remote">Remote</option>
-                    <option value="hybrid">Hybrid</option>
-                  </select>
-                </div>
-
-                <div className="space-y-1.5">
                   <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Location</label>
                   <input
                     {...register("location")}
-                    placeholder="e.g. Bengaluru"
+                    placeholder="e.g. Pune, Bengaluru"
                     className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all font-medium"
                   />
                 </div>
@@ -527,6 +533,41 @@ ${values.description || ""}`;
                     <option value="closed">Closed</option>
                     <option value="on_hold">On-Hold</option>
                   </select>
+                </div>
+              </div>
+
+              {/* Row 5: Employment Type Checkboxes (Onsite / Hybrid / Remote) */}
+              <div className="space-y-2 pt-1">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                    Employment Type
+                  </label>
+                  <span className="text-[11px] text-primary font-bold">
+                    {selectedWorkModes.length > 0 ? selectedWorkModes.join(" / ") : "None selected"}
+                  </span>
+                </div>
+                <div className="flex flex-wrap items-center gap-3">
+                  {["Onsite", "Hybrid", "Remote"].map((mode) => {
+                    const isSelected = selectedWorkModes.includes(mode);
+                    return (
+                      <label
+                        key={mode}
+                        className={`flex items-center gap-2.5 px-4 py-2.5 rounded-xl border text-xs font-bold cursor-pointer transition-all select-none ${
+                          isSelected
+                            ? "bg-primary/10 border-primary text-primary shadow-sm ring-1 ring-primary/20"
+                            : "bg-secondary/40 border-border text-muted-foreground hover:text-foreground hover:bg-secondary/70"
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => handleWorkModeToggle(mode)}
+                          className="w-4 h-4 rounded border-border text-primary focus:ring-primary/50 cursor-pointer accent-primary"
+                        />
+                        <span>{mode}</span>
+                      </label>
+                    );
+                  })}
                 </div>
               </div>
 

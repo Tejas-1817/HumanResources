@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { TableDataCellWithIcon } from "@/components/ui/TableDataCell";
 import { useQuery } from "@tanstack/react-query";
 import {
   getVendorPipeline,
@@ -76,10 +77,10 @@ const VendorSelectedCandidates = () => {
 
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="space-y-6">
-      <div className="flex items-center gap-4 mb-2">
+      <div className="flex items-start sm:items-center gap-3 sm:gap-4 mb-2">
         <button
           onClick={() => navigate("/vendor")}
-          className="p-2 rounded-xl bg-secondary hover:bg-secondary/80 transition-all text-muted-foreground"
+          className="p-2 rounded-xl bg-secondary hover:bg-secondary/80 transition-all text-muted-foreground shrink-0 mt-1 sm:mt-0"
         >
           <ChevronLeft className="w-5 h-5" />
         </button>
@@ -87,8 +88,8 @@ const VendorSelectedCandidates = () => {
           title="Successful Hires"
           description="Candidates you've submitted that were successfully selected"
           actions={
-            <div className="flex items-center gap-3">
-              <div className="relative group w-full md:w-64">
+            <div className="flex items-center gap-3 w-full sm:w-auto">
+              <div className="relative group w-full sm:w-64">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
                 <input
                   type="text"
@@ -152,25 +153,28 @@ const VendorSelectedCandidates = () => {
                   </div>
 
                   <div className="col-span-3 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <Building2 className="w-3.5 h-3.5 text-primary opacity-60" />
-                      <span className="text-xs font-bold text-foreground truncate">{cand.companyName}</span>
-                    </div>
+                    <TableDataCellWithIcon
+                      icon={<Building2 className="w-3.5 h-3.5" />}
+                      text={cand.companyName}
+                      title={cand.companyName}
+                    />
                   </div>
 
                   <div className="col-span-3 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <Briefcase className="w-3.5 h-3.5 text-primary opacity-60" />
-                      <span className="text-xs font-bold text-foreground truncate">{cand.roleTitle}</span>
-                    </div>
+                    <TableDataCellWithIcon
+                      icon={<Briefcase className="w-3.5 h-3.5" />}
+                      text={cand.roleTitle}
+                      title={cand.roleTitle}
+                    />
                   </div>
 
                   <div className="col-span-2 text-right">
                     <button
-                      className="px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/20 text-primary text-[10px] font-bold hover:bg-primary/20 transition-all flex items-center gap-1.5 ml-auto"
+                      className="p-1.5 rounded-lg bg-primary/10 border border-primary/20 text-primary hover:bg-primary/20 transition-all inline-flex items-center justify-center ml-auto shadow-xs group/btn cursor-pointer"
+                      title="View"
+                      aria-label="View"
                     >
-                      <Eye className="w-3 h-3" />
-                      View Profile
+                      <Eye className="w-3.5 h-3.5 group-hover/btn:scale-110 transition-transform" />
                     </button>
                   </div>
                 </motion.div>

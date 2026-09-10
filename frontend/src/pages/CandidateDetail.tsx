@@ -162,17 +162,26 @@ const CandidateDetail = () => {
   if (isError || !c) return <p className="text-sm text-muted-foreground">Candidate not found.</p>;
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4 sm:space-y-6">
+      {/* Back button */}
+      <div>
+        <button
+          onClick={() => navigate(-1)}
+          className="inline-flex items-center gap-2 text-xs sm:text-sm font-semibold text-muted-foreground hover:text-primary transition-colors group"
+        >
+          <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
+          Back to Candidates
+        </button>
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Profile panel */}
-        <div className="glass-card p-6">
+        <div className="glass-card p-4 sm:p-6">
           <div className="text-center mb-6">
-            <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center text-primary text-2xl font-bold mx-auto mb-4">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xl sm:text-2xl font-bold mx-auto mb-4">
               {(c.name || "U").split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)}
             </div>
-            <h2 className="text-xl font-semibold text-foreground">{c.name || "Unknown"}</h2>
+            <h2 className="text-lg sm:text-xl font-semibold text-foreground">{c.name || "Unknown"}</h2>
             <div className="mt-2 flex flex-col items-center gap-2">
               <StatusBadge status={formatStatus(bestStatus)} />
               {c.is_replacement && (
@@ -185,9 +194,9 @@ const CandidateDetail = () => {
 
           <div className="space-y-2.5">
             <div className="flex items-center gap-3 text-sm">
-              <Mail className="w-4 h-4 text-muted-foreground" />
+              <Mail className="w-4 h-4 text-muted-foreground shrink-0" />
               {c.email ? (
-                <a href={`mailto:${c.email}`} className="text-muted-foreground hover:text-primary transition-colors font-medium">
+                <a href={`mailto:${c.email}`} className="text-muted-foreground hover:text-primary transition-colors font-medium truncate">
                   {c.email}
                 </a>
               ) : (
@@ -195,9 +204,9 @@ const CandidateDetail = () => {
               )}
             </div>
             <div className="flex items-center gap-3 text-sm">
-              <Phone className="w-4 h-4 text-muted-foreground" />
+              <Phone className="w-4 h-4 text-muted-foreground shrink-0" />
               {c.phone ? (
-                <a href={`tel:${c.phone}`} className="text-muted-foreground hover:text-primary transition-colors font-medium">
+                <a href={`tel:${c.phone}`} className="text-muted-foreground hover:text-primary transition-colors font-medium truncate">
                   {c.phone}
                 </a>
               ) : (
@@ -205,13 +214,13 @@ const CandidateDetail = () => {
               )}
             </div>
             <div className="flex items-center gap-3 text-sm">
-              <Calendar className="w-4 h-4 text-muted-foreground" />
+              <Calendar className="w-4 h-4 text-muted-foreground shrink-0" />
               <span className="text-muted-foreground">{c.experience_years || 0} years experience</span>
             </div>
             {c.source_label && (
               <div className="flex items-center gap-3 text-sm">
-                <Globe className="w-4 h-4 text-muted-foreground" />
-                <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-semibold border border-primary/20">
+                <Globe className="w-4 h-4 text-muted-foreground shrink-0" />
+                <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-semibold border border-primary/20 truncate">
                   {c.source_label}
                 </span>
               </div>
@@ -250,7 +259,7 @@ const CandidateDetail = () => {
         {/* Right content */}
         <div className="lg:col-span-2 space-y-6">
           {/* Summary */}
-          <div className="glass-card p-6">
+          <div className="glass-card p-4 sm:p-6">
             <h3 className="heading-md mb-3">Summary</h3>
             <p className="body-text">
               Parsed from uploaded resume <strong>{c.original_filename}</strong>.
@@ -262,12 +271,12 @@ const CandidateDetail = () => {
           {/* Improved Resume Preview */}
           <div className="glass-card flex flex-col overflow-hidden">
             <div className="p-4 border-b border-border flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-primary/10 text-primary">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="p-2 rounded-lg bg-primary/10 text-primary shrink-0">
                   <Download className="w-4 h-4" />
                 </div>
-                <div>
-                  <h3 className="text-sm font-bold text-foreground">Resume Document</h3>
+                <div className="min-w-0">
+                  <h3 className="text-sm font-bold text-foreground truncate">Resume Document</h3>
                   <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest">{c.original_filename?.split('.').pop()} View</p>
                 </div>
               </div>
@@ -282,7 +291,7 @@ const CandidateDetail = () => {
               </div>
             </div>
 
-            <div className={`relative bg-[#f8f9fa] transition-all duration-500 overflow-hidden ${isFullScreen ? "fixed inset-0 z-[100] h-screen w-screen p-8 bg-black/60 backdrop-blur-sm" : "h-[600px]"}`}>
+            <div className={`relative bg-[#f8f9fa] transition-all duration-500 overflow-hidden ${isFullScreen ? "fixed inset-0 z-[100] h-screen w-screen p-2 sm:p-4 md:p-8 bg-black/60 backdrop-blur-sm" : "h-[380px] sm:h-[500px] md:h-[600px]"}`}>
               {isFullScreen && (
                 <button
                   onClick={() => setIsFullScreen(false)}

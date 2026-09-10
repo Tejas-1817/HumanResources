@@ -223,7 +223,7 @@ export const AddCandidateToPositionModal = ({
           <label className="text-xs font-bold text-foreground uppercase tracking-wider block mb-2">
             Candidate Source
           </label>
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {SOURCES.map((source) => (
               <button
                 key={source.id}

@@ -38,32 +38,90 @@ const VendorCandidates = () => {
   }
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="space-y-6 sm:space-y-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-foreground mb-2">My Candidates</h1>
-          <p className="text-muted-foreground">Manage and track candidates you have submitted to ResumeIQ.</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-1">My Candidates</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground">Manage and track candidates you have submitted to ResumeIQ.</p>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="relative">
+        <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
+          <div className="relative flex-1 sm:w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <input
               type="text"
-              placeholder="Search by name, email, skills..."
+              placeholder="Search candidates..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 pr-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 w-full md:w-64"
+              className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
             />
           </div>
-          <button className="p-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all">
-            <Filter className="w-5 h-5 text-muted-foreground" />
+          <button className="p-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all flex-shrink-0" title="Filter">
+            <Filter className="w-4 h-4 text-muted-foreground" />
           </button>
         </div>
       </div>
 
-      <div className="glass-card overflow-hidden">
+      {/* Mobile Card List (< md) */}
+      <div className="md:hidden space-y-3">
+        {filteredCandidates.length > 0 ? (
+          filteredCandidates.map((candidate) => (
+            <div key={candidate.id} className="glass-card p-4 rounded-xl space-y-3 border border-border/50">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm shrink-0">
+                    {candidate.name.charAt(0)}
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-sm text-foreground">{candidate.name}</h3>
+                    <p className="text-xs text-primary font-medium">{candidate.experience_years} Yrs Exp</p>
+                  </div>
+                </div>
+                <span className="text-[10px] text-muted-foreground shrink-0">
+                  {new Date(candidate.created_at).toLocaleDateString()}
+                </span>
+              </div>
+
+              <div className="space-y-1.5 pt-1 text-xs text-muted-foreground">
+                <div className="flex items-center gap-2">
+                  <Mail className="w-3.5 h-3.5 shrink-0 text-muted-foreground/70" />
+                  <span className="truncate">{candidate.email}</span>
+                </div>
+                {candidate.phone && (
+                  <div className="flex items-center gap-2">
+                    <Phone className="w-3.5 h-3.5 shrink-0 text-muted-foreground/70" />
+                    <span>{candidate.phone}</span>
+                  </div>
+                )}
+              </div>
+
+              {candidate.skills && (
+                <p className="text-[11px] text-muted-foreground bg-secondary/40 px-2.5 py-1 rounded-lg border border-border/40 line-clamp-2">
+                  {candidate.skills}
+                </p>
+              )}
+
+              <div className="pt-2 border-t border-border/40 flex justify-end">
+                <Link
+                  to={`/vendor/candidates/${candidate.id}`}
+                  className="w-full sm:w-auto px-4 py-2 rounded-lg bg-primary/10 border border-primary/20 text-primary text-xs font-bold hover:bg-primary/20 transition-all inline-flex items-center justify-center gap-2 shadow-sm"
+                >
+                  <Eye className="w-3.5 h-3.5" />
+                  View Details
+                </Link>
+              </div>
+            </div>
+          ))
+        ) : (
+          <div className="glass-card p-8 text-center text-muted-foreground text-sm">
+            No candidates found matching your search.
+          </div>
+        )}
+      </div>
+
+      {/* Desktop Table (>= md) */}
+      <div className="hidden md:block glass-card overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left">
+          <table className="w-full min-w-[650px] text-left">
             <thead>
               <tr className="border-b border-white/5 bg-white/[0.02]">
                 <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Candidate</th>
@@ -127,7 +185,7 @@ const VendorCandidates = () => {
               ) : (
                 <tr>
                   <td colSpan={4} className="px-6 py-12 text-center text-muted-foreground text-sm">
-                    No candidates found matches your search.
+                    No candidates found matching your search.
                   </td>
                 </tr>
               )}

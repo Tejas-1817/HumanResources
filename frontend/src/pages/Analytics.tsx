@@ -351,7 +351,7 @@ const Analytics = () => {
       />
 
       {/* ─── Row 1: Primary Metrics Cards ──────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <StatCard
           label="Total Candidate Base"
           value={statsData?.total_candidates ?? 0}
@@ -391,10 +391,10 @@ const Analytics = () => {
       </div>
 
       {/* ─── Row 2: Charts Panel ────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-6">
         
         {/* Chart 1: Recruitment Funnel */}
-        <motion.div variants={item} className="glass-card p-6 border border-border/50 flex flex-col justify-between">
+        <motion.div variants={item} className="glass-card p-4 sm:p-6 border border-border/50 flex flex-col justify-between min-w-0">
           <div>
             <div className="flex items-center justify-between mb-4">
               <h3 className="heading-md flex items-center gap-2">
@@ -444,7 +444,7 @@ const Analytics = () => {
         </motion.div>
 
         {/* Chart 2: Sourcing Channels */}
-        <motion.div variants={item} className="glass-card p-6 border border-border/50 flex flex-col justify-between">
+        <motion.div variants={item} className="glass-card p-4 sm:p-6 border border-border/50 flex flex-col justify-between min-w-0">
           <div>
             <h3 className="heading-md flex items-center gap-2 mb-4">
               <PieChart className="w-5 h-5 text-accent" />
@@ -493,7 +493,7 @@ const Analytics = () => {
         </motion.div>
 
         {/* Chart 3: Candidate Experience Spread */}
-        <motion.div variants={item} className="glass-card p-6 border border-border/50 flex flex-col justify-between">
+        <motion.div variants={item} className="glass-card p-4 sm:p-6 border border-border/50 flex flex-col justify-between min-w-0">
           <div>
             <h3 className="heading-md flex items-center gap-2 mb-4">
               <BarChart className="w-5 h-5 text-warning" />
@@ -529,10 +529,10 @@ const Analytics = () => {
       </div>
 
       {/* ─── Row 3: Skills & Company Breakdowns ─────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         
         {/* Chart 4: Monthly Sourcing Trends */}
-        <motion.div variants={item} className="lg:col-span-2 glass-card p-6 border border-border/50">
+        <motion.div variants={item} className="lg:col-span-2 glass-card p-4 sm:p-6 border border-border/50 min-w-0">
           <div className="flex items-center justify-between mb-4">
             <h3 className="heading-md flex items-center gap-2">
               <CalendarDays className="w-5 h-5 text-success" />
@@ -575,7 +575,7 @@ const Analytics = () => {
         </motion.div>
 
         {/* Chart 5: Talent DNA Skill Frequency */}
-        <motion.div variants={item} className="lg:col-span-1 glass-card p-6 border border-border/50 flex flex-col justify-between">
+        <motion.div variants={item} className="lg:col-span-1 glass-card p-4 sm:p-6 border border-border/50 flex flex-col justify-between min-w-0">
           <div>
             <h3 className="heading-md flex items-center gap-2 mb-4">
               <Layers className="w-5 h-5 text-primary" />
@@ -605,9 +605,9 @@ const Analytics = () => {
       </div>
 
       {/* ─── Row 4: Client Company & Department Breakdowns ─── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         {/* Chart 6: Client Company stacked pipeline */}
-        <motion.div variants={item} className="glass-card p-6 border border-border/50 flex flex-col justify-between">
+        <motion.div variants={item} className="glass-card p-4 sm:p-6 border border-border/50 flex flex-col justify-between min-w-0">
           <div>
             <div className="flex items-center justify-between mb-4">
               <h3 className="heading-md flex items-center gap-2">
@@ -644,7 +644,7 @@ const Analytics = () => {
         </motion.div>
 
         {/* Chart 7: Vacancies by Department */}
-        <motion.div variants={item} className="glass-card p-6 border border-border/50 flex flex-col justify-between">
+        <motion.div variants={item} className="glass-card p-4 sm:p-6 border border-border/50 flex flex-col justify-between min-w-0">
           <div>
             <div className="flex items-center justify-between mb-4">
               <h3 className="heading-md flex items-center gap-2">

@@ -81,23 +81,23 @@ const VendorSettings = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8">
+    <div className="max-w-4xl mx-auto px-0 sm:px-4 py-4 sm:py-8">
       <motion.div
         initial="hidden"
         animate="show"
         variants={container}
       >
-        <div className="mb-8">
+        <div className="mb-6 sm:mb-8">
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
               <Settings className="w-6 h-6" />
             </div>
-            <h1 className="text-3xl font-bold text-foreground">Settings</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Settings</h1>
           </div>
-          <p className="text-muted-foreground">Manage your account security and preferences</p>
+          <p className="text-sm text-muted-foreground">Manage your account security and preferences</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 sm:gap-8">
           {/* Sidebar Info */}
           <div className="space-y-6">
             <div className="p-6 rounded-2xl bg-secondary/30 border border-border/50">
@@ -142,7 +142,7 @@ const VendorSettings = () => {
                 <p className="text-xs text-muted-foreground mt-1">Ensure your account is using a long, random password to stay secure.</p>
               </div>
 
-              <form onSubmit={handleSubmit} className="p-8 space-y-6">
+              <form onSubmit={handleSubmit} className="p-4 sm:p-8 space-y-6">
                 {/* Current Password */}
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Current Password</label>

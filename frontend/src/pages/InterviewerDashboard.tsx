@@ -504,7 +504,7 @@ const InterviewerDashboard = () => {
       {/* ── Tabs container ── */}
       <motion.div variants={item} className="glass-card overflow-hidden">
         {/* Tab Selection Bar */}
-        <div className="flex items-center border-b border-border px-5 pt-1">
+        <div className="flex items-center border-b border-border px-3 sm:px-5 pt-1 overflow-x-auto no-scrollbar">
           {([
             { key: "interviews_scheduled" as const, label: "Scheduled Interviews", icon: CalendarClock, count: uniqueInterviews.length },
             { key: "pipeline" as const, label: "In Progress", icon: GitBranch, count: pipelineTotalCount },
@@ -512,7 +512,7 @@ const InterviewerDashboard = () => {
             <button
               key={t.key}
               onClick={() => setActiveTab(t.key)}
-              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-all -mb-px ${activeTab === t.key ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+              className={`flex items-center gap-2 px-3 sm:px-4 py-3 text-sm font-medium border-b-2 transition-all -mb-px whitespace-nowrap shrink-0 ${activeTab === t.key ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}
             >
               <t.icon className="w-4 h-4" />
               {t.label}
@@ -524,16 +524,16 @@ const InterviewerDashboard = () => {
         </div>
 
         {/* Tab Contents */}
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           {/* ═══ SCHEDULED INTERVIEWS TAB ═══ */}
           {activeTab === "interviews_scheduled" && (
             <>
-              <div className="flex items-center justify-between mb-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
                 <div>
                   <h3 className="heading-md font-bold text-foreground">Scheduled Interviews</h3>
                   <p className="body-text mt-1">Your upcoming interview sessions</p>
                 </div>
-                <div className="px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/20 text-primary text-xs font-bold">
+                <div className="self-start sm:self-auto px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/20 text-primary text-xs font-bold">
                   {uniqueInterviews.length} Sessions
                 </div>
               </div>
@@ -815,7 +815,7 @@ const InterviewerDashboard = () => {
                         </div>
 
                         {/* Right: Actions */}
-                        <div className="flex items-center gap-3 shrink-0 self-end md:self-center">
+                        <div className="flex items-center justify-between sm:justify-end w-full md:w-auto gap-3 shrink-0 pt-3 md:pt-0 border-t md:border-t-0 border-border/30">
                           <button
                             onClick={() => {
                               setNoteValue(card.remarks || "");
@@ -876,7 +876,7 @@ const InterviewerDashboard = () => {
 
       {/* Today's highlight panel (only if there are interviews today and on the interviews tab) */}
       {activeTab === "interviews_scheduled" && todayInterviews.length > 0 && (
-        <motion.div variants={item} className="glass-card p-6 border-primary/20 relative overflow-hidden">
+        <motion.div variants={item} className="glass-card p-4 sm:p-6 border-primary/20 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 blur-3xl -mr-32 -mt-32 rounded-full pointer-events-none" />
           <div className="relative z-10">
             <h3 className="heading-md mb-1">Today's Sessions</h3>

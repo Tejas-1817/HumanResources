@@ -97,7 +97,7 @@ export const AddOpenPositionModal = ({ open, onClose, onPositionCreated }: AddOp
   const { register, handleSubmit, formState: { errors }, setValue, watch, reset } = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      work_mode: "on-site",
+      work_mode: "Onsite",
       positions_required: "1",
       project_duration_unit: "Months",
       description: "",
@@ -106,6 +106,25 @@ export const AddOpenPositionModal = ({ open, onClose, onPositionCreated }: AddOp
       status: "open",
     },
   });
+
+  // Employment Type / Work Mode selection (Onsite, Hybrid, Remote)
+  const [selectedWorkModes, setSelectedWorkModes] = useState<string[]>(["Onsite"]);
+
+  const handleWorkModeToggle = (mode: string) => {
+    setSelectedWorkModes((prev) => {
+      const next = prev.includes(mode)
+        ? prev.filter((m) => m !== mode)
+        : [...prev, mode];
+      setValue("work_mode", next.join(" / "));
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    if (open) {
+      setValue("work_mode", selectedWorkModes.join(" / "));
+    }
+  }, [open]);
 
   const selectedClientId = watch("company_id");
   const descriptionText = watch("description");
@@ -169,7 +188,7 @@ ${values.description || ""}`;
         status: values.status || "open",
         positions_required: values.positions_required ? parseInt(values.positions_required) || 1 : 1,
         location: values.location ? values.location.trim() : null,
-        work_mode: values.work_mode || "on-site",
+        work_mode: values.work_mode || "Onsite",
         experience_required: values.experience_required && values.experience_required.trim() !== "" ? values.experience_required.trim() : null,
         project_time_period: durationFormatted !== "N/A" ? durationFormatted : null,
       });
@@ -179,6 +198,7 @@ ${values.description || ""}`;
       queryClient.invalidateQueries({ queryKey: ["companies"] });
       toast.success("Position created successfully");
       reset();
+      setSelectedWorkModes(["Onsite"]);
       setUploadedFileName(null);
       setClientSearch("");
       setEmployeeSearch("");
@@ -438,8 +458,8 @@ ${values.description || ""}`;
                 {errors.skills && <p className="text-[10px] text-destructive font-bold">{errors.skills.message}</p>}
               </div>
 
-              {/* Row 4: Experience, Mode, Location & Status */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              {/* Row 4: Experience, Location & Status */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Experience (Years)</label>
                   <input
@@ -452,22 +472,10 @@ ${values.description || ""}`;
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Employment Type</label>
-                  <select
-                    {...register("work_mode")}
-                    className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all font-semibold"
-                  >
-                    <option value="on-site">On-site</option>
-                    <option value="remote">Remote</option>
-                    <option value="hybrid">Hybrid</option>
-                  </select>
-                </div>
-
-                <div className="space-y-1.5">
                   <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Location</label>
                   <input
                     {...register("location")}
-                    placeholder="e.g. Bengaluru, Karnataka"
+                    placeholder="e.g. Pune, Bengaluru"
                     className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all font-medium"
                   />
                   {errors.location && <p className="text-[10px] text-destructive font-bold">{errors.location.message}</p>}
@@ -477,12 +485,47 @@ ${values.description || ""}`;
                   <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Status</label>
                   <select
                     {...register("status")}
-                    className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all font-semibold"
+                    className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all font-semibold cursor-pointer"
                   >
                     <option value="open">Open</option>
                     <option value="closed">Closed</option>
                     <option value="loss">Loss</option>
                   </select>
+                </div>
+              </div>
+
+              {/* Row 5: Employment Type Checkboxes (Onsite / Hybrid / Remote) */}
+              <div className="space-y-2 pt-1">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                    Employment Type
+                  </label>
+                  <span className="text-[11px] text-primary font-bold">
+                    {selectedWorkModes.length > 0 ? selectedWorkModes.join(" / ") : "None selected"}
+                  </span>
+                </div>
+                <div className="flex flex-wrap items-center gap-3">
+                  {["Onsite", "Hybrid", "Remote"].map((mode) => {
+                    const isSelected = selectedWorkModes.includes(mode);
+                    return (
+                      <label
+                        key={mode}
+                        className={`flex items-center gap-2.5 px-4 py-2.5 rounded-xl border text-xs font-bold cursor-pointer transition-all select-none ${
+                          isSelected
+                            ? "bg-primary/10 border-primary text-primary shadow-sm ring-1 ring-primary/20"
+                            : "bg-secondary/40 border-border text-muted-foreground hover:text-foreground hover:bg-secondary/70"
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => handleWorkModeToggle(mode)}
+                          className="w-4 h-4 rounded border-border text-primary focus:ring-primary/50 cursor-pointer accent-primary"
+                        />
+                        <span>{mode}</span>
+                      </label>
+                    );
+                  })}
                 </div>
               </div>
 
