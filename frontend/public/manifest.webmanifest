@@ -1,0 +1,22 @@
+{
+  "name": "ResumeIQ — Altzor",
+  "short_name": "ResumeIQ",
+  "description": "Enterprise recruitment management platform with intelligent resume parsing",
+  "start_url": "/resumeiq/",
+  "scope": "/resumeiq/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0f172a",
+  "icons": [
+    {
+      "src": "/resumeiq/pwa-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/resumeiq/pwa-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
