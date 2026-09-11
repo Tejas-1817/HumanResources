@@ -14,6 +14,7 @@ import {
   ListFilter,
   ChevronDown,
   Trash2,
+  CheckCircle2,
 } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Modal } from "@/components/ui/Modal";
@@ -44,24 +45,81 @@ const SelectedCandidates = () => {
   const [sortBy, setSortBy] = useState<"name" | "company" | "technology">("name");
   const [isSortOpen, setIsSortOpen] = useState(false);
   const [revealedCosts, setRevealedCosts] = useState<Record<number, boolean>>({});
+
+  // Drop Modal State
   const [dropApp, setDropApp] = useState<{ id: number; candidateName: string } | null>(null);
+  const [dropReason, setDropReason] = useState<string>("");
   const [dropping, setDropping] = useState(false);
+
+  // Complete Project Modal State
+  const [completeApp, setCompleteApp] = useState<{ id: number; candidateName: string; roleTitle: string } | null>(null);
+  const [completionDate, setCompletionDate] = useState<string>(() => new Date().toISOString().split("T")[0]);
+  const [completionNote, setCompletionNote] = useState<string>("");
+  const [completing, setCompleting] = useState(false);
+
   const sortRef = useRef<HTMLDivElement>(null);
 
   const handleConfirmDrop = async () => {
     if (!dropApp) return;
     setDropping(true);
     try {
-      await updatePipelineStatus(dropApp.id, "dropped");
+      await updatePipelineStatus(
+        dropApp.id,
+        "dropped",
+        dropReason.trim() || "Candidate dropped from position",
+        null,
+        null,
+        null,
+        null,
+        null,
+        {
+          dropDate: new Date().toISOString(),
+          dropReason: dropReason.trim() || undefined,
+        }
+      );
       toast.success(`${dropApp.candidateName} has been dropped from position`);
       await queryClient.invalidateQueries({ queryKey: ["pipeline"] });
       await queryClient.invalidateQueries({ queryKey: ["job-roles"] });
+      await queryClient.invalidateQueries({ queryKey: ["candidates"] });
       setDropApp(null);
+      setDropReason("");
     } catch (err: any) {
       console.error(err);
       toast.error("Failed to drop candidate");
     } finally {
       setDropping(false);
+    }
+  };
+
+  const handleConfirmComplete = async () => {
+    if (!completeApp) return;
+    setCompleting(true);
+    try {
+      await updatePipelineStatus(
+        completeApp.id,
+        "completed",
+        completionNote.trim() || `Project ${completeApp.roleTitle} completed`,
+        null,
+        null,
+        null,
+        null,
+        null,
+        {
+          completionDate: completionDate ? new Date(completionDate).toISOString() : new Date().toISOString(),
+          endDate: completionDate || new Date().toISOString().split("T")[0],
+        }
+      );
+      toast.success(`${completeApp.candidateName}'s project marked as completed! Candidate moved to On Bench.`);
+      await queryClient.invalidateQueries({ queryKey: ["pipeline"] });
+      await queryClient.invalidateQueries({ queryKey: ["job-roles"] });
+      await queryClient.invalidateQueries({ queryKey: ["candidates"] });
+      setCompleteApp(null);
+      setCompletionNote("");
+    } catch (err: any) {
+      console.error(err);
+      toast.error("Failed to mark project as completed");
+    } finally {
+      setCompleting(false);
     }
   };
 
@@ -202,7 +260,7 @@ const SelectedCandidates = () => {
 
       <div className="space-y-4">
         {/* Mobile View (Cards) */}
-        <div className="grid grid-cols-1 gap-4 md:hidden">
+        <div className="grid grid-auto-fit-lg gap-4 md:hidden">
           {selectedCandidates.length === 0 ? (
             <div className="p-12 text-center glass-card">
               <div className="w-16 h-16 rounded-2xl bg-secondary flex items-center justify-center text-muted-foreground/30 mx-auto mb-4">
@@ -233,6 +291,16 @@ const SelectedCandidates = () => {
                     </div>
                   </div>
                   <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setCompleteApp({ id: cand.id, candidateName: cand.name, roleTitle: cand.technology });
+                      }}
+                      className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-500/10 transition-colors z-10"
+                      title="Complete Project"
+                    >
+                      <CheckCircle2 className="w-4 h-4" />
+                    </button>
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -293,10 +361,10 @@ const SelectedCandidates = () => {
                 <tr className="border-b border-border bg-secondary/30">
                   <th className="py-3.5 px-3 text-[10px] font-bold text-muted-foreground uppercase tracking-widest text-left w-[23%]">Candidate</th>
                   <th className="py-3.5 px-3 text-[10px] font-bold text-muted-foreground uppercase tracking-widest text-left w-[19%]">Client</th>
-                  <th className="py-3.5 px-3 text-[10px] font-bold text-muted-foreground uppercase tracking-widest text-left w-[25%]">Job Role</th>
-                  <th className="py-3.5 px-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest text-center w-[11%]">Duration</th>
-                  <th className="py-3.5 px-3 text-[10px] font-bold text-muted-foreground uppercase tracking-widest text-left w-[14%]">Source</th>
-                  <th className="py-3.5 px-3 text-[10px] font-bold text-muted-foreground uppercase tracking-widest text-center w-[8%]">Action</th>
+                  <th className="py-3.5 px-3 text-[10px] font-bold text-muted-foreground uppercase tracking-widest text-left w-[24%]">Job Role</th>
+                  <th className="py-3.5 px-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest text-center w-[10%]">Duration</th>
+                  <th className="py-3.5 px-3 text-[10px] font-bold text-muted-foreground uppercase tracking-widest text-left w-[13%]">Source</th>
+                  <th className="py-3.5 px-3 text-[10px] font-bold text-muted-foreground uppercase tracking-widest text-center w-[11%]">Action</th>
                 </tr>
               </thead>
 
@@ -358,7 +426,7 @@ const SelectedCandidates = () => {
                         <div className="flex items-start gap-1.5 min-w-0 max-w-full">
                           <Briefcase className="w-3.5 h-3.5 text-primary opacity-60 shrink-0 mt-0.5" />
                           <span
-                            className="text-xs font-bold text-foreground leading-snug cell-text-wrap"
+                            className="text-xs font-semibold text-foreground leading-snug cell-text-wrap"
                             title={cand.technology}
                           >
                             {formatJobRoleTitle(cand.technology)}
@@ -368,10 +436,9 @@ const SelectedCandidates = () => {
 
                       {/* Duration */}
                       <td className="py-3 px-2 align-middle text-center">
-                        <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-secondary/50 text-foreground text-[10px] font-bold border border-border/50 whitespace-nowrap">
-                          <Clock className="w-3 h-3 text-primary shrink-0" />
+                        <span className="text-xs font-semibold text-foreground whitespace-nowrap">
                           {cand.duration}
-                        </div>
+                        </span>
                       </td>
 
                       {/* Source */}
@@ -390,6 +457,17 @@ const SelectedCandidates = () => {
                       {/* Action */}
                       <td className="py-3 px-3 align-middle text-center" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-center gap-1.5">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setCompleteApp({ id: cand.id, candidateName: cand.name, roleTitle: cand.technology });
+                            }}
+                            className="p-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 hover:bg-emerald-500 hover:text-white transition-all inline-flex items-center justify-center shadow-xs group/btn cursor-pointer"
+                            title="Complete Project (Move to On Bench)"
+                            aria-label="Complete Project"
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                          </button>
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -423,20 +501,95 @@ const SelectedCandidates = () => {
         </div>
       </div>
 
+      {/* Complete Project Confirmation Modal */}
+      <Modal
+        open={!!completeApp}
+        onClose={() => setCompleteApp(null)}
+        title="Complete Project Assignment"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Mark project <strong className="text-foreground">{completeApp?.roleTitle}</strong> as completed for{" "}
+            <strong className="text-foreground">{completeApp?.candidateName}</strong>?
+          </p>
+
+          <p className="text-xs text-muted-foreground bg-primary/5 p-3 rounded-lg border border-primary/10">
+            <strong>Note:</strong> Candidate will be removed from Selected and automatically moved to <strong>On Bench Talent</strong>. 
+            All historical company and project records remain permanently saved.
+          </p>
+
+          <div>
+            <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 block">
+              Completion / End Date
+            </label>
+            <input
+              type="date"
+              value={completionDate}
+              onChange={(e) => setCompletionDate(e.target.value)}
+              className="w-full px-4 py-2.5 rounded-lg bg-secondary border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+            />
+          </div>
+
+          <div>
+            <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 block">
+              Completion Notes (Optional)
+            </label>
+            <textarea
+              rows={2}
+              value={completionNote}
+              onChange={(e) => setCompletionNote(e.target.value)}
+              placeholder="e.g. Completed project successfully. Eligible for next client placement."
+              className="w-full px-4 py-2 rounded-lg bg-secondary border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+            />
+          </div>
+
+          <div className="flex justify-end gap-3 pt-3 border-t border-border/50">
+            <button
+              onClick={() => setCompleteApp(null)}
+              className="px-4 py-2 text-xs font-bold text-muted-foreground hover:text-foreground transition-colors"
+              disabled={completing}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleConfirmComplete}
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-all shadow-md shadow-emerald-600/15 flex items-center gap-1.5"
+              disabled={completing}
+            >
+              {completing ? "Completing..." : "Confirm Project Completion"}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
       {/* Drop Confirmation Modal */}
       <Modal
         open={!!dropApp}
-        onClose={() => setDropApp(null)}
+        onClose={() => { setDropApp(null); setDropReason(""); }}
         title="Confirm Drop Candidate"
       >
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Are you sure you want to drop <strong className="text-foreground">{dropApp?.candidateName}</strong>? 
-            This candidate will be flagged as dropped and will be moved to the dropped column/stage across the pipeline.
+            Are you sure you want to drop <strong className="text-foreground">{dropApp?.candidateName}</strong> from this assignment? 
+            This applies only to the current company/project assignment. Candidate master profile and past history will be preserved.
           </p>
-          <div className="flex justify-end gap-3 pt-4 border-t border-border/50">
+
+          <div>
+            <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 block">
+              Drop Reason (Optional)
+            </label>
+            <textarea
+              rows={2}
+              value={dropReason}
+              onChange={(e) => setDropReason(e.target.value)}
+              placeholder="e.g. Budget constraints, client cancelled opening, or performance mismatch..."
+              className="w-full px-4 py-2 rounded-lg bg-secondary border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+            />
+          </div>
+
+          <div className="flex justify-end gap-3 pt-3 border-t border-border/50">
             <button
-              onClick={() => setDropApp(null)}
+              onClick={() => { setDropApp(null); setDropReason(""); }}
               className="px-4 py-2 text-xs font-bold text-muted-foreground hover:text-foreground transition-colors"
               disabled={dropping}
             >

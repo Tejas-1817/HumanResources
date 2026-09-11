@@ -231,8 +231,8 @@ const Companies = () => {
   const pipeline = pipelineData ?? {};
   const vendors = (vendorsData ?? []).filter(v => v.is_active);
 
-  const companyById = useMemo(() => new Map(companies.map((c) => [c.id, c])), [companies]);
-  const roleById = useMemo(() => new Map(jobRoles.map((r) => [r.id, r])), [jobRoles]);
+  const companyById = useMemo(() => new Map(companies.map((c) => [Number(c.id), c])), [companies]);
+  const roleById = useMemo(() => new Map(jobRoles.map((r) => [Number(r.id), r])), [jobRoles]);
 
   // ─── Selection state ──────────────────────────────────────
   const [searchParams, setSearchParams] = useSearchParams();
@@ -330,22 +330,33 @@ const Companies = () => {
   // ──────────────────────────────────────────────────────────
   // Derived data
   // ──────────────────────────────────────────────────────────
-  const selectedCompany = selectedCompanyId ? companyById.get(selectedCompanyId) ?? null : null;
+  const selectedCompany = selectedCompanyId ? companyById.get(Number(selectedCompanyId)) ?? null : null;
 
   // Roles per company (count)
   const roleCountByCompany = useMemo(() => {
     const m = new Map<number, number>();
-    for (const r of jobRoles) m.set(r.company_id, (m.get(r.company_id) || 0) + 1);
+    for (const r of jobRoles) {
+      const cid = Number(r.company_id ?? (r as any).companyId);
+      if (!isNaN(cid) && cid > 0) {
+        m.set(cid, (m.get(cid) || 0) + 1);
+      }
+    }
     return m;
   }, [jobRoles]);
   const openRoleCountByCompany = useMemo(() => {
     const m = new Map<number, number>();
     for (const r of jobRoles) {
-      const filledCount = (pipeline["selected"] || []).filter((app: any) => app.job_role_id === r.id).length +
-                          (pipeline["joined"] || []).filter((app: any) => app.job_role_id === r.id).length;
-      const isOpen = r.status.toLowerCase() === "open" && filledCount < (r.positions_required || 1);
+      const filledCount = (pipeline["selected"] || []).filter((app: any) => Number(app.job_role_id) === Number(r.id)).length +
+                          (pipeline["joined"] || []).filter((app: any) => Number(app.job_role_id) === Number(r.id)).length;
+      const rawStatus = (r.status || "open").trim().toLowerCase();
+      const isExplicitlyClosed = rawStatus === "closed" || rawStatus === "loss" || rawStatus === "cancelled";
+      const isFilled = filledCount >= (r.positions_required || 1);
+      const isOpen = !isExplicitlyClosed && !isFilled;
       if (isOpen) {
-        m.set(r.company_id, (m.get(r.company_id) || 0) + 1);
+        const cid = Number(r.company_id ?? (r as any).companyId);
+        if (!isNaN(cid) && cid > 0) {
+          m.set(cid, (m.get(cid) || 0) + 1);
+        }
       }
     }
     return m;
@@ -354,11 +365,17 @@ const Companies = () => {
   const closedRoleCountByCompany = useMemo(() => {
     const m = new Map<number, number>();
     for (const r of jobRoles) {
-      const filledCount = (pipeline["selected"] || []).filter((app: any) => app.job_role_id === r.id).length +
-                          (pipeline["joined"] || []).filter((app: any) => app.job_role_id === r.id).length;
-      const isClosed = r.status.toLowerCase() === "closed" || filledCount >= (r.positions_required || 1);
+      const filledCount = (pipeline["selected"] || []).filter((app: any) => Number(app.job_role_id) === Number(r.id)).length +
+                          (pipeline["joined"] || []).filter((app: any) => Number(app.job_role_id) === Number(r.id)).length;
+      const rawStatus = (r.status || "open").trim().toLowerCase();
+      const isExplicitlyClosed = rawStatus === "closed" || rawStatus === "loss" || rawStatus === "cancelled";
+      const isFilled = filledCount >= (r.positions_required || 1);
+      const isClosed = isExplicitlyClosed || isFilled;
       if (isClosed) {
-        m.set(r.company_id, (m.get(r.company_id) || 0) + 1);
+        const cid = Number(r.company_id ?? (r as any).companyId);
+        if (!isNaN(cid) && cid > 0) {
+          m.set(cid, (m.get(cid) || 0) + 1);
+        }
       }
     }
     return m;
@@ -369,10 +386,12 @@ const Companies = () => {
     const m = new Map<number, Set<number>>();
     for (const apps of Object.values(pipeline)) {
       for (const app of apps) {
-        const role = roleById.get(app.job_role_id);
-        const cid = role?.company_id ?? 0;
-        if (!m.has(cid)) m.set(cid, new Set());
-        m.get(cid)!.add(app.candidate_id);
+        const role = roleById.get(Number(app.job_role_id));
+        const cid = Number(role?.company_id ?? (role as any)?.companyId ?? 0);
+        if (cid > 0) {
+          if (!m.has(cid)) m.set(cid, new Set());
+          m.get(cid)!.add(app.candidate_id);
+        }
       }
     }
     return new Map([...m].map(([k, v]) => [k, v.size]));
@@ -413,8 +432,8 @@ const Companies = () => {
 
     Object.entries(pipeline).forEach(([stageId, apps]: [string, any]) => {
       (apps as any[]).forEach((app) => {
-        const role = roleById.get(app.job_role_id);
-        if (role?.company_id !== selectedCompanyId) return;
+        const role = roleById.get(Number(app.job_role_id));
+        if (Number(role?.company_id ?? (role as any)?.companyId) !== Number(selectedCompanyId)) return;
 
         const candidateId: number = app.candidate_id;
         const currentStage = statusMap.get(candidateId);
@@ -437,9 +456,10 @@ const Companies = () => {
     const m = new Map<number, { filled: number, required: number }>();
 
     for (const r of jobRoles) {
-      const cid = r.company_id;
-      const filledCount = (pipeline["selected"] || []).filter((app: any) => app.job_role_id === r.id).length + 
-                          (pipeline["joined"] || []).filter((app: any) => app.job_role_id === r.id).length;
+      const cid = Number(r.company_id ?? (r as any).companyId);
+      if (isNaN(cid) || cid <= 0) continue;
+      const filledCount = (pipeline["selected"] || []).filter((app: any) => Number(app.job_role_id) === Number(r.id)).length + 
+                          (pipeline["joined"] || []).filter((app: any) => Number(app.job_role_id) === Number(r.id)).length;
       const requiredCount = r.positions_required || 1;
 
       if (!m.has(cid)) {
@@ -476,9 +496,11 @@ const Companies = () => {
   // ─── KPI Cards Calculations ──────────────────────────────
   const activePositionsCount = useMemo(() => {
     return jobRoles.reduce((sum, r) => {
-      if (r.status.toLowerCase() !== "open") return sum;
-      const filledCount = (pipeline["selected"] || []).filter((app: any) => app.job_role_id === r.id).length +
-                          (pipeline["joined"] || []).filter((app: any) => app.job_role_id === r.id).length;
+      const rawStatus = (r.status || "open").trim().toLowerCase();
+      const isExplicitlyClosed = rawStatus === "closed" || rawStatus === "loss" || rawStatus === "cancelled";
+      if (isExplicitlyClosed) return sum;
+      const filledCount = (pipeline["selected"] || []).filter((app: any) => Number(app.job_role_id) === Number(r.id)).length +
+                          (pipeline["joined"] || []).filter((app: any) => Number(app.job_role_id) === Number(r.id)).length;
       const remaining = Math.max(0, (r.positions_required || 1) - filledCount);
       return sum + remaining;
     }, 0);
@@ -515,10 +537,11 @@ const Companies = () => {
   // ─── Filtered Companies for Catalog View ──────────────────
   const filteredCompanies = useMemo(() => {
     return companies.filter((c) => {
+      const companyIdNum = Number(c.id);
       // 1. Global Search
       const matchesGlobal = !globalSearch.trim() || 
         c.name.toLowerCase().includes(globalSearch.toLowerCase()) ||
-        jobRoles.some(r => r.company_id === c.id && r.title.toLowerCase().includes(globalSearch.toLowerCase()));
+        jobRoles.some(r => Number(r.company_id ?? (r as any).companyId) === companyIdNum && r.title.toLowerCase().includes(globalSearch.toLowerCase()));
 
       // 2. Company Search
       const matchesCompanySearch = !companySearch.trim() ||
@@ -527,16 +550,16 @@ const Companies = () => {
       // 3. Tab Filter
       let matchesTab = true;
       if (mainTab === "Active Positions") {
-        const openRoles = openRoleCountByCompany.get(c.id) || 0;
+        const openRoles = openRoleCountByCompany.get(companyIdNum) || 0;
         matchesTab = openRoles > 0;
       } else if (mainTab === "On Hold") {
         matchesTab = (pipeline["on_hold"] || []).some(app => {
-          const role = roleById.get(app.job_role_id);
-          return role?.company_id === c.id;
+          const role = roleById.get(Number(app.job_role_id));
+          return Number(role?.company_id ?? (role as any)?.companyId) === companyIdNum;
         });
       } else if (mainTab === "Closed Positions") {
-        const totalRoles = roleCountByCompany.get(c.id) || 0;
-        const openRoles = openRoleCountByCompany.get(c.id) || 0;
+        const totalRoles = roleCountByCompany.get(companyIdNum) || 0;
+        const openRoles = openRoleCountByCompany.get(companyIdNum) || 0;
         matchesTab = totalRoles > 0 && openRoles === 0;
       } else if (mainTab === "Recently Added") {
         const daysAgo = (Date.now() - new Date(c.created_at).getTime()) / 86400000;
@@ -551,8 +574,8 @@ const Companies = () => {
 
       let matchesStatus = true;
       if (statusFilter && statusFilter !== "All" && statusFilter !== "Status") {
-        const openRoles = openRoleCountByCompany.get(c.id) || 0;
-        const totalRoles = roleCountByCompany.get(c.id) || 0;
+        const openRoles = openRoleCountByCompany.get(companyIdNum) || 0;
+        const totalRoles = roleCountByCompany.get(companyIdNum) || 0;
         const isClosed = openRoles === 0 && totalRoles > 0;
         const isActive = openRoles > 0;
         if (statusFilter === "Active") matchesStatus = isActive;
@@ -563,37 +586,38 @@ const Companies = () => {
       let matchesStage = true;
       if (pipelineStageFilter && pipelineStageFilter !== "Pipeline Stage" && pipelineStageFilter !== "All Stages" && pipelineStageFilter !== "All") {
         const stageLower = pipelineStageFilter.toLowerCase();
-        const companyJobRoleIds = new Set(jobRoles.filter(r => r.company_id === c.id).map(r => r.id));
+        const companyJobRoleIds = new Set(jobRoles.filter(r => Number(r.company_id ?? (r as any).companyId) === companyIdNum).map(r => Number(r.id)));
         if (stageLower === "applied") {
           matchesStage = [
             ...(pipeline["pending"] || []),
             ...(pipeline["applied"] || []),
-          ].some((app: any) => companyJobRoleIds.has(app.job_role_id));
+          ].some((app: any) => companyJobRoleIds.has(Number(app.job_role_id)));
         } else if (stageLower === "shortlisted") {
-          matchesStage = (pipeline["shortlisted"] || []).some((app: any) => companyJobRoleIds.has(app.job_role_id));
+          matchesStage = (pipeline["shortlisted"] || []).some((app: any) => companyJobRoleIds.has(Number(app.job_role_id)));
         } else if (stageLower === "interview") {
           matchesStage = [
             ...(pipeline["interview_scheduled"] || []),
             ...(pipeline["interviewed"] || []),
             ...(pipeline["interview"] || []),
-          ].some((app: any) => companyJobRoleIds.has(app.job_role_id));
+          ].some((app: any) => companyJobRoleIds.has(Number(app.job_role_id)));
         } else if (stageLower === "selected") {
-          matchesStage = (pipeline["selected"] || []).some((app: any) => companyJobRoleIds.has(app.job_role_id));
+          matchesStage = (pipeline["selected"] || []).some((app: any) => companyJobRoleIds.has(Number(app.job_role_id)));
         } else if (stageLower === "joined") {
-          matchesStage = (pipeline["joined"] || []).some((app: any) => companyJobRoleIds.has(app.job_role_id));
+          matchesStage = (pipeline["joined"] || []).some((app: any) => companyJobRoleIds.has(Number(app.job_role_id)));
         }
       }
 
       return matchesGlobal && matchesCompanySearch && matchesTab && matchesCompanyFilter && matchesStatus && matchesStage;
     });
-  }, [companies, globalSearch, companySearch, mainTab, companyFilter, statusFilter, pipelineStageFilter, jobRoles, openRoleCountByCompany, pipeline, roleById]);
+  }, [companies, globalSearch, companySearch, mainTab, companyFilter, statusFilter, pipelineStageFilter, jobRoles, openRoleCountByCompany, roleCountByCompany, pipeline, roleById]);
 
   const getCompanyPipelineStage = (companyId: number) => {
     const companyApps: any[] = [];
+    const targetCid = Number(companyId);
     Object.entries(pipeline).forEach(([stageId, list]: [string, any]) => {
       list.forEach((app: any) => {
-        const role = roleById.get(app.job_role_id);
-        if (role?.company_id === companyId) {
+        const role = roleById.get(Number(app.job_role_id));
+        if (Number(role?.company_id ?? (role as any)?.companyId) === targetCid) {
           companyApps.push({ ...app, stageId });
         }
       });
@@ -625,20 +649,25 @@ const Companies = () => {
   // Filtered roles for selected company
   const companyRoles = useMemo(() => {
     if (!selectedCompanyId) return [];
-    const roles = jobRoles.filter((r) => r.company_id === selectedCompanyId);
+    const targetCid = Number(selectedCompanyId);
+    const roles = jobRoles.filter((r) => Number(r.company_id ?? (r as any).companyId) === targetCid);
 
     // Map each role to include its computed status and filled count
     const rolesWithComputedStatus = roles.map(r => {
-      const filledCount = (pipeline["selected"] || []).filter((app: any) => app.job_role_id === r.id).length +
-                          (pipeline["joined"] || []).filter((app: any) => app.job_role_id === r.id).length;
+      const filledCount = (pipeline["selected"] || []).filter((app: any) => Number(app.job_role_id) === Number(r.id)).length +
+                          (pipeline["joined"] || []).filter((app: any) => Number(app.job_role_id) === Number(r.id)).length;
+
+      const rawStatus = (r.status || "open").trim().toLowerCase();
+      const isExplicitlyClosed = rawStatus === "closed" || rawStatus === "loss" || rawStatus === "cancelled";
+      const isFilled = filledCount >= (r.positions_required || 1);
 
       let computedStatus = "open";
-      if (r.status.toLowerCase() === "closed" || filledCount >= (r.positions_required || 1)) {
+      if (isExplicitlyClosed || isFilled) {
         computedStatus = "closed";
       } else {
         const inProgressStages = ["pending", "shortlisted", "interview_scheduled", "interviewed", "on_hold"];
         const hasActiveCandidates = inProgressStages.some(stage =>
-          (pipeline[stage] || []).some((app: any) => app.job_role_id === r.id)
+          (pipeline[stage] || []).some((app: any) => Number(app.job_role_id) === Number(r.id))
         );
         if (hasActiveCandidates) {
           computedStatus = "in progress";
@@ -682,8 +711,8 @@ const Companies = () => {
       ...stage,
       cards: (pipeline[stage.id] || [])
         .map((app: any) => {
-          const role = roleById.get(app.job_role_id);
-          const companyId = role?.company_id ?? 0;
+          const role = roleById.get(Number(app.job_role_id));
+          const companyId = Number(role?.company_id ?? (role as any)?.companyId ?? 0);
           const days = Math.max(0, Math.floor((Date.now() - new Date(app.created_at).getTime()) / 86400000));
           const timeInStage = days === 0 ? "Today" : `${days}d ago`;
           const skillsList = (app.skills || "").split(",").map((s: string) => s.trim()).filter(Boolean);
@@ -707,8 +736,8 @@ const Companies = () => {
         })
         .filter((c: any) => {
           const isMatch = pipelineRoleFilter === "all"
-            ? c.companyId === selectedCompanyId
-            : (c.companyId === selectedCompanyId && c.roleId === pipelineRoleFilter);
+            ? Number(c.companyId) === Number(selectedCompanyId)
+            : (Number(c.companyId) === Number(selectedCompanyId) && Number(c.roleId) === Number(pipelineRoleFilter));
 
           if (!isMatch) return false;
 
@@ -736,8 +765,8 @@ const Companies = () => {
         return;
       }
       list.forEach((app: any) => {
-        const role = roleById.get(app.job_role_id);
-        if (role?.company_id === selectedCompanyId) {
+        const role = roleById.get(Number(app.job_role_id));
+        if (Number(role?.company_id ?? (role as any)?.companyId) === Number(selectedCompanyId)) {
           total++;
         }
       });
@@ -1216,7 +1245,7 @@ const Companies = () => {
 
       {/* ─── KPI Cards (Only for List View) ─────────────────── */}
       {!selectedCompanyId && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-4 mb-6">
+        <div className="grid grid-auto-fit-lg gap-3.5 sm:gap-4 mb-6">
           <div className="bg-card border border-border/50 rounded-xl p-4 flex items-center gap-4 shadow-sm">
             <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 border border-blue-100 dark:border-blue-900/50">
               <Building2 className="w-6 h-6" />
@@ -1361,23 +1390,23 @@ const Companies = () => {
           {/* Mobile Card List (< md) */}
           <div className="md:hidden space-y-3">
             {filteredCompanies.map((c) => {
-              const openRoles = openRoleCountByCompany.get(c.id) || 0;
-              const totalCand = candidateCountByCompany.get(c.id) || 0;
-              const { filled, required } = positionsFilledByCompany.get(c.id) || { filled: 0, required: 0 };
+              const companyIdNum = Number(c.id);
+              const openRoles = openRoleCountByCompany.get(companyIdNum) || 0;
+              const totalCand = candidateCountByCompany.get(companyIdNum) || 0;
+              const { filled, required } = positionsFilledByCompany.get(companyIdNum) || { filled: 0, required: 0 };
               const percentage = Math.min(100, required > 0 ? (filled / required) * 100 : 0);
-              const stageInfo = getCompanyPipelineStage(c.id);
+              const stageInfo = getCompanyPipelineStage(companyIdNum);
 
-              const hasOnHold = (pipeline["on_hold"] || []).some((app: any) => jobRoles.filter(r => r.company_id === c.id).some(r => r.id === app.job_role_id));
-              const totalRoles = roleCountByCompany.get(c.id) || 0;
+              const hasOnHold = (pipeline["on_hold"] || []).some((app: any) => jobRoles.filter(r => Number(r.company_id ?? (r as any).companyId) === companyIdNum).some(r => Number(r.id) === Number(app.job_role_id)));
+              const totalRoles = roleCountByCompany.get(companyIdNum) || 0;
               const allFilled = totalRoles > 0 && filled >= required && required > 0;
-              const companyStatus = hasOnHold
-                ? "On Hold"
-                : allFilled
-                  ? "Closed"
-                  : (openRoles > 0
-                      ? "Active"
-                      : (totalRoles > 0 ? "Closed" : "Inactive")
-                    );
+              const companyStatus = openRoles > 0
+                ? "Active"
+                : hasOnHold
+                  ? "On Hold"
+                  : allFilled
+                    ? "Closed"
+                    : (totalRoles > 0 ? "Closed" : "Inactive");
               const companyStatusStyle = companyStatus === "On Hold"
                 ? "bg-orange-500/10 text-orange-600 border-orange-500/20"
                 : (companyStatus === "Active"
@@ -1501,24 +1530,24 @@ const Companies = () => {
                 </thead>
                 <tbody className="divide-y divide-border/30 text-sm">
                   {filteredCompanies.map((c) => {
-                    const openRoles = openRoleCountByCompany.get(c.id) || 0;
-                    const totalCand = candidateCountByCompany.get(c.id) || 0;
-                    const { filled, required } = positionsFilledByCompany.get(c.id) || { filled: 0, required: 0 };
+                    const companyIdNum = Number(c.id);
+                    const openRoles = openRoleCountByCompany.get(companyIdNum) || 0;
+                    const totalCand = candidateCountByCompany.get(companyIdNum) || 0;
+                    const { filled, required } = positionsFilledByCompany.get(companyIdNum) || { filled: 0, required: 0 };
                     const percentage = Math.min(100, required > 0 ? (filled / required) * 100 : 0);
-                    const stageInfo = getCompanyPipelineStage(c.id);
+                    const stageInfo = getCompanyPipelineStage(companyIdNum);
 
                     // Status
-                    const hasOnHold = (pipeline["on_hold"] || []).some((app: any) => jobRoles.filter(r => r.company_id === c.id).some(r => r.id === app.job_role_id));
-                    const totalRoles = roleCountByCompany.get(c.id) || 0;
+                    const hasOnHold = (pipeline["on_hold"] || []).some((app: any) => jobRoles.filter(r => Number(r.company_id ?? (r as any).companyId) === companyIdNum).some(r => Number(r.id) === Number(app.job_role_id)));
+                    const totalRoles = roleCountByCompany.get(companyIdNum) || 0;
                     const allFilled = totalRoles > 0 && filled >= required && required > 0;
-                    const companyStatus = hasOnHold
-                      ? "On Hold"
-                      : allFilled
-                        ? "Closed"
-                        : (openRoles > 0
-                            ? "Active"
-                            : (totalRoles > 0 ? "Closed" : "Inactive")
-                          );
+                    const companyStatus = openRoles > 0
+                      ? "Active"
+                      : hasOnHold
+                        ? "On Hold"
+                        : allFilled
+                          ? "Closed"
+                          : (totalRoles > 0 ? "Closed" : "Inactive");
                     const companyStatusStyle = companyStatus === "On Hold"
                       ? "bg-orange-500/10 text-orange-600 border-orange-500/20"
                       : (companyStatus === "Active"
@@ -1739,8 +1768,8 @@ const Companies = () => {
                 </div>
                 <div className="w-full sm:w-auto sm:ml-auto grid grid-cols-3 sm:flex gap-2">
                   {[
-                    { label: "Roles", value: roleCountByCompany.get(selectedCompanyId!) || 0 },
-                    { label: "Open", value: openRoleCountByCompany.get(selectedCompanyId!) || 0 },
+                    { label: "Roles", value: roleCountByCompany.get(Number(selectedCompanyId!)) || companyRoles.length },
+                    { label: "Open", value: openRoleCountByCompany.get(Number(selectedCompanyId!)) || companyRoles.filter(r => r.computedStatus !== "closed").length },
                     { label: "In Progress", value: pipelineTotalCount },
                   ].map((s) => (
                     <div key={s.label} className="bg-secondary/60 rounded-lg px-2.5 sm:px-4 py-2 text-center">
@@ -1824,7 +1853,7 @@ const Companies = () => {
                         {/* Mobile Cards for Job Roles (< md) */}
                         <div className="md:hidden space-y-3">
                           {companyRoles.map((r) => {
-                            const roleIsOpen = r.status.toLowerCase() === "open";
+                            const roleIsOpen = r.computedStatus ? r.computedStatus !== "closed" : (r.status || "open").trim().toLowerCase() !== "closed";
                             const tags = getRoleTags(r);
                             const filledCount = r.filledCount;
                             const openingsCount = r.positions_required || 1;
@@ -1937,7 +1966,7 @@ const Companies = () => {
                             </thead>
                             <tbody className="divide-y divide-border/50 text-sm">
                               {companyRoles.map((r) => {
-                                const roleIsOpen = r.status.toLowerCase() === "open";
+                                const roleIsOpen = r.computedStatus ? r.computedStatus !== "closed" : (r.status || "open").trim().toLowerCase() !== "closed";
                                 const tags = getRoleTags(r);
                                 const filledCount = r.filledCount;
                                 const openingsCount = r.positions_required || 1;
@@ -2170,7 +2199,7 @@ const Companies = () => {
                       >
                         All
                       </button>
-                      {jobRoles.filter(r => r.company_id === selectedCompanyId!).map(role => (
+                      {jobRoles.filter(r => Number(r.company_id ?? (r as any).companyId) === Number(selectedCompanyId!)).map(role => (
                         <button
                           key={role.id}
                           onClick={() => setPipelineRoleFilter(role.id)}

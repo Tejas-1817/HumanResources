@@ -150,7 +150,7 @@ const JobRoles = () => {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+      <div className="grid grid-auto-fit-xl gap-4">
         {filtered.map((r, i) => {
           const roleIsOpen = r.status.toLowerCase() === "open";
           return (

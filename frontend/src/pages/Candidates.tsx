@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, Filter, ChevronLeft, ChevronRight, ChevronDown, X, Mail, Phone, Calendar, Building2, User, UserCheck, Plus, Upload, Trash2, Eye } from "lucide-react";
+import { Search, Filter, ChevronLeft, ChevronRight, ChevronDown, X, Mail, Phone, Calendar, Building2, Briefcase, User, UserCheck, Plus, Upload, Trash2, Eye } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -8,6 +8,7 @@ import { Modal } from "@/components/ui/Modal";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Candidate, deleteCandidate, getCandidates, getCompanies, getVendors, getJobRoles, getPipeline } from "@/api/resumeiq";
 import UploadPage from "./Upload";
+import { AddCandidateForm } from "@/components/forms/QuickActionForms";
 import { toast } from "sonner";
 import { formatJobRoleTitle } from "@/components/ui/TableDataCell";
 
@@ -23,7 +24,7 @@ const experienceRanges = [
 
 const Candidates = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(() => searchParams.get("search") || "");
   const [page, setPage] = useState(1);
   const stageFromUrl = searchParams.get("stage") || "";
   const statusFromUrl = searchParams.get("applicant_status") || "";
@@ -35,7 +36,9 @@ const Candidates = () => {
   const [skillFilter, setSkillFilter] = useState("");
   const [applicantStatusFilter, setApplicantStatusFilter] = useState<string>(() => initialStatus);
   const [companyFilter, setCompanyFilter] = useState<number | "">(() => companyIdFromUrl);
+  const [projectFilter, setProjectFilter] = useState<number | "">("");
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [addCandidateModalOpen, setAddCandidateModalOpen] = useState(false);
   const navigate = useNavigate();
   const vendorIdFromUrl = searchParams.get("vendor_id") ? Number(searchParams.get("vendor_id")) : null;
   const unassignedOnly = searchParams.get("unassigned_only") === "true";
@@ -73,13 +76,18 @@ const Candidates = () => {
     queryFn: () => getJobRoles(),
   });
 
+  const availableProjects = useMemo(() => {
+    if (!companyFilter) return jobRolesData ?? [];
+    return (jobRolesData ?? []).filter((r) => r.company_id === Number(companyFilter));
+  }, [jobRolesData, companyFilter]);
+
   const { data: pipelineData = {} } = useQuery({
     queryKey: ["pipeline"],
     queryFn: () => getPipeline(),
   });
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["candidates", search.trim(), skillFilter.trim(), expFilter, page, companyFilter, vendorIdFromUrl, unassignedOnly, applicantStatusFilter],
+  const { data, isLoading, isError, refetch } = useQuery({
+    queryKey: ["candidates", search.trim(), skillFilter.trim(), expFilter, page, companyFilter, projectFilter, vendorIdFromUrl, unassignedOnly, applicantStatusFilter],
     queryFn: () => {
       let combinedSearch = search.trim();
       const st = skillFilter.trim();
@@ -93,6 +101,7 @@ const Candidates = () => {
         page,
         page_size: PAGE_SIZE,
         company_id: companyFilter || undefined,
+        job_role_id: projectFilter || undefined,
         min_experience: range?.min > 0 ? range.min : undefined,
         max_experience: range?.max !== Infinity ? range.max : undefined,
         vendor_id: vendorIdFromUrl || undefined,
@@ -100,25 +109,30 @@ const Candidates = () => {
         applicant_status: isPipelineStage ? undefined : (applicantStatusFilter || undefined),
         stage: isPipelineStage ? applicantStatusFilter.toLowerCase() : undefined,
       });
-    }
+    },
+    placeholderData: (previousData) => previousData,
   });
 
   const candidates = useMemo(() => data?.items ?? [], [data?.items]);
   const totalFromServer = data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(totalFromServer / PAGE_SIZE));
-  const hasActiveFilters = expFilter !== 0 || skillFilter.trim().length > 0 || companyFilter !== "" || applicantStatusFilter !== "" || vendorIdFromUrl !== null || unassignedOnly;
+  const hasActiveFilters = expFilter !== 0 || skillFilter.trim().length > 0 || companyFilter !== "" || projectFilter !== "" || applicantStatusFilter !== "" || vendorIdFromUrl !== null || unassignedOnly || search.trim().length > 0;
 
   const clearFilters = () => {
     setExpFilter(0);
     setSkillFilter("");
     setApplicantStatusFilter("");
     setCompanyFilter("");
-    if (vendorIdFromUrl || unassignedOnly || searchParams.get("applicant_status") || searchParams.get("stage") || searchParams.get("company_id")) {
+    setProjectFilter("");
+    setSearch("");
+    setPage(1);
+    if (vendorIdFromUrl || unassignedOnly || searchParams.get("applicant_status") || searchParams.get("stage") || searchParams.get("company_id") || searchParams.get("search")) {
       searchParams.delete("vendor_id");
       searchParams.delete("unassigned_only");
       searchParams.delete("applicant_status");
       searchParams.delete("stage");
       searchParams.delete("company_id");
+      searchParams.delete("search");
       setSearchParams(searchParams);
     }
   };
@@ -167,29 +181,51 @@ const Candidates = () => {
         title={vendorIdFromUrl ? (() => { const v = vendorsData?.find(v => v.id === vendorIdFromUrl); return `${unassignedOnly ? 'On Bench' : 'Talent Pool'}: ${v ? (v.company_name || v.name) : "Partner"}`; })() : "Candidate Directory"}
         description={vendorIdFromUrl ? (() => { const v = vendorsData?.find(v => v.id === vendorIdFromUrl); return `Viewing ${unassignedOnly ? 'available ' : ''}candidates provided by ${v ? (v.company_name || v.name) : "this partner"}`; })() : "Comprehensive list of all talent in the system"}
         actions={
-          <button
-            onClick={() => setUploadModalOpen(true)}
-            className="px-4 py-2.5 rounded-lg bg-primary text-primary-foreground font-bold text-sm hover:bg-primary/90 transition-all flex items-center gap-2 shadow-lg shadow-primary/20"
-          >
-            <Upload className="w-4 h-4" /> Upload
-          </button>
+          <div className="flex items-center gap-2.5">
+            <button
+              onClick={() => setAddCandidateModalOpen(true)}
+              className="flex items-center gap-1.5 px-4 py-2 border border-blue-600 text-blue-600 rounded-xl text-xs sm:text-sm font-bold bg-white dark:bg-card hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-all shadow-sm active:scale-95 shrink-0 cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" /> Add Candidate
+            </button>
+            <button
+              onClick={() => setUploadModalOpen(true)}
+              className="px-4 py-2.5 rounded-lg bg-primary text-primary-foreground font-bold text-sm hover:bg-primary/90 transition-all flex items-center gap-2 shadow-lg shadow-primary/20 cursor-pointer"
+            >
+              <Upload className="w-4 h-4" /> Upload
+            </button>
+          </div>
         }
       />
 
       {/* Control Bar */}
       <div className="flex flex-col md:flex-row gap-4 items-center justify-between glass-card p-4 rounded-xl border border-border/50">
         <div className="relative flex-1 w-full max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
           <input
             type="text"
-            placeholder="Search name, email, phone..."
+            placeholder="Search name, email, phone, skills..."
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
               setPage(1);
             }}
-            className="w-full pl-10 pr-4 py-2.5 rounded-lg bg-secondary/50 border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 text-sm transition-all"
+            className="w-full pl-10 pr-9 py-2.5 rounded-lg bg-secondary/50 border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 text-sm transition-all"
+            autoFocus
           />
+          {search && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearch("");
+                setPage(1);
+              }}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-0.5 rounded transition-colors cursor-pointer"
+              title="Clear search"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
 
         <div className="flex items-center gap-2 w-full md:w-auto">
@@ -224,7 +260,7 @@ const Candidates = () => {
             exit={{ opacity: 0, y: -10 }}
             className="glass-card p-4 sm:p-6 rounded-xl border border-primary/10 bg-primary/5 shadow-2xl shadow-primary/5"
           >
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
               <div>
                 <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-3 block">Experience Range</label>
                 <div className="flex flex-wrap gap-2">
@@ -317,7 +353,10 @@ const Candidates = () => {
                   </div>
                   <select
                     value={companyFilter}
-                    onChange={(e) => { setCompanyFilter(e.target.value ? Number(e.target.value) : ""); setPage(1); }}
+                    onChange={(e) => {
+                      setCompanyFilter(e.target.value ? Number(e.target.value) : "");
+                      setPage(1);
+                    }}
                     className={`w-full pl-10 pr-9 py-2.5 rounded-lg border text-sm font-medium focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all appearance-none cursor-pointer ${
                       companyFilter !== ""
                         ? "bg-primary/10 border-primary/40 text-primary font-semibold"
@@ -348,6 +387,48 @@ const Candidates = () => {
                   </div>
                 </div>
               </div>
+
+              <div>
+                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-3 block">Project / Job Role</label>
+                <div className="relative">
+                  <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">
+                    <Briefcase className="w-4 h-4 text-primary/70" />
+                  </div>
+                  <select
+                    value={projectFilter}
+                    onChange={(e) => { setProjectFilter(e.target.value ? Number(e.target.value) : ""); setPage(1); }}
+                    className={`w-full pl-10 pr-9 py-2.5 rounded-lg border text-sm font-medium focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all appearance-none cursor-pointer ${
+                      projectFilter !== ""
+                        ? "bg-primary/10 border-primary/40 text-primary font-semibold"
+                        : "bg-secondary/50 border-border text-foreground hover:bg-secondary/70"
+                    }`}
+                  >
+                    <option value="">All Projects</option>
+                    {availableProjects.map((role) => (
+                      <option key={role.id} value={role.id}>
+                        {role.title} {!companyFilter ? `(${role.company_name})` : ""}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none flex items-center gap-1">
+                    {projectFilter !== "" && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setProjectFilter("");
+                          setPage(1);
+                        }}
+                        className="pointer-events-auto p-0.5 rounded-md hover:bg-primary/20 text-primary transition-colors"
+                        title="Clear project filter"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                    <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                  </div>
+                </div>
+              </div>
             </div>
           </motion.div>
         )}
@@ -356,15 +437,49 @@ const Candidates = () => {
       {/* Candidate List - Mobile Card View / Desktop Table View */}
       <div className="space-y-4">
         {/* Mobile View (Cards) */}
-        <div className="grid grid-cols-1 gap-4 md:hidden">
-          {isLoading ? (
+        <div className="grid grid-auto-fit-lg gap-4 md:hidden">
+          {isLoading && !data ? (
             <div className="py-20 text-center animate-pulse glass-card rounded-xl">
               <User className="w-8 h-8 text-primary/20 mx-auto mb-2" />
               <p className="text-sm text-muted-foreground">Retrieving talent...</p>
             </div>
+          ) : isError ? (
+            <div className="py-16 text-center glass-card rounded-2xl p-6 border border-border/50">
+              <div className="w-12 h-12 rounded-2xl bg-destructive/10 text-destructive flex items-center justify-center mx-auto mb-3">
+                <X className="w-6 h-6" />
+              </div>
+              <h4 className="text-base font-bold text-foreground mb-1">Failed to load candidates</h4>
+              <p className="text-xs text-muted-foreground max-w-xs mx-auto mb-4">An error occurred while fetching candidate records.</p>
+              <button
+                type="button"
+                onClick={() => refetch()}
+                className="px-3.5 py-1.5 rounded-lg bg-primary text-primary-foreground font-bold text-xs"
+              >
+                Retry
+              </button>
+            </div>
           ) : candidates.length === 0 ? (
-            <div className="py-20 text-center glass-card rounded-xl">
-              <p className="text-sm text-muted-foreground italic">No candidates found.</p>
+            <div className="py-16 text-center glass-card rounded-2xl p-6 border border-border/50">
+              <div className="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center mx-auto mb-3">
+                <Search className="w-6 h-6" />
+              </div>
+              <h4 className="text-base font-bold text-foreground mb-1">
+                No matching candidates found
+              </h4>
+              <p className="text-xs text-muted-foreground max-w-xs mx-auto mb-4">
+                {search.trim()
+                  ? `No records match "${search.trim()}". Try searching with a different name, skill, email, or phone.`
+                  : "No candidates match the selected filters."}
+              </p>
+              {(search.trim() || hasActiveFilters) && (
+                <button
+                  type="button"
+                  onClick={clearFilters}
+                  className="px-3.5 py-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-white font-bold text-xs transition-all cursor-pointer"
+                >
+                  Clear search & filters
+                </button>
+              )}
             </div>
           ) : (
             candidates.map((c) => (
@@ -463,7 +578,7 @@ const Candidates = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/50">
-                {isLoading ? (
+                {isLoading && !data ? (
                   <tr>
                     <td colSpan={unassignedOnly ? 5 : 7} className="py-20 text-center animate-pulse">
                       <div className="flex flex-col items-center gap-3">
@@ -472,10 +587,50 @@ const Candidates = () => {
                       </div>
                     </td>
                   </tr>
+                ) : isError ? (
+                  <tr>
+                    <td colSpan={unassignedOnly ? 5 : 7} className="py-16 text-center">
+                      <div className="flex flex-col items-center justify-center max-w-sm mx-auto">
+                        <div className="w-12 h-12 rounded-2xl bg-destructive/10 text-destructive flex items-center justify-center mb-3">
+                          <X className="w-6 h-6" />
+                        </div>
+                        <h4 className="text-base font-bold text-foreground mb-1">Failed to load candidates</h4>
+                        <p className="text-xs text-muted-foreground mb-4">An error occurred while fetching candidate records. Please try again.</p>
+                        <button
+                          type="button"
+                          onClick={() => refetch()}
+                          className="px-3.5 py-1.5 rounded-lg bg-primary text-primary-foreground font-bold text-xs"
+                        >
+                          Retry
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
                 ) : candidates.length === 0 ? (
                   <tr>
-                    <td colSpan={unassignedOnly ? 5 : 7} className="py-20 text-center">
-                      <p className="text-sm text-muted-foreground italic">No candidates found matching your criteria.</p>
+                    <td colSpan={unassignedOnly ? 5 : 7} className="py-16 text-center">
+                      <div className="flex flex-col items-center justify-center max-w-sm mx-auto">
+                        <div className="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center mb-3">
+                          <Search className="w-6 h-6" />
+                        </div>
+                        <h4 className="text-base font-bold text-foreground mb-1">
+                          No matching candidates found
+                        </h4>
+                        <p className="text-xs text-muted-foreground mb-4">
+                          {search.trim()
+                            ? `No records found matching "${search.trim()}". Try checking for spelling errors, or search by a different skill, email, or phone.`
+                            : "No candidates match the selected filters. Try adjusting or clearing your filters."}
+                        </p>
+                        {(search.trim() || hasActiveFilters) && (
+                          <button
+                            type="button"
+                            onClick={clearFilters}
+                            className="px-3.5 py-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-white font-bold text-xs transition-all cursor-pointer"
+                          >
+                            Clear search & filters
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ) : (
@@ -642,6 +797,20 @@ const Candidates = () => {
             }}
           />
         </div>
+      </Modal>
+
+      {/* Add Candidate Modal */}
+      <Modal
+        open={addCandidateModalOpen}
+        onClose={() => setAddCandidateModalOpen(false)}
+        title="Add Candidate"
+      >
+        <AddCandidateForm
+          onSuccess={() => {
+            setAddCandidateModalOpen(false);
+            queryClient.invalidateQueries({ queryKey: ["candidates"] });
+          }}
+        />
       </Modal>
     </motion.div>
   );

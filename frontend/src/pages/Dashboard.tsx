@@ -1350,7 +1350,7 @@ const Dashboard = () => {
       </div>
 
       {/* ─── Row 1: Metrics Cards ─────────────────────── */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-3.5 sm:gap-4">
+      <div className="grid grid-auto-fit-card gap-3.5 sm:gap-4">
         <MetricCard
           label="Total Candidates"
           value={data?.total_candidates ?? 0}
@@ -1392,7 +1392,7 @@ const Dashboard = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
         {/* Recruitment Statistics */}
-        <motion.div variants={item} className="bg-white border border-blue-200/80 hover:border-blue-300 transition-colors rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col min-h-[380px] h-full justify-between">
+        <motion.div variants={item} className="bg-white border border-blue-200/80 hover:border-blue-300 transition-colors rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col min-h-[380px] h-full justify-between cq-container">
           {/* Header */}
           <div className="flex justify-between items-center mb-3">
              <h3 className="text-sm font-black text-slate-800 tracking-tight">Recruitment Statistics</h3>
@@ -1434,7 +1434,7 @@ const Dashboard = () => {
           </div>
 
           {/* Top 5 Cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2.5 sm:gap-3 mb-2 flex-1">
+          <div className="grid grid-auto-fit-xs sm:grid-auto-fit-sm gap-2.5 sm:gap-3 mb-2 flex-1">
             {overallStats.map((stat) => (
               <div
                 key={stat.name}

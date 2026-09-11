@@ -90,6 +90,9 @@ export interface Application {
   id: number;
   candidate_id: number;
   job_role_id: number;
+  job_role_title?: string;
+  company_id?: number;
+  company_name?: string;
   status: string;
   resume_sent: boolean;
   created_at: string;
@@ -101,6 +104,13 @@ export interface Application {
   is_replacement?: boolean;
   status_date?: string;
   interview_date?: string;
+  offer_date?: string;
+  start_date?: string | null;
+  end_date?: string | null;
+  completion_date?: string | null;
+  drop_date?: string | null;
+  drop_reason?: string | null;
+  joining_date?: string | null;
   remarks?: string | null;
   source_label?: string;
   source?: string;
@@ -384,6 +394,20 @@ export const getPipeline = async (roleId?: number, companyId?: number): Promise<
   return data;
 };
 
+export const createApplication = async (payload: {
+  candidate_id: number;
+  job_role_id: number;
+  source?: string;
+  consultancy_name?: string;
+  remarks?: string;
+  status?: string;
+  start_date?: string;
+  joining_date?: string;
+}): Promise<Application> => {
+  const { data } = await client.post<Application>("/applications", payload);
+  return data;
+};
+
 export const updatePipelineStatus = async (
   applicationId: number,
   status: string,
@@ -392,7 +416,15 @@ export const updatePipelineStatus = async (
   interviewDate: string | null = null,
   offerDate: string | null = null,
   remarks: string | null = null,
-  isReplacement: boolean | null = null
+  isReplacement: boolean | null = null,
+  options?: {
+    startDate?: string | null;
+    endDate?: string | null;
+    completionDate?: string | null;
+    dropDate?: string | null;
+    dropReason?: string | null;
+    joiningDate?: string | null;
+  }
 ): Promise<Application> => {
   const { data } = await client.put<Application>(`/pipeline/${applicationId}`, {
     status,
@@ -402,6 +434,12 @@ export const updatePipelineStatus = async (
     offer_date: offerDate,
     remarks,
     is_replacement: isReplacement,
+    start_date: options?.startDate,
+    end_date: options?.endDate,
+    completion_date: options?.completionDate,
+    drop_date: options?.dropDate,
+    drop_reason: options?.dropReason,
+    joining_date: options?.joiningDate,
   });
   return data;
 };

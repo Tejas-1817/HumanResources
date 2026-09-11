@@ -442,7 +442,7 @@ const Vendors = () => {
         /* Talent Hub View (Candidates) */
         <div className="space-y-6">
           {/* Stats Banners */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+          <div className="grid grid-auto-fit-card gap-4">
             {/* Card 1: Total On Bench */}
             <div className="flex items-center gap-4 p-5 rounded-2xl bg-card border border-border/50 shadow-sm relative overflow-hidden group hover:border-primary/20 transition-all duration-300">
               <div className="w-12 h-12 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-500 ring-1 ring-indigo-500/20 group-hover:scale-105 transition-transform duration-300">

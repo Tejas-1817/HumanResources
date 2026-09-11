@@ -1,14 +1,37 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, Mail, Download, Calendar, Phone, Edit, Trash2, Globe } from "lucide-react";
+import {
+  ArrowLeft,
+  Mail,
+  Download,
+  Calendar,
+  Phone,
+  Edit,
+  Trash2,
+  Globe,
+  Building2,
+  Briefcase,
+  CheckCircle2,
+  Clock,
+  PlusCircle,
+  Plus,
+} from "lucide-react";
 import { SkillTag } from "@/components/ui/SkillTag";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Modal } from "@/components/ui/Modal";
 import { toast } from "sonner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import client from "@/api/client";
-import { getCandidateById, getApplicationsByCandidate, updateCandidate, deleteCandidate } from "@/api/resumeiq";
+import {
+  getCandidateById,
+  getApplicationsByCandidate,
+  updateCandidate,
+  deleteCandidate,
+  getCompanies,
+  getJobRoles,
+  createApplication,
+} from "@/api/resumeiq";
 import { useAuth } from "@/context/AuthContext";
 
 const CandidateDetail = () => {
@@ -31,6 +54,90 @@ const CandidateDetail = () => {
     enabled: Number.isFinite(candidateId),
   });
   const applications = appsData ?? [];
+
+  // Fetch companies and job roles for assignment
+  const { data: companies = [] } = useQuery({
+    queryKey: ["companies"],
+    queryFn: () => getCompanies(),
+  });
+  const { data: jobRoles = [] } = useQuery({
+    queryKey: ["job-roles"],
+    queryFn: () => getJobRoles(),
+  });
+
+  // Assignment Modal State
+  const [assignModalOpen, setAssignModalOpen] = useState(false);
+  const [selectedCompanyId, setSelectedCompanyId] = useState<number | "">("");
+  const [selectedRoleId, setSelectedRoleId] = useState<number | "">("");
+  const [assignStatus, setAssignStatus] = useState<string>("selected");
+  const [assignStartDate, setAssignStartDate] = useState<string>(
+    () => new Date().toISOString().split("T")[0]
+  );
+  const [assignRemarks, setAssignRemarks] = useState<string>("");
+  const [assigning, setAssigning] = useState(false);
+
+  // Group applications by company in chronological order
+  const historyByCompany = useMemo(() => {
+    const map = new Map<
+      string,
+      { companyName: string; companyId?: number; items: typeof applications }
+    >();
+
+    const sortedApps = [...applications].sort((a, b) => {
+      const dateA = new Date(a.start_date || a.status_date || a.created_at).getTime();
+      const dateB = new Date(b.start_date || b.status_date || b.created_at).getTime();
+      return dateB - dateA;
+    });
+
+    sortedApps.forEach((app) => {
+      const cName = app.company_name || "Direct / Internal Placement";
+      if (!map.has(cName)) {
+        map.set(cName, {
+          companyName: cName,
+          companyId: app.company_id,
+          items: [],
+        });
+      }
+      map.get(cName)!.items.push(app);
+    });
+
+    return Array.from(map.values());
+  }, [applications]);
+
+  const availableRoles = useMemo(() => {
+    if (!selectedCompanyId) return jobRoles;
+    return jobRoles.filter((r) => r.company_id === Number(selectedCompanyId));
+  }, [jobRoles, selectedCompanyId]);
+
+  const handleAssign = async () => {
+    if (!selectedRoleId) {
+      toast.error("Please select a project / job role");
+      return;
+    }
+    setAssigning(true);
+    try {
+      await createApplication({
+        candidate_id: candidateId,
+        job_role_id: Number(selectedRoleId),
+        status: assignStatus,
+        start_date: assignStartDate || undefined,
+        remarks: assignRemarks.trim() || undefined,
+      });
+      await queryClient.invalidateQueries({ queryKey: ["candidate-applications", candidateId] });
+      await queryClient.invalidateQueries({ queryKey: ["pipeline"] });
+      await queryClient.invalidateQueries({ queryKey: ["candidates"] });
+      toast.success("Candidate successfully assigned to new project!");
+      setAssignModalOpen(false);
+      setSelectedCompanyId("");
+      setSelectedRoleId("");
+      setAssignRemarks("");
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err?.response?.data?.message || "Failed to assign candidate");
+    } finally {
+      setAssigning(false);
+    }
+  };
 
   // Derive best status from applications
   const statusPriority = ["selected", "interviewed", "interview_scheduled", "shortlisted", "pending", "on_hold", "rejected"];
@@ -244,6 +351,14 @@ const CandidateDetail = () => {
               <Download className="w-4 h-4" /> Download Resume
             </button>
             {!isInterviewerAuthenticated && (
+              <button
+                onClick={() => setAssignModalOpen(true)}
+                className="w-full py-2.5 rounded-lg bg-primary/10 border border-primary/30 text-primary font-bold text-sm hover:bg-primary/20 transition-all flex items-center justify-center gap-2 shadow-xs"
+              >
+                <PlusCircle className="w-4 h-4" /> Assign to Project
+              </button>
+            )}
+            {!isInterviewerAuthenticated && (
               <div className="flex gap-2">
                 <button onClick={openEditModal} className="flex-1 py-2.5 rounded-lg bg-secondary border border-border text-foreground font-medium text-sm hover:bg-secondary/80 transition-all flex items-center justify-center gap-2">
                   <Edit className="w-4 h-4" /> Edit
@@ -266,6 +381,184 @@ const CandidateDetail = () => {
               {c.experience_years > 0 && <> Has <strong>{c.experience_years}</strong> years of experience.</>}
               {c.skills && <> Key skills include <strong>{c.skills.split(",").slice(0, 5).map(s => s.trim()).join(", ")}</strong>.</>}
             </p>
+          </div>
+
+          {/* Company & Project History */}
+          <div className="glass-card p-4 sm:p-6 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border/60">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                  <Briefcase className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="heading-md">Company & Project History</h3>
+                  <p className="text-xs text-muted-foreground">
+                    Chronological record of company assignments and projects
+                  </p>
+                </div>
+              </div>
+
+              {!isInterviewerAuthenticated && (
+                <button
+                  onClick={() => setAssignModalOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground font-semibold text-xs hover:bg-primary/90 transition-all shadow-xs shrink-0 self-start sm:self-auto"
+                >
+                  <Plus className="w-3.5 h-3.5" /> Assign to Position
+                </button>
+              )}
+            </div>
+
+            {historyByCompany.length === 0 ? (
+              <div className="py-8 text-center bg-secondary/30 rounded-xl border border-dashed border-border/80 p-6">
+                <Building2 className="w-10 h-10 text-muted-foreground/40 mx-auto mb-2" />
+                <p className="text-sm font-semibold text-foreground">No Company Assignments Yet</p>
+                <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
+                  This candidate currently has no project assignments. They are available in the candidate pool / on bench.
+                </p>
+                {!isInterviewerAuthenticated && (
+                  <button
+                    onClick={() => setAssignModalOpen(true)}
+                    className="mt-4 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-bold hover:bg-primary/90 transition-all inline-flex items-center gap-1.5"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Assign First Project
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-4 pt-1">
+                {historyByCompany.map((grp) => (
+                  <div
+                    key={grp.companyName}
+                    className="rounded-xl border border-border/70 bg-card/60 overflow-hidden shadow-xs"
+                  >
+                    {/* Company Header */}
+                    <div className="px-4 py-3 bg-secondary/40 border-b border-border/60 flex items-center justify-between">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Building2 className="w-4 h-4 text-primary shrink-0" />
+                        <span className="text-sm font-bold text-foreground truncate">
+                          {grp.companyName}
+                        </span>
+                      </div>
+                      <span className="px-2 py-0.5 rounded-full bg-secondary text-[11px] font-bold text-muted-foreground border border-border shrink-0">
+                        {grp.items.length} {grp.items.length === 1 ? "project" : "projects"}
+                      </span>
+                    </div>
+
+                    {/* Project Assignments Under this Company */}
+                    <div className="divide-y divide-border/40">
+                      {grp.items.map((app) => {
+                        const isCompleted = app.status === "completed";
+                        const isActive = ["selected", "joined"].includes(app.status);
+                        const isDropped = app.status === "dropped";
+
+                        const startDateDisplay = app.start_date
+                          ? new Date(app.start_date).toLocaleDateString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                            })
+                          : app.created_at
+                          ? new Date(app.created_at).toLocaleDateString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                            })
+                          : "—";
+
+                        const endDateDisplay = app.end_date
+                          ? new Date(app.end_date).toLocaleDateString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                            })
+                          : isCompleted && app.completion_date
+                          ? new Date(app.completion_date).toLocaleDateString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                            })
+                          : isCompleted || isDropped
+                          ? "—"
+                          : "Active / Ongoing";
+
+                        return (
+                          <div key={app.id} className="p-3.5 sm:p-4 hover:bg-secondary/20 transition-colors space-y-2">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-bold text-foreground">
+                                  {app.job_role_title || `Project #${app.job_role_id}`}
+                                </span>
+                              </div>
+
+                              <div className="flex items-center gap-2 shrink-0">
+                                {isCompleted ? (
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
+                                    <CheckCircle2 className="w-3 h-3" /> Completed
+                                  </span>
+                                ) : isActive ? (
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-500/10 text-blue-600 border border-blue-500/20">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" /> Active (Selected)
+                                  </span>
+                                ) : isDropped ? (
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-500/10 text-rose-600 border border-rose-500/20">
+                                    Dropped
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500/10 text-amber-600 border border-amber-500/20">
+                                    <Clock className="w-3 h-3" /> {formatStatus(app.status)}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Timeline & Meta */}
+                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
+                              <div className="flex items-center gap-1.5">
+                                <Calendar className="w-3.5 h-3.5 opacity-70" />
+                                <span>
+                                  Start: <strong className="text-foreground font-medium">{startDateDisplay}</strong>
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-1.5">
+                                <span>
+                                  End: <strong className="text-foreground font-medium">{endDateDisplay}</strong>
+                                </span>
+                              </div>
+                              {app.completion_date && (
+                                <div className="flex items-center gap-1 text-emerald-600 font-medium">
+                                  <span>
+                                    Completed: {new Date(app.completion_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                                  </span>
+                                </div>
+                              )}
+                              {(app.source_label || app.source) && (
+                                <span className="text-[11px] px-2 py-0.5 rounded bg-secondary text-muted-foreground font-semibold">
+                                  Source: {app.source_label || app.source}
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Drop Reason */}
+                            {isDropped && app.drop_reason && (
+                              <div className="mt-1 p-2 rounded-lg bg-rose-500/10 border border-rose-500/20 text-xs text-rose-600">
+                                <strong>Drop Reason:</strong> {app.drop_reason}
+                              </div>
+                            )}
+
+                            {/* Remarks */}
+                            {app.remarks && (
+                              <p className="text-xs text-muted-foreground bg-secondary/50 p-2 rounded border border-border/50">
+                                <strong>Notes:</strong> {app.remarks}
+                              </p>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Improved Resume Preview */}
@@ -427,6 +720,107 @@ const CandidateDetail = () => {
                 <Trash2 className="w-4 h-4" />
               )}
               {deleting ? "Deleting..." : "Delete"}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Assign to Project / Company Modal */}
+      <Modal
+        open={assignModalOpen}
+        onClose={() => setAssignModalOpen(false)}
+        title="Assign Candidate to Position / Project"
+      >
+        <div className="space-y-4">
+          <p className="text-xs text-muted-foreground">
+            Assign <strong className="text-foreground">{c.name}</strong> to a new company and project. 
+            All previous company & project history will remain preserved.
+          </p>
+
+          <div>
+            <label className="label-text mb-2 block">Company (Optional filter)</label>
+            <select
+              value={selectedCompanyId}
+              onChange={(e) => {
+                setSelectedCompanyId(e.target.value ? Number(e.target.value) : "");
+                setSelectedRoleId("");
+              }}
+              className="w-full px-4 py-2.5 rounded-lg bg-secondary border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+            >
+              <option value="">All Companies</option>
+              {companies.map((comp) => (
+                <option key={comp.id} value={comp.id}>{comp.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="label-text mb-2 block">Job Role / Project <span className="text-destructive">*</span></label>
+            <select
+              value={selectedRoleId}
+              onChange={(e) => setSelectedRoleId(e.target.value ? Number(e.target.value) : "")}
+              className="w-full px-4 py-2.5 rounded-lg bg-secondary border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+            >
+              <option value="">Select a project / position...</option>
+              {availableRoles.map((role) => (
+                <option key={role.id} value={role.id}>
+                  {role.title} ({role.company_name})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="label-text mb-2 block">Initial Status</label>
+              <select
+                value={assignStatus}
+                onChange={(e) => setAssignStatus(e.target.value)}
+                className="w-full px-4 py-2.5 rounded-lg bg-secondary border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+              >
+                <option value="selected">Selected (Active)</option>
+                <option value="joined">Joined</option>
+                <option value="pending">Pending</option>
+                <option value="shortlisted">Shortlisted</option>
+                <option value="interview_scheduled">Interview</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="label-text mb-2 block">Start Date</label>
+              <input
+                type="date"
+                value={assignStartDate}
+                onChange={(e) => setAssignStartDate(e.target.value)}
+                className="w-full px-4 py-2.5 rounded-lg bg-secondary border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="label-text mb-2 block">Assignment Remarks / Notes</label>
+            <textarea
+              rows={2}
+              value={assignRemarks}
+              onChange={(e) => setAssignRemarks(e.target.value)}
+              placeholder="e.g. Assigned to Gyde for Senior Java Developer role..."
+              className="w-full px-4 py-2 rounded-lg bg-secondary border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+            />
+          </div>
+
+          <div className="flex justify-end gap-3 pt-2 border-t border-border/50">
+            <button
+              onClick={() => setAssignModalOpen(false)}
+              className="px-4 py-2 rounded-lg text-xs font-bold text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleAssign}
+              disabled={assigning || !selectedRoleId}
+              className="px-5 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-bold hover:bg-primary/90 transition-all disabled:opacity-50"
+            >
+              {assigning ? "Assigning..." : "Confirm Assignment"}
             </button>
           </div>
         </div>

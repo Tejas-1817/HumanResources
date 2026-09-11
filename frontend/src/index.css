@@ -525,4 +525,39 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+
+  /* Fluid Auto-Fit Responsive Grid Layouts */
+  .grid-auto-fit-xs {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr));
+  }
+  .grid-auto-fit-sm {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
+  }
+  .grid-auto-fit-card {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  }
+  .grid-auto-fit-md {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+  }
+  .grid-auto-fit-lg {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+  }
+  .grid-auto-fit-xl {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
+  }
+
+  /* CSS Container Queries for Component-Aware Responsiveness */
+  .cq-container {
+    container-type: inline-size;
+  }
+
+  @container (max-width: 480px) {
+    .cq-stack-sm {
+      flex-direction: column !important;
+      align-items: stretch !important;
+    }
+    .cq-hide-sm {
+      display: none !important;
+    }
+  }
 }

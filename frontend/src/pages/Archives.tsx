@@ -84,7 +84,7 @@ const Archives = () => {
 
   // Active filter states
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | "selected" | "rejected" | "dropped">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "selected" | "rejected" | "dropped" | "completed">("all");
   const [timeFilter, setTimeFilter] = useState("all");
   const [companyFilter, setCompanyFilter] = useState("all");
   const [roleFilter, setRoleFilter] = useState("all");
@@ -126,7 +126,7 @@ const Archives = () => {
 
   const allArchivedCandidates = useMemo(() => {
     const list: any[] = [];
-    const stages = ["selected", "rejected", "dropped"];
+    const stages = ["selected", "rejected", "dropped", "completed"];
 
     stages.forEach((stageId) => {
       const apps = pipeline[stageId] || [];
@@ -142,7 +142,7 @@ const Archives = () => {
           email: app.candidate_email || "N/A",
           phone: app.candidate_phone || (app as any).phone || "+91 97518 6435",
           experience: app.experience_years,
-          status: stageId, // "selected", "rejected", "dropped"
+          status: stageId, // "selected", "rejected", "dropped", "completed"
           remarks: app.remarks || app.note || null,
           source: app.source_label || (app.source ? app.source.charAt(0).toUpperCase() + app.source.slice(1) : "Direct"),
         });
@@ -157,14 +157,17 @@ const Archives = () => {
     const selected = allArchivedCandidates.filter((c) => c.status === "selected").length;
     const rejected = allArchivedCandidates.filter((c) => c.status === "rejected").length;
     const dropped = allArchivedCandidates.filter((c) => c.status === "dropped").length;
+    const completed = allArchivedCandidates.filter((c) => c.status === "completed").length;
     return {
       total,
       selected,
       rejected,
       dropped,
+      completed,
       selectedPct: total ? ((selected / total) * 100).toFixed(1) : "0.0",
       rejectedPct: total ? ((rejected / total) * 100).toFixed(1) : "0.0",
       droppedPct: total ? ((dropped / total) * 100).toFixed(1) : "0.0",
+      completedPct: total ? ((completed / total) * 100).toFixed(1) : "0.0",
     };
   }, [allArchivedCandidates]);
 
@@ -457,7 +460,7 @@ const Archives = () => {
       </div>
 
       {/* ── Summary Metric Cards (4 in row) ──────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-auto-fit-card gap-3 sm:gap-4">
         {/* Total Archived */}
         <div
           role="button"
@@ -545,6 +548,28 @@ const Archives = () => {
             </h3>
           </div>
         </div>
+
+        {/* Completed */}
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => setStatusFilter("completed")}
+          className={`bg-white border rounded-xl p-3.5 sm:p-4 shadow-xs flex items-center gap-3.5 cursor-pointer transition-all duration-200 hover:shadow-sm active:scale-[0.99] select-none ${
+            statusFilter === "completed"
+              ? "border-emerald-300 ring-2 ring-emerald-400/20"
+              : "border-slate-200/80 hover:border-emerald-200"
+          }`}
+        >
+          <div className="w-10 h-10 rounded-lg bg-emerald-50/70 border border-emerald-100 flex items-center justify-center shrink-0">
+            <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs font-semibold text-slate-500">Completed</p>
+            <h3 className="text-xl sm:text-2xl font-bold text-slate-900 mt-0.5">
+              {stats.completed.toLocaleString()}
+            </h3>
+          </div>
+        </div>
       </div>
 
       {/* ── Filters Panel Card ───────────────────────────────── */}
@@ -576,6 +601,7 @@ const Archives = () => {
               >
                 <option value="all">All Status</option>
                 <option value="selected">Selected</option>
+                <option value="completed">Completed</option>
                 <option value="rejected">Rejected</option>
                 <option value="dropped">Dropped</option>
               </select>
@@ -868,6 +894,12 @@ const Archives = () => {
                               Selected
                             </span>
                           )}
+                          {cand.status === "completed" && (
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                              Completed
+                            </span>
+                          )}
                           {cand.status === "rejected" && (
                             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-red-50 text-red-700 border border-red-200">
                               <XCircle className="w-3.5 h-3.5 text-red-600" />
@@ -881,6 +913,7 @@ const Archives = () => {
                             </span>
                           )}
                           {cand.status !== "selected" &&
+                            cand.status !== "completed" &&
                             cand.status !== "rejected" &&
                             cand.status !== "dropped" && (
                               <StatusBadge status={cand.status} />

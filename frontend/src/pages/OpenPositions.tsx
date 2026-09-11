@@ -605,7 +605,7 @@ const OpenPositions = () => {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
+      <div className="grid grid-auto-fit-sm gap-3 sm:gap-4">
         <div
           onClick={() => setActiveTabFilter("all")}
           className={`glass-card p-3.5 sm:p-4 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between min-h-[112px] h-full hover:shadow-md ${
