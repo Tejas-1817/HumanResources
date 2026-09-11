@@ -284,25 +284,25 @@ ${values.description || ""}`;
   );
 
   return (
-    <Modal open={open} onClose={onClose} title="Position Requisition Form">
-      <div className="max-h-[82vh] overflow-y-auto custom-scrollbar p-1">
+    <Modal open={open} onClose={onClose} title="Position Requisition Form" className="max-w-[560px]">
+      <div className="w-full">
         {/* Simple Page Steps Indicator */}
-        <div className="flex items-center justify-center gap-6 mb-6">
+        <div className="flex items-center justify-center gap-4 sm:gap-6 mb-4">
           <button
             type="button"
             onClick={() => setActivePage(1)}
-            className={`flex items-center gap-2 pb-2 text-xs font-bold uppercase tracking-wider transition-all border-b-2 ${
+            className={`flex items-center gap-2 pb-1.5 text-xs font-bold uppercase tracking-wider transition-all border-b-2 ${
               activePage === 1 ? "text-primary border-primary" : "text-muted-foreground border-transparent hover:text-foreground"
             }`}
           >
             <span className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px]">1</span>
             Position & Requirements
           </button>
-          <div className="h-px bg-border w-12 mb-2" />
+          <div className="h-px bg-border w-8 sm:w-12 mb-1.5" />
           <button
             type="button"
             onClick={() => setActivePage(2)}
-            className={`flex items-center gap-2 pb-2 text-xs font-bold uppercase tracking-wider transition-all border-b-2 ${
+            className={`flex items-center gap-2 pb-1.5 text-xs font-bold uppercase tracking-wider transition-all border-b-2 ${
               activePage === 2 ? "text-primary border-primary" : "text-muted-foreground border-transparent hover:text-foreground"
             }`}
           >
@@ -311,40 +311,46 @@ ${values.description || ""}`;
           </button>
         </div>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           
           {/* PAGE 1: POSITION DETAILS & REQUIREMENTS */}
           {activePage === 1 && (
-            <div className="space-y-5 animate-in fade-in slide-in-from-bottom-2 duration-200">
+            <div className="space-y-3.5 animate-in fade-in slide-in-from-bottom-2 duration-200">
               
               {/* Row 1: Position Name & Openings */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Position Name</label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block">
+                    Position Name
+                  </label>
                   <input
                     {...register("title")}
                     placeholder="e.g. Senior Frontend Engineer"
-                    className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all font-medium"
+                    className="w-full bg-secondary/50 border border-border rounded-xl px-3.5 py-2 text-xs sm:text-sm focus:outline-none focus:ring-1.5 focus:ring-primary/40 focus:border-primary transition-all font-medium h-[38px]"
                   />
                   {errors.title && <p className="text-[10px] text-destructive font-bold">{errors.title.message}</p>}
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Openings</label>
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block">
+                    Openings
+                  </label>
                   <input
                     type="number"
                     min="1"
                     {...register("positions_required")}
-                    className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all font-medium"
+                    className="w-full bg-secondary/50 border border-border rounded-xl px-3.5 py-2 text-xs sm:text-sm focus:outline-none focus:ring-1.5 focus:ring-primary/40 focus:border-primary transition-all font-medium h-[38px]"
                   />
                   {errors.positions_required && <p className="text-[10px] text-destructive font-bold">{errors.positions_required.message}</p>}
                 </div>
               </div>
 
               {/* Row 2: Client & Project Name */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1.5 relative" ref={clientDropdownRef}>
-                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Client / Company Name</label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div className="space-y-1 relative" ref={clientDropdownRef}>
+                  <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block">
+                    Client / Company Name
+                  </label>
                   <div className="relative">
                     <input
                       type="text"
@@ -355,13 +361,13 @@ ${values.description || ""}`;
                         setClientSearch(e.target.value);
                         setIsClientDropdownOpen(true);
                       }}
-                      className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all font-medium"
+                      className="w-full bg-secondary/50 border border-border rounded-xl pl-3.5 pr-8 py-2 text-xs sm:text-sm focus:outline-none focus:ring-1.5 focus:ring-primary/40 focus:border-primary transition-all font-medium h-[38px]"
                     />
                     <ChevronDown className="w-4 h-4 text-muted-foreground absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                   </div>
 
                   {isClientDropdownOpen && (
-                    <div className="absolute left-0 right-0 mt-1 bg-card border border-border rounded-xl shadow-lg z-50 max-h-48 overflow-y-auto p-1.5">
+                    <div className="absolute left-0 right-0 mt-1 bg-card border border-border rounded-xl shadow-lg z-50 max-h-48 overflow-y-auto p-1.5 custom-scrollbar">
                       {filteredClientsList.map((c) => (
                         <button
                           key={c.id}
@@ -435,84 +441,97 @@ ${values.description || ""}`;
                   {errors.company_id && <p className="text-[10px] text-destructive font-bold">{errors.company_id.message}</p>}
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Project Name</label>
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block">
+                    Project Name
+                  </label>
                   <input
                     type="text"
                     placeholder="e.g. Cloud Migration"
                     {...register("project_name")}
-                    className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all font-medium"
+                    className="w-full bg-secondary/50 border border-border rounded-xl px-3.5 py-2 text-xs sm:text-sm focus:outline-none focus:ring-1.5 focus:ring-primary/40 focus:border-primary transition-all font-medium h-[38px]"
                   />
                   {errors.project_name && <p className="text-[10px] text-destructive font-bold">{errors.project_name.message}</p>}
                 </div>
               </div>
 
               {/* Row 3: Skills Required */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Skills Required</label>
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block">
+                  Skills Required
+                </label>
                 <input
                   {...register("skills")}
                   placeholder="e.g. React, Node.js, AWS Cloud, PostgreSQL"
-                  className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all font-medium"
+                  className="w-full bg-secondary/50 border border-border rounded-xl px-3.5 py-2 text-xs sm:text-sm focus:outline-none focus:ring-1.5 focus:ring-primary/40 focus:border-primary transition-all font-medium h-[38px]"
                 />
                 {errors.skills && <p className="text-[10px] text-destructive font-bold">{errors.skills.message}</p>}
               </div>
 
               {/* Row 4: Experience, Location & Status */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Experience (Years)</label>
+              <div className="grid grid-cols-3 gap-3 items-start">
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block truncate" title="Experience (Years)">
+                    Experience (Years)
+                  </label>
                   <input
                     type="text"
                     {...register("experience_required")}
                     placeholder="e.g. 3-5 Years"
-                    className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all font-medium"
+                    className="w-full bg-secondary/50 border border-border rounded-xl px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-1.5 focus:ring-primary/40 focus:border-primary transition-all font-medium h-[38px]"
                   />
                   {errors.experience_required && <p className="text-[10px] text-destructive font-bold">{errors.experience_required.message}</p>}
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Location</label>
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block truncate" title="Location">
+                    Location
+                  </label>
                   <input
                     {...register("location")}
                     placeholder="e.g. Pune, Bengaluru"
-                    className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all font-medium"
+                    className="w-full bg-secondary/50 border border-border rounded-xl px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-1.5 focus:ring-primary/40 focus:border-primary transition-all font-medium h-[38px]"
                   />
                   {errors.location && <p className="text-[10px] text-destructive font-bold">{errors.location.message}</p>}
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Status</label>
-                  <select
-                    {...register("status")}
-                    className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all font-semibold cursor-pointer"
-                  >
-                    <option value="open">Open</option>
-                    <option value="closed">Closed</option>
-                    <option value="loss">Loss</option>
-                  </select>
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block truncate" title="Status">
+                    Status
+                  </label>
+                  <div className="relative">
+                    <select
+                      {...register("status")}
+                      className="w-full appearance-none bg-secondary/50 border border-border rounded-xl pl-3 pr-7 py-2 text-xs sm:text-sm focus:outline-none focus:ring-1.5 focus:ring-primary/40 focus:border-primary transition-all font-semibold cursor-pointer h-[38px]"
+                    >
+                      <option value="open">Open</option>
+                      <option value="closed">Closed</option>
+                      <option value="loss">Loss</option>
+                    </select>
+                    <ChevronDown className="w-3.5 h-3.5 text-muted-foreground absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  </div>
                 </div>
               </div>
 
               {/* Row 5: Employment Type Checkboxes (Onsite / Hybrid / Remote) */}
-              <div className="space-y-2 pt-1">
+              <div className="space-y-1.5 pt-0.5">
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                  <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
                     Employment Type
                   </label>
                   <span className="text-[11px] text-primary font-bold">
                     {selectedWorkModes.length > 0 ? selectedWorkModes.join(" / ") : "None selected"}
                   </span>
                 </div>
-                <div className="flex flex-wrap items-center gap-3">
+                <div className="grid grid-cols-3 gap-3">
                   {["Onsite", "Hybrid", "Remote"].map((mode) => {
                     const isSelected = selectedWorkModes.includes(mode);
                     return (
                       <label
                         key={mode}
-                        className={`flex items-center gap-2.5 px-4 py-2.5 rounded-xl border text-xs font-bold cursor-pointer transition-all select-none ${
+                        className={`flex items-center justify-center gap-2 px-3 py-2 rounded-xl border text-xs font-bold cursor-pointer transition-all select-none h-[38px] ${
                           isSelected
-                            ? "bg-primary/10 border-primary text-primary shadow-sm ring-1 ring-primary/20"
+                            ? "bg-primary/10 border-primary text-primary shadow-xs ring-1 ring-primary/20"
                             : "bg-secondary/40 border-border text-muted-foreground hover:text-foreground hover:bg-secondary/70"
                         }`}
                       >
@@ -520,7 +539,7 @@ ${values.description || ""}`;
                           type="checkbox"
                           checked={isSelected}
                           onChange={() => handleWorkModeToggle(mode)}
-                          className="w-4 h-4 rounded border-border text-primary focus:ring-primary/50 cursor-pointer accent-primary"
+                          className="w-3.5 h-3.5 rounded border-border text-primary focus:ring-primary/50 cursor-pointer accent-primary"
                         />
                         <span>{mode}</span>
                       </label>
@@ -530,11 +549,11 @@ ${values.description || ""}`;
               </div>
 
               {/* Page 1 Action Row */}
-              <div className="flex justify-end pt-4 border-t border-border/50">
+              <div className="flex justify-end pt-3 border-t border-border/50">
                 <button
                   type="button"
                   onClick={() => setActivePage(2)}
-                  className="px-6 py-2.5 bg-primary text-white rounded-xl text-xs font-bold hover:bg-primary/95 transition-all flex items-center gap-1.5 shadow-sm"
+                  className="px-5 py-2 bg-primary text-white rounded-xl text-xs font-bold hover:bg-primary/95 transition-all flex items-center gap-1.5 shadow-xs"
                 >
                   Next Page &rarr;
                 </button>
@@ -544,51 +563,56 @@ ${values.description || ""}`;
 
           {/* PAGE 2: TIMELINE, BUDGET & RESPONSIBILITIES */}
           {activePage === 2 && (
-            <div className="space-y-5 animate-in fade-in slide-in-from-bottom-2 duration-200">
+            <div className="space-y-3.5 animate-in fade-in slide-in-from-bottom-2 duration-200">
               
               {/* Row 1: Project Start Date & Duration */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
                     <CalendarIcon className="w-3.5 h-3.5" /> Project Start Date
                   </label>
                   <input
                     type="date"
                     {...register("project_start_date")}
-                    className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all font-medium"
+                    className="w-full bg-secondary/50 border border-border rounded-xl px-3.5 py-2 text-xs sm:text-sm focus:outline-none focus:ring-1.5 focus:ring-primary/40 focus:border-primary transition-all font-medium h-[38px]"
                   />
                   {errors.project_start_date && <p className="text-[10px] text-destructive font-bold">{errors.project_start_date.message}</p>}
                 </div>
 
-                <div className="grid grid-cols-3 gap-2 items-end">
-                  <div className="col-span-2 space-y-1.5">
-                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Project Duration</label>
-                    <input
-                      type="number"
-                      min="1"
-                      placeholder="e.g. 6"
-                      {...register("project_duration_val")}
-                      className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all font-medium"
-                    />
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5" /> Project Duration
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="col-span-2">
+                      <input
+                        type="number"
+                        min="1"
+                        placeholder="e.g. 6"
+                        {...register("project_duration_val")}
+                        className="w-full bg-secondary/50 border border-border rounded-xl px-3.5 py-2 text-xs sm:text-sm focus:outline-none focus:ring-1.5 focus:ring-primary/40 focus:border-primary transition-all font-medium h-[38px]"
+                      />
+                    </div>
+                    <div className="col-span-1 relative">
+                      <select
+                        {...register("project_duration_unit")}
+                        className="w-full appearance-none bg-secondary/50 border border-border rounded-xl pl-2.5 pr-6 py-2 text-xs sm:text-sm focus:outline-none focus:ring-1.5 focus:ring-primary/40 focus:border-primary transition-all font-semibold cursor-pointer h-[38px]"
+                      >
+                        <option value="Weeks">Weeks</option>
+                        <option value="Months">Months</option>
+                        <option value="Years">Years</option>
+                      </select>
+                      <ChevronDown className="w-3.5 h-3.5 text-muted-foreground absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    </div>
                   </div>
-                  <div className="col-span-1">
-                    <select
-                      {...register("project_duration_unit")}
-                      className="w-full bg-secondary/50 border border-border rounded-xl px-2 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all font-semibold"
-                    >
-                      <option value="Weeks">Weeks</option>
-                      <option value="Months">Months</option>
-                      <option value="Years">Years</option>
-                    </select>
-                  </div>
+                  {errors.project_duration_val && <p className="text-[10px] text-destructive font-bold">{errors.project_duration_val.message}</p>}
                 </div>
               </div>
-              {errors.project_duration_val && <p className="text-[10px] text-destructive font-bold">{errors.project_duration_val.message}</p>}
 
               {/* Row 2: Request Raised By & Budget */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1.5 relative" ref={employeeDropdownRef}>
-                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div className="space-y-1 relative" ref={employeeDropdownRef}>
+                  <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
                     <UserCheck className="w-3.5 h-3.5" /> Request Raised By
                   </label>
                   <div className="relative">
@@ -601,13 +625,13 @@ ${values.description || ""}`;
                         setEmployeeSearch(e.target.value);
                         setIsEmployeeDropdownOpen(true);
                       }}
-                      className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none font-medium"
+                      className="w-full bg-secondary/50 border border-border rounded-xl pl-3.5 pr-8 py-2 text-xs sm:text-sm focus:outline-none focus:ring-1.5 focus:ring-primary/40 focus:border-primary transition-all font-medium h-[38px]"
                     />
                     <ChevronDown className="w-4 h-4 text-muted-foreground absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                   </div>
 
                   {isEmployeeDropdownOpen && (
-                    <div className="absolute left-0 right-0 mt-1 bg-card border border-border rounded-xl shadow-lg z-50 max-h-40 overflow-y-auto p-1">
+                    <div className="absolute left-0 right-0 mt-1 bg-card border border-border rounded-xl shadow-lg z-50 max-h-40 overflow-y-auto p-1 custom-scrollbar">
                       {filteredEmployeesList.map((e) => (
                         <button
                           key={e.id}
@@ -640,14 +664,14 @@ ${values.description || ""}`;
                   {errors.request_raised_by && <p className="text-[10px] text-destructive font-bold">{errors.request_raised_by.message}</p>}
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
                     <DollarSign className="w-3.5 h-3.5" /> Budget Range
                   </label>
                   <input
                     {...register("budget")}
                     placeholder="e.g. ₹5,00,000 or ₹12 LPA"
-                    className="w-full bg-secondary/50 border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all font-medium"
+                    className="w-full bg-secondary/50 border border-border rounded-xl px-3.5 py-2 text-xs sm:text-sm focus:outline-none focus:ring-1.5 focus:ring-primary/40 focus:border-primary transition-all font-medium h-[38px]"
                   />
                   {errors.budget && <p className="text-[10px] text-destructive font-bold">{errors.budget.message}</p>}
                 </div>
@@ -666,7 +690,7 @@ ${values.description || ""}`;
                   const files = e.dataTransfer.files;
                   if (files && files.length > 0) handleFileUpload(files[0]);
                 }}
-                className={`border-2 border-dashed rounded-2xl p-4 text-center transition-all ${
+                className={`border-2 border-dashed rounded-xl p-3 text-center transition-all ${
                   isDragging ? "border-primary bg-primary/5" : "border-border hover:border-primary/40"
                 }`}
               >
@@ -680,12 +704,12 @@ ${values.description || ""}`;
                     if (files && files.length > 0) handleFileUpload(files[0]);
                   }}
                 />
-                <label htmlFor="requisition-file" className="cursor-pointer space-y-1.5 block">
-                  <div className="w-10 h-10 bg-secondary/50 rounded-full flex items-center justify-center mx-auto text-muted-foreground">
+                <label htmlFor="requisition-file" className="cursor-pointer space-y-1 block">
+                  <div className="w-8 h-8 bg-secondary/60 rounded-full flex items-center justify-center mx-auto text-muted-foreground">
                     {isExtracting ? (
-                      <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                      <Loader2 className="w-4 h-4 animate-spin text-primary" />
                     ) : (
-                      <UploadCloud className="w-5 h-5" />
+                      <UploadCloud className="w-4 h-4" />
                     )}
                   </div>
                   <div>
@@ -695,7 +719,7 @@ ${values.description || ""}`;
                     <p className="text-[10px] text-muted-foreground">Drag PDF or Text file here to auto-populate responsibilities</p>
                   </div>
                   {uploadedFileName && (
-                    <div className="inline-flex items-center gap-1.5 px-3 py-0.5 bg-emerald-500/10 text-emerald-600 rounded-full text-[10px] font-bold border border-emerald-500/20">
+                    <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-emerald-500/10 text-emerald-600 rounded-full text-[10px] font-bold border border-emerald-500/20">
                       <CheckCircle className="w-3 h-3" /> Loaded: {uploadedFileName}
                     </div>
                   )}
@@ -703,38 +727,38 @@ ${values.description || ""}`;
               </div>
 
               {/* Row 4: Responsibilities Description */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex justify-between">
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex justify-between">
                   <span>Responsibilities</span>
                   <span className="font-normal opacity-70">Review/Edit details</span>
                 </label>
                 <div className="border border-border rounded-xl overflow-hidden bg-card">
-                  <div className="flex flex-wrap gap-1 p-2 bg-secondary/20 border-b border-border text-xs text-muted-foreground">
+                  <div className="flex flex-wrap gap-1 p-1.5 bg-secondary/20 border-b border-border text-xs text-muted-foreground">
                     <button
                       type="button"
                       onClick={() => setValue("description", descriptionText + " **Bold**")}
-                      className="px-2 py-0.5 hover:bg-secondary rounded font-bold"
+                      className="px-2 py-0.5 hover:bg-secondary rounded font-bold text-[11px]"
                     >
                       B
                     </button>
                     <button
                       type="button"
                       onClick={() => setValue("description", descriptionText + " *Italics*")}
-                      className="px-2 py-0.5 hover:bg-secondary rounded italic"
+                      className="px-2 py-0.5 hover:bg-secondary rounded italic text-[11px]"
                     >
                       I
                     </button>
                     <button
                       type="button"
                       onClick={() => setValue("description", descriptionText + "\n• ")}
-                      className="px-2 py-0.5 hover:bg-secondary rounded"
+                      className="px-2 py-0.5 hover:bg-secondary rounded text-[11px]"
                     >
                       Bullet list
                     </button>
                   </div>
                   <textarea
                     {...register("description")}
-                    className="w-full px-4 py-3 text-xs focus:outline-none min-h-[120px] resize-y bg-transparent font-medium"
+                    className="w-full px-3.5 py-2.5 text-xs focus:outline-none min-h-[85px] max-h-[150px] resize-y bg-transparent font-medium"
                     placeholder="Provide requisition responsibilities and project scope details here..."
                   />
                 </div>
@@ -742,11 +766,11 @@ ${values.description || ""}`;
               </div>
 
               {/* Page 2 Action Row */}
-              <div className="flex justify-between items-center pt-4 border-t border-border/50">
+              <div className="flex justify-between items-center pt-3 border-t border-border/50">
                 <button
                   type="button"
                   onClick={() => setActivePage(1)}
-                  className="px-5 py-2.5 border border-border rounded-xl text-xs font-bold hover:bg-secondary transition-all"
+                  className="px-4 py-2 border border-border rounded-xl text-xs font-bold hover:bg-secondary transition-all"
                 >
                   &larr; Back Page
                 </button>
@@ -754,14 +778,14 @@ ${values.description || ""}`;
                   <button
                     type="button"
                     onClick={onClose}
-                    className="px-5 py-2.5 border border-border rounded-xl text-xs font-bold hover:bg-secondary text-muted-foreground transition-all"
+                    className="px-4 py-2 border border-border rounded-xl text-xs font-bold hover:bg-secondary text-muted-foreground transition-all"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={mutation.isPending}
-                    className="px-5 py-2.5 bg-primary hover:bg-primary/95 text-white rounded-xl text-xs font-bold shadow-md flex items-center gap-1.5 transition-all disabled:opacity-50"
+                    className="px-4 py-2 bg-primary hover:bg-primary/95 text-white rounded-xl text-xs font-bold shadow-xs flex items-center gap-1.5 transition-all disabled:opacity-50"
                   >
                     {mutation.isPending ? (
                       <>
