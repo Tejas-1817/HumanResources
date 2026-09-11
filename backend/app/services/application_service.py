@@ -12,7 +12,7 @@ from app.schemas.job_application import ApplicationCreate, ApplicationStatusUpda
 
 
 class ApplicationService:
-    ALL_STATUSES = {"pending", "shortlisted", "interview_scheduled", "interviewed", "selected", "joined", "rejected", "on_hold", "dropped", "not_joined"}
+    ALL_STATUSES = {"pending", "shortlisted", "interview_scheduled", "interviewed", "selected", "joined", "rejected", "on_hold", "dropped", "not_joined", "completed"}
     VALID_TRANSITIONS: dict[str, set[str]] = {
         "pending": ALL_STATUSES,
         "shortlisted": ALL_STATUSES,
@@ -24,6 +24,7 @@ class ApplicationService:
         "on_hold": ALL_STATUSES,
         "dropped": ALL_STATUSES,
         "not_joined": ALL_STATUSES,
+        "completed": ALL_STATUSES,
     }
 
     VALID_SOURCES = {"direct", "referral", "consultancy", "linkedin", "indeed", "internshala"}
@@ -46,6 +47,10 @@ class ApplicationService:
                 status_code=422,
             )
 
+        status = (payload.status or "pending").strip().lower()
+        if status not in ApplicationService.ALL_STATUSES:
+            status = "pending"
+
         application = JobApplication(
             candidate_id=payload.candidate_id,
             job_role_id=payload.job_role_id,
@@ -53,7 +58,9 @@ class ApplicationService:
             source=source,
             consultancy_name=payload.consultancy_name if source == "consultancy" else None,
             remarks=payload.remarks,
-            status="pending",
+            status=status,
+            start_date=payload.start_date,
+            joining_date=payload.joining_date,
             resume_sent=False,
             is_replacement=False,
         )
@@ -145,7 +152,7 @@ class ApplicationService:
         # All these statuses are ALWAYS valid for any application
         all_standard_statuses = {
             "pending", "shortlisted", "interview_scheduled", "interviewed", 
-            "selected", "joined", "rejected", "on_hold", "dropped", "not_joined"
+            "selected", "joined", "rejected", "on_hold", "dropped", "not_joined", "completed"
         }
         
         # First check: Is this a standard pipeline status?
@@ -217,6 +224,28 @@ class ApplicationService:
         application.status = next_status
         application.status_date = payload.status_date or datetime.now(timezone.utc)
         
+        if payload.start_date is not None:
+            application.start_date = payload.start_date
+        if payload.end_date is not None:
+            application.end_date = payload.end_date
+        if payload.joining_date is not None:
+            application.joining_date = payload.joining_date
+
+        if next_status == "completed":
+            comp_dt = payload.completion_date or datetime.now(timezone.utc)
+            application.completion_date = comp_dt
+            if payload.end_date is not None:
+                application.end_date = payload.end_date
+            elif not application.end_date:
+                application.end_date = comp_dt.date()
+        elif next_status == "dropped":
+            application.drop_date = payload.drop_date or datetime.now(timezone.utc)
+            if payload.drop_reason is not None:
+                application.drop_reason = payload.drop_reason
+        
+        if payload.drop_reason is not None:
+            application.drop_reason = payload.drop_reason
+
         if payload.interview_date is not None:
             if payload.interview_date == "clear":
                 application.interview_date = None
@@ -239,7 +268,7 @@ class ApplicationService:
             changed_by=changed_by,
             old_status=current_status,
             new_status=next_status,
-            note=payload.note,
+            note=payload.note or (f"Completed project" if next_status == "completed" else (payload.drop_reason if next_status == "dropped" else None)),
             scheduled_date=application.status_date,
         )
         db.add(log)

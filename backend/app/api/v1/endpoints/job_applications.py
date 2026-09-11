@@ -1,5 +1,5 @@
 from collections import defaultdict
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, Query, status
@@ -23,6 +23,13 @@ class PipelineUpdateRequest(BaseModel):
     offer_date: datetime | None = None
     remarks: str | None = None
     is_replacement: bool | None = None
+    start_date: date | None = None
+    end_date: date | None = None
+    completion_date: datetime | None = None
+    drop_date: datetime | None = None
+    drop_reason: str | None = None
+    joining_date: date | None = None
+
 
 
 @router.get(
@@ -136,7 +143,13 @@ def update_pipeline_status(
                 interview_date=payload.interview_date,
                 offer_date=payload.offer_date,
                 remarks=payload.remarks,
-                is_replacement=payload.is_replacement
+                is_replacement=payload.is_replacement,
+                start_date=payload.start_date,
+                end_date=payload.end_date,
+                completion_date=payload.completion_date,
+                drop_date=payload.drop_date,
+                drop_reason=payload.drop_reason,
+                joining_date=payload.joining_date,
             ),
             changed_by=changed_by,
         )

@@ -9,6 +9,9 @@ class ApplicationCreate(BaseModel):
     source: str = "direct"
     consultancy_name: str | None = Field(default=None, max_length=255)
     remarks: str | None = None
+    status: str = "pending"
+    start_date: date | None = None
+    joining_date: date | None = None
 
 
 class ApplicationStatusUpdate(BaseModel):
@@ -19,6 +22,12 @@ class ApplicationStatusUpdate(BaseModel):
     offer_date: datetime | None = None
     remarks: str | None = None
     is_replacement: bool | None = None
+    start_date: date | None = None
+    end_date: date | None = None
+    completion_date: datetime | None = None
+    drop_date: datetime | None = None
+    drop_reason: str | None = None
+    joining_date: date | None = None
 
 
 class ApplicationResponse(BaseModel):
@@ -30,6 +39,9 @@ class ApplicationResponse(BaseModel):
     experience_years: float = 0.0
     skills: str | None = None
     job_role_id: int
+    job_role_title: str | None = None
+    company_id: int | None = None
+    company_name: str | None = None
     submitted_by: int | None
     source: str
     consultancy_name: str | None
@@ -39,6 +51,12 @@ class ApplicationResponse(BaseModel):
     status_date: datetime | None = None
     interview_date: datetime | None = None
     offer_date: datetime | None = None
+    start_date: date | None = None
+    end_date: date | None = None
+    completion_date: datetime | None = None
+    drop_date: datetime | None = None
+    drop_reason: str | None = None
+    joining_date: date | None = None
     remarks: str | None = None
     is_replacement: bool
     source_label: str | None = None

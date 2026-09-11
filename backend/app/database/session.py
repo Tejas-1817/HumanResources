@@ -113,6 +113,39 @@ def init_db() -> None:
             
     seed_admin()
     seed_company()
+    sync_job_roles_status()
+
+
+def sync_job_roles_status() -> None:
+    """Ensure JobRole status in database is clean, trimmed, and correctly reflects open positions."""
+    from app.models.job_role import JobRole
+    from app.models.job_application import JobApplication
+    from sqlalchemy import func
+
+    with SessionLocal() as db:
+        try:
+            roles = db.query(JobRole).all()
+            updated = 0
+            for r in roles:
+                raw = (r.status or "").strip().lower()
+                clean = "open" if raw in {"", "active"} else raw
+                if r.status != clean:
+                    r.status = clean
+                    updated += 1
+                # If marked closed, verify against filled positions
+                if r.status == "closed":
+                    filled_count = db.query(func.count(JobApplication.id)).filter(
+                        JobApplication.job_role_id == r.id,
+                        JobApplication.status.in_(["selected", "joined"])
+                    ).scalar() or 0
+                    if filled_count < (r.positions_required or 1):
+                        r.status = "open"
+                        updated += 1
+            if updated > 0:
+                db.commit()
+                print(f"[sync] Synchronized status for {updated} job role(s).")
+        except Exception as e:
+            print(f"[sync] JobRole status sync warning: {e}")
 
 
 def verify_connection() -> bool:

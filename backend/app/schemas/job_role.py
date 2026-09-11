@@ -1,6 +1,6 @@
 from datetime import date, datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class PipelineStage(BaseModel):
@@ -67,6 +67,16 @@ class JobRoleResponse(BaseModel):
     created_by: int | None
     company_name: str | None = None
     created_at: datetime
+
+    @field_validator("status", mode="before")
+    @classmethod
+    def normalize_status(cls, v: str | None) -> str:
+        if not v:
+            return "open"
+        s = str(v).strip().lower()
+        if s == "active":
+            return "open"
+        return s
 
     model_config = ConfigDict(from_attributes=True)
 

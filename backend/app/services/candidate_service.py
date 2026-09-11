@@ -75,27 +75,27 @@ class CandidateService:
             
         if unassigned_only:
             from app.models.job_application import JobApplication
-            from sqlalchemy import or_
             query = query.filter(
-                or_(Candidate.uploaded_by_vendor_id.isnot(None), Candidate.source == "vendor"),
+                or_(
+                    Candidate.uploaded_by_vendor_id.isnot(None),
+                    Candidate.source == "vendor",
+                    Candidate.applications.any(JobApplication.status == "completed"),
+                ),
                 ~Candidate.applications.any(JobApplication.status.in_(["selected", "joined"]))
             )
 
         if company_id or job_role_id:
             from app.models.job_application import JobApplication
             from app.models.job_role import JobRole
-            query = query.join(Candidate.applications).join(JobRole)
-            
-            if company_id:
-                query = query.filter(JobRole.company_id == company_id)
+            app_filters = []
             if job_role_id:
-                query = query.filter(JobApplication.job_role_id == job_role_id)
-                
-            query = query.distinct()
+                app_filters.append(JobApplication.job_role_id == job_role_id)
+            if company_id:
+                app_filters.append(JobApplication.job_role.has(JobRole.company_id == company_id))
+            query = query.filter(Candidate.applications.any(and_(*app_filters)))
 
         if applicant_status:
             from app.models.job_application import JobApplication
-            from sqlalchemy import or_
             status_clean = applicant_status.lower().strip()
             active_statuses = ["pending", "shortlisted", "interview_scheduled", "interviewed", "on_hold", "applied", "interview"]
             if status_clean in ("active", "in_process", "in-process", "active_only"):
@@ -106,7 +106,11 @@ class CandidateService:
             elif status_clean in ("available", "on_bench", "bench", "unassigned"):
                 # Realtime On Bench Talent candidates (excluding those already selected/hired)
                 query = query.filter(
-                    or_(Candidate.uploaded_by_vendor_id.isnot(None), Candidate.source == "vendor"),
+                    or_(
+                        Candidate.uploaded_by_vendor_id.isnot(None),
+                        Candidate.source == "vendor",
+                        Candidate.applications.any(JobApplication.status == "completed"),
+                    ),
                     ~Candidate.applications.any(JobApplication.status.in_(["selected", "joined"]))
                 )
             elif status_clean in ("selected", "hired", "joined"):
@@ -140,6 +144,8 @@ class CandidateService:
                 "interview": ["interview_scheduled", "interviewed", "interview"],
                 "selected": ["selected"],
                 "joined": ["joined"],
+                "completed": ["completed"],
+                "dropped": ["dropped"],
             }
             target_statuses = stage_status_map.get(stage_clean)
             if target_statuses:

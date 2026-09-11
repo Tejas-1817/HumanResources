@@ -58,6 +58,12 @@ class JobApplication(Base):
     status_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     interview_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     offer_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    start_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    end_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    completion_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    drop_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    drop_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    joining_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     remarks: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_replacement: Mapped[bool] = mapped_column(
         Boolean,
@@ -79,6 +85,18 @@ class JobApplication(Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
+
+    @property
+    def company_id(self) -> int | None:
+        return self.job_role.company_id if self.job_role else None
+
+    @property
+    def company_name(self) -> str | None:
+        return self.job_role.company.name if self.job_role and self.job_role.company else None
+
+    @property
+    def job_role_title(self) -> str | None:
+        return self.job_role.title if self.job_role else None
 
     @property
     def candidate_name(self) -> str | None:
@@ -107,3 +125,4 @@ class JobApplication(Base):
     @property
     def source_vendor(self) -> str | None:
         return self.candidate.source_vendor if self.candidate else None
+

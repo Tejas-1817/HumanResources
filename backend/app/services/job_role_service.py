@@ -80,7 +80,11 @@ class JobRoleService:
         if company_id is not None:
             query = query.filter(JobRole.company_id == company_id)
         if status:
-            query = query.filter(JobRole.status == status.strip().lower())
+            s = status.strip().lower()
+            if s == "open":
+                query = query.filter(JobRole.status.in_(["open", "active"]))
+            else:
+                query = query.filter(JobRole.status == s)
         if search:
             query = query.filter(JobRole.title.ilike(f"%{search.strip()}%"))
         return query.order_by(JobRole.created_at.desc()).all()
