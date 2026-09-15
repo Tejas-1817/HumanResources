@@ -283,6 +283,15 @@ export const updateCandidate = async (id: number, payload: Partial<Candidate>): 
   return data;
 };
 
+export const reuploadCandidateResume = async (id: number, file: File): Promise<Candidate> => {
+  const formData = new FormData();
+  formData.append("file", file);
+  const { data } = await client.post<Candidate>(`/candidates/${id}/resume`, formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return data;
+};
+
 export const deleteCandidate = async (id: number): Promise<void> => {
   await client.delete(`/candidates/${id}`);
 };
@@ -446,6 +455,11 @@ export const updatePipelineStatus = async (
 
 export const getApplicationsByCandidate = async (candidateId: number): Promise<Application[]> => {
   const { data } = await client.get<Application[]>(`/candidates/${candidateId}/applications`);
+  return data;
+};
+
+export const getCompanyWorkHistory = async (companyId: number): Promise<Application[]> => {
+  const { data } = await client.get<Application[]>(`/companies/${companyId}/work-history`);
   return data;
 };
 

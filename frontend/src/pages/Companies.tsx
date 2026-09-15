@@ -27,6 +27,12 @@ import {
   ChevronDown,
   Check,
   MapPin,
+  History,
+  Calendar,
+  ChevronUp,
+  CheckCircle2,
+  Phone,
+  Mail,
 } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -39,12 +45,14 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Company,
   Candidate,
+  Application,
   createCompany,
   deleteCompany,
   getCompanies,
   getCandidates,
   getJobRoles,
   getPipeline,
+  getCompanyWorkHistory,
   updateCompany,
   createJobRole,
   updateJobRole,
@@ -53,6 +61,8 @@ import {
   getVendors,
   PipelineStage,
 } from "@/api/resumeiq";
+
+type CompanyTab = "roles" | "candidates" | "pipeline" | "work_history";
 
 // ──────────────────────────────────────────────────────────
 // Constants
@@ -263,11 +273,11 @@ const Companies = () => {
     }
   }, [searchParams, setSearchParams]);
 
-  const [activeTab, setActiveTab] = useState<"roles" | "candidates" | "pipeline">(() => {
-    return (sessionStorage.getItem("companies_active_tab") as any) || "roles";
+  const [activeTab, setActiveTab] = useState<CompanyTab>(() => {
+    return (sessionStorage.getItem("companies_active_tab") as CompanyTab) || "roles";
   });
 
-  const handleTabChange = (tab: typeof activeTab) => {
+  const handleTabChange = (tab: CompanyTab) => {
     setActiveTab(tab);
     sessionStorage.setItem("companies_active_tab", tab);
   };
@@ -796,6 +806,202 @@ const Companies = () => {
   const candItems = candData?.items ?? [];
   const candTotal = candData?.total ?? 0;
   const candTotalPages = Math.max(1, Math.ceil(candTotal / CANDIDATES_PAGE_SIZE));
+
+  // ─── Work History Tab State & Logic ─────────────────────
+  const [workHistorySearch, setWorkHistorySearch] = useState("");
+  const [workHistoryStatusFilter, setWorkHistoryStatusFilter] = useState<"all" | "active" | "completed" | "dropped">("all");
+  const [workHistoryProjectFilter, setWorkHistoryProjectFilter] = useState<string>("all");
+  const [expandedCandIds, setExpandedCandIds] = useState<Record<number, boolean>>({});
+
+  const toggleCandidateExpand = (candId: number) => {
+    setExpandedCandIds((prev) => ({
+      ...prev,
+      [candId]: !(prev[candId] ?? true),
+    }));
+  };
+
+  const { data: workHistoryApps = [], isLoading: workHistoryLoading } = useQuery({
+    queryKey: ["company-work-history", selectedCompanyId],
+    queryFn: () => getCompanyWorkHistory(Number(selectedCompanyId!)),
+    enabled: !!selectedCompanyId,
+  });
+
+  interface GroupedWorkCandidate {
+    candidateId: number;
+    candidateName: string;
+    candidateEmail?: string;
+    candidatePhone?: string;
+    experienceYears?: number;
+    skills?: string;
+    projects: Application[];
+    hasActive: boolean;
+    hasCompleted: boolean;
+    hasDropped: boolean;
+    latestStartDate?: string;
+  }
+
+  const formatStatusText = (s: string) => s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+
+  const formatWorkDate = (dateStr?: string | null): string => {
+    if (!dateStr) return "—";
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return "—";
+      return d.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      });
+    } catch {
+      return "—";
+    }
+  };
+
+  const formatWorkDuration = (
+    startDateStr?: string | null,
+    endDateStr?: string | null,
+    isCompleted?: boolean
+  ): { durationText: string; isOngoing: boolean } => {
+    if (!startDateStr) {
+      return { durationText: "—", isOngoing: false };
+    }
+
+    const start = new Date(startDateStr);
+    if (isNaN(start.getTime())) {
+      return { durationText: "—", isOngoing: false };
+    }
+
+    const isOngoing = !endDateStr && !isCompleted;
+    const end = endDateStr ? new Date(endDateStr) : new Date();
+    if (isNaN(end.getTime())) {
+      return { durationText: "—", isOngoing: false };
+    }
+
+    let months = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
+    if (end.getDate() < start.getDate()) {
+      months = Math.max(0, months - 1);
+    }
+
+    const diffTime = Math.max(0, end.getTime() - start.getTime());
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+    let timeString = "";
+    if (months >= 12) {
+      const years = Math.floor(months / 12);
+      const remMonths = months % 12;
+      timeString = remMonths > 0 ? `${years} yr ${remMonths} mo${remMonths > 1 ? "s" : ""}` : `${years} yr${years > 1 ? "s" : ""}`;
+    } else if (months > 0) {
+      timeString = `${months} mo${months > 1 ? "s" : ""}`;
+    } else {
+      timeString = `${diffDays} day${diffDays === 1 ? "" : "s"}`;
+    }
+
+    return {
+      durationText: isOngoing ? `${timeString} (Ongoing)` : timeString,
+      isOngoing,
+    };
+  };
+
+  // Group applications by unique candidate
+  const groupedWorkCandidates = useMemo(() => {
+    const map = new Map<number, GroupedWorkCandidate>();
+
+    workHistoryApps.forEach((app) => {
+      const cid = app.candidate_id;
+      if (!cid) return;
+
+      if (!map.has(cid)) {
+        map.set(cid, {
+          candidateId: cid,
+          candidateName: app.candidate_name || `Candidate #${cid}`,
+          candidateEmail: app.candidate_email,
+          candidatePhone: app.candidate_phone,
+          experienceYears: app.experience_years,
+          skills: app.skills,
+          projects: [],
+          hasActive: false,
+          hasCompleted: false,
+          hasDropped: false,
+        });
+      }
+
+      const group = map.get(cid)!;
+      group.projects.push(app);
+
+      const st = (app.status || "").toLowerCase();
+      if (["selected", "joined"].includes(st)) {
+        group.hasActive = true;
+      } else if (st === "completed") {
+        group.hasCompleted = true;
+      } else if (st === "dropped") {
+        group.hasDropped = true;
+      }
+    });
+
+    map.forEach((grp) => {
+      grp.projects.sort((a, b) => {
+        const dateA = new Date(a.start_date || a.status_date || a.created_at).getTime();
+        const dateB = new Date(b.start_date || b.status_date || b.created_at).getTime();
+        return dateB - dateA;
+      });
+      grp.latestStartDate = grp.projects[0]?.start_date || grp.projects[0]?.created_at;
+    });
+
+    return Array.from(map.values());
+  }, [workHistoryApps]);
+
+  const workHistoryCandidateCount = groupedWorkCandidates.length;
+
+  // Available unique projects for dropdown filter
+  const workProjectsList = useMemo(() => {
+    const set = new Map<string, string>();
+    workHistoryApps.forEach((app) => {
+      const title = app.job_role_title || `Project #${app.job_role_id}`;
+      set.set(title, title);
+    });
+    return Array.from(set.keys()).sort();
+  }, [workHistoryApps]);
+
+  // Filtered work history candidates
+  const filteredWorkCandidates = useMemo(() => {
+    return groupedWorkCandidates.filter((cand) => {
+      if (workHistoryStatusFilter !== "all") {
+        if (workHistoryStatusFilter === "active" && !cand.hasActive) return false;
+        if (workHistoryStatusFilter === "completed" && !cand.hasCompleted) return false;
+        if (workHistoryStatusFilter === "dropped" && !cand.hasDropped) return false;
+      }
+
+      if (workHistoryProjectFilter !== "all") {
+        const matchesProj = cand.projects.some(
+          (p) => (p.job_role_title || `Project #${p.job_role_id}`) === workHistoryProjectFilter
+        );
+        if (!matchesProj) return false;
+      }
+
+      if (workHistorySearch.trim()) {
+        const q = workHistorySearch.toLowerCase().trim();
+        const nameMatch = (cand.candidateName || "").toLowerCase().includes(q);
+        const emailMatch = (cand.candidateEmail || "").toLowerCase().includes(q);
+        const phoneMatch = (cand.candidatePhone || "").toLowerCase().includes(q);
+        const skillsMatch = (cand.skills || "").toLowerCase().includes(q);
+        const projMatch = cand.projects.some(
+          (p) =>
+            (p.job_role_title || "").toLowerCase().includes(q) ||
+            (p.source || "").toLowerCase().includes(q) ||
+            (p.source_label || "").toLowerCase().includes(q)
+        );
+        if (!nameMatch && !emailMatch && !phoneMatch && !skillsMatch && !projMatch) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [groupedWorkCandidates, workHistoryStatusFilter, workHistoryProjectFilter, workHistorySearch]);
+
+  const workActiveCount = groupedWorkCandidates.filter((c) => c.hasActive).length;
+  const workCompletedCount = groupedWorkCandidates.filter((c) => c.hasCompleted).length;
+  const workDroppedCount = groupedWorkCandidates.filter((c) => c.hasDropped).length;
 
   // ──────────────────────────────────────────────────────────
   // Company CRUD handlers
@@ -1516,16 +1722,16 @@ const Companies = () => {
           {/* Desktop Table View (>= md) */}
           <div className="hidden md:block bg-card border border-border/50 rounded-2xl shadow-sm overflow-hidden">
             <div className="overflow-x-auto custom-scrollbar">
-              <table className="w-full min-w-[760px] border-collapse text-left">
+              <table className="w-full table-fixed min-w-[840px] border-collapse text-left">
                 <thead>
                   <tr className="border-b border-border/50 bg-secondary/10 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                    <th className="p-4 pl-6">Company</th>
-                    <th className="p-4">Active Positions</th>
-                    <th className="p-4">Positions Filled</th>
-                    <th className="p-4">Total Candidates</th>
-                    <th className="p-4">Pipeline Stage</th>
-                    <th className="p-4">Status</th>
-                    <th className="p-4 pr-6 text-right">Quick Actions</th>
+                    <th className="py-4 pl-6 pr-3 text-left w-[24%]">Company</th>
+                    <th className="py-4 px-3 text-left w-[13%]">Active Positions</th>
+                    <th className="py-4 px-3 text-left w-[15%]">Positions Filled</th>
+                    <th className="py-4 px-3 text-left w-[14%]">Total Candidates</th>
+                    <th className="py-4 px-3 text-left w-[12%]">Pipeline Stage</th>
+                    <th className="py-4 px-3 text-left w-[10%]">Status</th>
+                    <th className="py-4 px-3 text-center w-[12%]">Quick Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/30 text-sm">
@@ -1564,7 +1770,7 @@ const Companies = () => {
                         className="hover:bg-primary/[0.01] transition-all group"
                       >
                         {/* Company Info */}
-                        <td className="p-4 pl-6">
+                        <td className="py-4 pl-6 pr-3 text-left align-middle">
                           <div className="flex items-center gap-3.5">
                             <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0 transition-transform group-hover:scale-105">
                               <Building2 className="w-5 h-5" />
@@ -1573,7 +1779,7 @@ const Companies = () => {
                               <div className="flex items-center gap-1.5">
                                 <span
                                   onClick={() => selectCompany(c.id)}
-                                  className="font-bold text-sm text-foreground hover:text-primary transition-colors cursor-pointer truncate max-w-[150px] sm:max-w-none"
+                                  className="font-bold text-sm text-foreground hover:text-primary transition-colors cursor-pointer truncate"
                                 >
                                   {c.name}
                                 </span>
@@ -1586,16 +1792,16 @@ const Companies = () => {
                         </td>
 
                         {/* Active Positions */}
-                        <td className="p-4">
-                          <div className="flex flex-col">
-                            <span className="text-sm font-bold text-foreground">{openRoles}</span>
+                        <td className="py-4 px-3 text-left align-middle">
+                          <div className="flex flex-col items-start">
+                            <span className="text-sm font-bold text-foreground leading-none">{openRoles}</span>
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
                                 selectCompany(c.id);
                                 handleTabChange("roles");
                               }}
-                              className="text-[10px] text-primary hover:underline font-bold mt-1 text-left"
+                              className="text-[10px] text-primary hover:underline font-bold mt-1 text-left inline-flex items-center gap-0.5 whitespace-nowrap"
                             >
                               View Positions →
                             </button>
@@ -1603,9 +1809,9 @@ const Companies = () => {
                         </td>
 
                         {/* Positions Filled */}
-                        <td className="p-4">
-                          <div className="flex flex-col w-28">
-                            <span className="text-sm font-bold text-foreground">
+                        <td className="py-4 px-3 text-left align-middle">
+                          <div className="flex flex-col max-w-[120px]">
+                            <span className="text-sm font-bold text-foreground leading-none">
                               {filled}/{required}
                             </span>
                             <div className="w-full h-1.5 bg-secondary/60 rounded-full mt-1.5 overflow-hidden">
@@ -1618,9 +1824,9 @@ const Companies = () => {
                         </td>
 
                         {/* Total Candidates */}
-                        <td className="p-4">
-                          <div className="flex flex-col">
-                            <span className="text-sm font-bold text-foreground">{totalCand}</span>
+                        <td className="py-4 px-3 text-left align-middle">
+                          <div className="flex flex-col items-start">
+                            <span className="text-sm font-bold text-foreground leading-none">{totalCand}</span>
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -1629,7 +1835,7 @@ const Companies = () => {
                                   : "";
                                 navigate(`/candidates?company_id=${c.id}${stageParam}`);
                               }}
-                              className="text-[10px] text-primary hover:underline font-bold mt-1 text-left"
+                              className="text-[10px] text-primary hover:underline font-bold mt-1 text-left inline-flex items-center gap-0.5 whitespace-nowrap"
                             >
                               View Candidates →
                             </button>
@@ -1637,30 +1843,34 @@ const Companies = () => {
                         </td>
 
                         {/* Pipeline Stage */}
-                        <td className="p-4">
-                          <span className={`inline-flex items-center rounded-full font-semibold border text-[11px] px-2.5 py-0.5 ${stageInfo.style}`}>
-                            {stageInfo.label}
-                          </span>
+                        <td className="py-4 px-3 text-left align-middle">
+                          {stageInfo.label === "—" ? (
+                            <span className="text-sm text-muted-foreground/60 font-medium pl-1">—</span>
+                          ) : (
+                            <span className={`inline-flex items-center rounded-full font-semibold border text-[11px] px-2.5 py-0.5 whitespace-nowrap ${stageInfo.style}`}>
+                              {stageInfo.label}
+                            </span>
+                          )}
                         </td>
 
                         {/* Status */}
-                        <td className="p-4">
+                        <td className="py-4 px-3 text-left align-middle">
                           <span
-                            className={`inline-flex items-center rounded-full font-semibold border text-[11px] px-2.5 py-0.5 ${companyStatusStyle}`}
+                            className={`inline-flex items-center rounded-full font-semibold border text-[11px] px-2.5 py-0.5 whitespace-nowrap ${companyStatusStyle}`}
                           >
                             {companyStatus}
                           </span>
                         </td>
 
                         {/* Quick Actions */}
-                        <td className="p-4 pr-6 text-right">
-                          <div className="flex items-center justify-end gap-2">
+                        <td className="py-4 px-3 text-center align-middle">
+                          <div className="flex items-center justify-center gap-1.5">
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
                                 openEditCompany(c);
                               }}
-                              className="p-2 rounded-lg border border-border/50 bg-card hover:bg-secondary/40 text-muted-foreground hover:text-foreground transition-all shadow-sm"
+                              className="w-8 h-8 rounded-lg border border-border/50 bg-card hover:bg-secondary/50 text-muted-foreground hover:text-foreground transition-all shadow-xs flex items-center justify-center shrink-0"
                               title="Edit Company"
                             >
                               <Edit className="w-3.5 h-3.5" />
@@ -1670,7 +1880,7 @@ const Companies = () => {
                                 e.stopPropagation();
                                 setDeleteId(c.id);
                               }}
-                              className="p-2 rounded-lg border border-border/50 bg-card hover:bg-secondary/40 text-muted-foreground hover:text-destructive transition-all shadow-sm"
+                              className="w-8 h-8 rounded-lg border border-border/50 bg-card hover:bg-secondary/50 text-muted-foreground hover:text-destructive transition-all shadow-xs flex items-center justify-center shrink-0"
                               title="Delete Company"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -1680,9 +1890,9 @@ const Companies = () => {
                                 e.stopPropagation();
                                 selectCompany(c.id);
                               }}
-                              className="px-3 py-1.5 text-[11px] font-bold border border-blue-200 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 hover:text-blue-700 transition-all flex items-center gap-1 shadow-sm shrink-0"
+                              className="w-8 h-8 rounded-lg border border-blue-200/80 bg-blue-50/80 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/50 hover:text-blue-700 transition-all shadow-xs flex items-center justify-center shrink-0"
+                              title="Company Details"
                             >
-                              Details
                               <ExternalLink className="w-3.5 h-3.5" />
                             </button>
                           </div>
@@ -1786,6 +1996,7 @@ const Companies = () => {
                   { key: "roles" as const, label: "Job Roles", icon: Briefcase, count: null },
                   { key: "candidates" as const, label: "Candidates", icon: Users, count: candTotal },
                   { key: "pipeline" as const, label: "In Progress", icon: GitBranch, count: pipelineTotalCount },
+                  { key: "work_history" as const, label: "Work History", icon: History, count: workHistoryCandidateCount },
                 ]).map((t) => (
                   <button
                     key={t.key}
@@ -2401,7 +2612,360 @@ const Companies = () => {
                   </div>
                 )}
 
+                {/* ═══ WORK HISTORY TAB ═══ */}
+                {activeTab === "work_history" && (
+                  <div className="space-y-4">
+                    {/* Summary Stats Bar */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      <div className="glass-card p-3 rounded-xl border border-border/60 bg-secondary/30 flex flex-col items-center sm:items-start">
+                        <span className="text-xs text-muted-foreground font-medium">Total Historical Candidates</span>
+                        <span className="text-lg sm:text-xl font-bold text-foreground mt-0.5">{workHistoryCandidateCount}</span>
+                      </div>
+                      <div className="glass-card p-3 rounded-xl border border-border/60 bg-blue-500/5 flex flex-col items-center sm:items-start">
+                        <span className="text-xs text-blue-600 dark:text-blue-400 font-medium flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" /> Active / Ongoing
+                        </span>
+                        <span className="text-lg sm:text-xl font-bold text-foreground mt-0.5">{workActiveCount}</span>
+                      </div>
+                      <div className="glass-card p-3 rounded-xl border border-border/60 bg-emerald-500/5 flex flex-col items-center sm:items-start">
+                        <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1.5">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-500" /> Completed
+                        </span>
+                        <span className="text-lg sm:text-xl font-bold text-foreground mt-0.5">{workCompletedCount}</span>
+                      </div>
+                      <div className="glass-card p-3 rounded-xl border border-border/60 bg-rose-500/5 flex flex-col items-center sm:items-start">
+                        <span className="text-xs text-rose-600 dark:text-rose-400 font-medium">Dropped</span>
+                        <span className="text-lg sm:text-xl font-bold text-foreground mt-0.5">{workDroppedCount}</span>
+                      </div>
+                    </div>
 
+                    {/* Search & Filters */}
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                      {/* Search Input */}
+                      <div className="relative flex-1 max-w-md">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                        <input
+                          type="text"
+                          placeholder="Search by candidate name, email, phone, role..."
+                          value={workHistorySearch}
+                          onChange={(e) => setWorkHistorySearch(e.target.value)}
+                          className="w-full pl-10 pr-4 py-2.5 rounded-lg bg-secondary border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm"
+                        />
+                        {workHistorySearch && (
+                          <button
+                            onClick={() => setWorkHistorySearch("")}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Filter Controls */}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {/* Status Filter */}
+                        <div className="flex items-center gap-1 bg-secondary/60 p-1 rounded-xl border border-border/60">
+                          {(["all", "active", "completed", "dropped"] as const).map((st) => (
+                            <button
+                              key={st}
+                              onClick={() => setWorkHistoryStatusFilter(st)}
+                              className={`px-3 py-1 rounded-lg text-xs font-medium capitalize transition-all ${
+                                workHistoryStatusFilter === st
+                                  ? "bg-primary text-primary-foreground shadow-xs"
+                                  : "text-muted-foreground hover:text-foreground"
+                              }`}
+                            >
+                              {st}
+                            </button>
+                          ))}
+                        </div>
+
+                        {/* Project Filter Dropdown */}
+                        {workProjectsList.length > 0 && (
+                          <select
+                            value={workHistoryProjectFilter}
+                            onChange={(e) => setWorkHistoryProjectFilter(e.target.value)}
+                            className="px-3 py-2 rounded-xl bg-secondary border border-border text-foreground text-xs font-medium focus:outline-none focus:ring-2 focus:ring-primary/50"
+                          >
+                            <option value="all">All Projects ({workProjectsList.length})</option>
+                            {workProjectsList.map((p) => (
+                              <option key={p} value={p}>
+                                {p}
+                              </option>
+                            ))}
+                          </select>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Candidates Work History List */}
+                    {workHistoryLoading ? (
+                      <div className="py-12 text-center text-muted-foreground">
+                        <Clock className="w-8 h-8 mx-auto mb-2 opacity-40 animate-spin" />
+                        <p className="text-sm font-medium">Loading work history records...</p>
+                      </div>
+                    ) : filteredWorkCandidates.length === 0 ? (
+                      <div className="py-12 text-center bg-secondary/30 rounded-2xl border border-dashed border-border/80 p-6">
+                        <History className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
+                        <p className="text-sm font-bold text-foreground">No Work History Found</p>
+                        <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
+                          {workHistorySearch || workHistoryStatusFilter !== "all" || workHistoryProjectFilter !== "all"
+                            ? "No candidates match the selected filters. Try clearing your search or filters."
+                            : "No candidates have completed or active project assignments for this company yet."}
+                        </p>
+                        {(workHistorySearch || workHistoryStatusFilter !== "all" || workHistoryProjectFilter !== "all") && (
+                          <button
+                            onClick={() => {
+                              setWorkHistorySearch("");
+                              setWorkHistoryStatusFilter("all");
+                              setWorkHistoryProjectFilter("all");
+                            }}
+                            className="mt-3 px-3 py-1.5 rounded-lg bg-secondary border border-border text-xs font-semibold text-foreground hover:bg-secondary/70 transition-colors"
+                          >
+                            Reset Filters
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {filteredWorkCandidates.map((cand) => {
+                          const initials = cand.candidateName
+                            ? cand.candidateName
+                                .split(" ")
+                                .filter(Boolean)
+                                .map((n) => n[0])
+                                .join("")
+                                .slice(0, 2)
+                                .toUpperCase()
+                            : "??";
+
+                          const isExpanded = expandedCandIds[cand.candidateId] ?? true;
+                          const hasMultipleProjects = cand.projects.length > 1;
+
+                          return (
+                            <div
+                              key={cand.candidateId}
+                              className="rounded-2xl border border-border/70 bg-card/60 overflow-hidden shadow-xs hover:border-primary/30 transition-all"
+                            >
+                              {/* Candidate Header */}
+                              <div className="p-4 bg-secondary/40 border-b border-border/50 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                                <div className="flex items-start sm:items-center gap-3">
+                                  <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary font-bold text-sm flex items-center justify-center shrink-0 ring-1 ring-primary/20">
+                                    {initials}
+                                  </div>
+                                  <div>
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <button
+                                        onClick={() => navigate(`/candidates/${cand.candidateId}`)}
+                                        className="text-sm font-bold text-foreground hover:text-primary transition-colors inline-flex items-center gap-1 group text-left"
+                                      >
+                                        <span>{cand.candidateName}</span>
+                                        <ExternalLink className="w-3 h-3 opacity-50 group-hover:opacity-100 transition-opacity" />
+                                      </button>
+
+                                      {cand.hasActive && (
+                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-500/10 text-blue-600 border border-blue-500/20">
+                                          <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" /> Active
+                                        </span>
+                                      )}
+                                      {cand.hasCompleted && (
+                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
+                                          <CheckCircle2 className="w-3 h-3" /> Completed
+                                        </span>
+                                      )}
+                                      {cand.hasDropped && !cand.hasActive && !cand.hasCompleted && (
+                                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-rose-500/10 text-rose-600 border border-rose-500/20">
+                                          Dropped
+                                        </span>
+                                      )}
+                                    </div>
+
+                                    {/* Contact Information */}
+                                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground mt-1">
+                                      {cand.candidateEmail && (
+                                        <span className="inline-flex items-center gap-1">
+                                          <Mail className="w-3 h-3 opacity-60" /> {cand.candidateEmail}
+                                        </span>
+                                      )}
+                                      {cand.candidatePhone && (
+                                        <span className="inline-flex items-center gap-1">
+                                          <Phone className="w-3 h-3 opacity-60" /> {cand.candidatePhone}
+                                        </span>
+                                      )}
+                                      {cand.experienceYears !== undefined && cand.experienceYears > 0 && (
+                                        <span className="inline-flex items-center gap-1">
+                                          <Briefcase className="w-3 h-3 opacity-60" /> {cand.experienceYears} yrs exp
+                                        </span>
+                                      )}
+                                      {cand.skills && (
+                                        <span className="text-[11px] text-muted-foreground/80 truncate max-w-xs sm:max-w-md">
+                                          Skills: {cand.skills.split(",").slice(0, 4).map((s) => s.trim()).join(", ")}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Right: Project counter & Accordion toggle */}
+                                <div className="flex items-center gap-2 self-end md:self-center shrink-0">
+                                  <span className="px-2.5 py-1 rounded-lg bg-secondary text-xs font-semibold text-foreground border border-border/70">
+                                    {cand.projects.length} {cand.projects.length === 1 ? "Project" : "Projects"}
+                                  </span>
+                                  {hasMultipleProjects && (
+                                    <button
+                                      onClick={() => toggleCandidateExpand(cand.candidateId)}
+                                      className="px-2.5 py-1 rounded-lg bg-secondary/80 hover:bg-secondary text-xs font-medium text-muted-foreground hover:text-foreground border border-border/60 transition-colors inline-flex items-center gap-1"
+                                    >
+                                      {isExpanded ? (
+                                        <>
+                                          <ChevronUp className="w-3.5 h-3.5" /> Collapse
+                                        </>
+                                      ) : (
+                                        <>
+                                          <ChevronDown className="w-3.5 h-3.5" /> Expand
+                                        </>
+                                      )}
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Project Assignments List */}
+                              <AnimatePresence initial={false}>
+                                {isExpanded && (
+                                  <motion.div
+                                    initial={{ height: 0, opacity: 0 }}
+                                    animate={{ height: "auto", opacity: 1 }}
+                                    exit={{ height: 0, opacity: 0 }}
+                                    className="overflow-hidden divide-y divide-border/40"
+                                  >
+                                    {cand.projects.map((proj, idx) => {
+                                      const isCompleted = (proj.status || "").toLowerCase() === "completed";
+                                      const isActive = ["selected", "joined"].includes((proj.status || "").toLowerCase());
+                                      const isDropped = (proj.status || "").toLowerCase() === "dropped";
+
+                                      const startDisplay = formatWorkDate(proj.start_date || proj.created_at);
+                                      const endDisplay = proj.end_date
+                                        ? formatWorkDate(proj.end_date)
+                                        : isCompleted && proj.completion_date
+                                        ? formatWorkDate(proj.completion_date)
+                                        : isCompleted || isDropped
+                                        ? "—"
+                                        : "Ongoing";
+
+                                      const duration = formatWorkDuration(
+                                        proj.start_date || proj.created_at,
+                                        proj.end_date || (isCompleted ? proj.completion_date : null),
+                                        isCompleted
+                                      );
+
+                                      return (
+                                        <div
+                                          key={proj.id || idx}
+                                          className="p-4 hover:bg-secondary/20 transition-colors space-y-2.5"
+                                        >
+                                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                            <div className="flex items-center gap-2">
+                                              <span className="w-2 h-2 rounded-full bg-primary/60 shrink-0" />
+                                              <div className="min-w-0">
+                                                <span className="text-sm font-bold text-foreground">
+                                                  {proj.job_role_title || `Project #${proj.job_role_id}`}
+                                                </span>
+                                                {hasMultipleProjects && (
+                                                  <span className="ml-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider bg-secondary/80 px-1.5 py-0.5 rounded">
+                                                    Project {cand.projects.length - idx}
+                                                  </span>
+                                                )}
+                                              </div>
+                                            </div>
+
+                                            {/* Status Badge */}
+                                            <div className="shrink-0 flex items-center gap-2">
+                                              {isCompleted ? (
+                                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
+                                                  <CheckCircle2 className="w-3 h-3" /> Completed
+                                                </span>
+                                              ) : isActive ? (
+                                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-500/10 text-blue-600 border border-blue-500/20">
+                                                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" /> Active
+                                                </span>
+                                              ) : isDropped ? (
+                                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-500/10 text-rose-600 border border-rose-500/20">
+                                                  Dropped
+                                                </span>
+                                              ) : (
+                                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500/10 text-amber-600 border border-amber-500/20">
+                                                  <Clock className="w-3 h-3" /> {formatStatusText(proj.status)}
+                                                </span>
+                                              )}
+                                            </div>
+                                          </div>
+
+                                          {/* Timeline & Metadata Grid */}
+                                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 pt-1 text-xs text-muted-foreground bg-secondary/30 p-2.5 rounded-xl border border-border/40">
+                                            <div>
+                                              <span className="text-[10px] font-semibold uppercase tracking-wider block text-muted-foreground/70">
+                                                Start Date
+                                              </span>
+                                              <span className="font-semibold text-foreground flex items-center gap-1 mt-0.5">
+                                                <Calendar className="w-3 h-3 opacity-60" /> {startDisplay}
+                                              </span>
+                                            </div>
+
+                                            <div>
+                                              <span className="text-[10px] font-semibold uppercase tracking-wider block text-muted-foreground/70">
+                                                End Date
+                                              </span>
+                                              <span className="font-semibold text-foreground flex items-center gap-1 mt-0.5">
+                                                <Calendar className="w-3 h-3 opacity-60" /> {endDisplay}
+                                              </span>
+                                            </div>
+
+                                            <div>
+                                              <span className="text-[10px] font-semibold uppercase tracking-wider block text-muted-foreground/70">
+                                                Duration
+                                              </span>
+                                              <span className="font-semibold text-primary flex items-center gap-1 mt-0.5">
+                                                <Clock className="w-3 h-3 opacity-70" /> {duration.durationText}
+                                              </span>
+                                            </div>
+
+                                            <div>
+                                              <span className="text-[10px] font-semibold uppercase tracking-wider block text-muted-foreground/70">
+                                                Source
+                                              </span>
+                                              <span className="font-semibold text-foreground mt-0.5 block truncate">
+                                                {proj.source_label || proj.source || "Direct"}
+                                              </span>
+                                            </div>
+                                          </div>
+
+                                          {/* Drop Reason if any */}
+                                          {isDropped && proj.drop_reason && (
+                                            <div className="p-2 rounded-lg bg-rose-500/10 border border-rose-500/20 text-xs text-rose-600">
+                                              <strong>Drop Reason:</strong> {proj.drop_reason}
+                                            </div>
+                                          )}
+
+                                          {/* Remarks if any */}
+                                          {proj.remarks && (
+                                            <p className="text-xs text-muted-foreground bg-secondary/50 p-2 rounded-lg border border-border/50">
+                                              <span className="font-medium text-foreground">Remarks:</span> {proj.remarks}
+                                            </p>
+                                          )}
+                                        </div>
+                                      );
+                                    })}
+                                  </motion.div>
+                                )}
+                              </AnimatePresence>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </motion.div>

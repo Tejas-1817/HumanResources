@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -16,6 +16,7 @@ import {
   Clock,
   PlusCircle,
   Plus,
+  RefreshCw,
 } from "lucide-react";
 import { SkillTag } from "@/components/ui/SkillTag";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -31,6 +32,7 @@ import {
   getCompanies,
   getJobRoles,
   createApplication,
+  reuploadCandidateResume,
 } from "@/api/resumeiq";
 import { useAuth } from "@/context/AuthContext";
 
@@ -161,6 +163,86 @@ const CandidateDetail = () => {
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [isPdfLoading, setIsPdfLoading] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
+  const [pdfRefreshKey, setPdfRefreshKey] = useState(0);
+
+  // Re-upload Resume State
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isReuploading, setIsReuploading] = useState(false);
+  const [reuploadStatusText, setReuploadStatusText] = useState<string>("");
+
+  const handleReuploadClick = () => {
+    if (isReuploading) return;
+    fileInputRef.current?.click();
+  };
+
+  const handleReuploadFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !c) return;
+
+    // Validate extension
+    const allowedExtensions = [".pdf", ".docx", ".doc"];
+    const ext = "." + (file.name.split(".").pop()?.toLowerCase() || "");
+    if (!allowedExtensions.includes(ext)) {
+      toast.error("Please upload a PDF, DOCX, or DOC file.");
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+
+    // Validate size (10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("File size exceeds the 10MB limit.");
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+
+    setIsReuploading(true);
+    setReuploadStatusText("Uploading resume...");
+
+    // Progressive visual progress feedback
+    const timer1 = setTimeout(() => {
+      setReuploadStatusText("Parsing resume...");
+    }, 1200);
+    const timer2 = setTimeout(() => {
+      setReuploadStatusText("Updating candidate profile...");
+    }, 3200);
+
+    try {
+      const updatedCandidate = await reuploadCandidateResume(c.id, file);
+      clearTimeout(timer1);
+      clearTimeout(timer2);
+
+      // Invalidate relevant queries without a full page reload
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["candidate", candidateId] }),
+        queryClient.invalidateQueries({ queryKey: ["candidates"] }),
+        queryClient.invalidateQueries({ queryKey: ["pipeline"] }),
+        queryClient.invalidateQueries({ queryKey: ["candidate-applications", candidateId] }),
+      ]);
+
+      // Force PDF preview refresh with cache-busting timestamp
+      setPdfRefreshKey((prev) => prev + 1);
+
+      toast.success(
+        `Resume re-uploaded and parsed successfully for ${updatedCandidate.name || c.name}!`
+      );
+    } catch (err: any) {
+      clearTimeout(timer1);
+      clearTimeout(timer2);
+      console.error("Re-upload resume error:", err);
+      const message =
+        err?.response?.data?.message ||
+        err?.response?.data?.detail?.message ||
+        err?.response?.data?.detail ||
+        "Unable to parse the new resume. Your existing resume and candidate information have been kept.";
+      toast.error(typeof message === "string" ? message : "Unable to parse the new resume. Your existing resume and candidate information have been kept.");
+    } finally {
+      setIsReuploading(false);
+      setReuploadStatusText("");
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
 
   useEffect(() => {
     if (!c) return;
@@ -169,7 +251,7 @@ const CandidateDetail = () => {
     setIsPdfLoading(true);
 
     client
-      .get(`/candidates/${c.id}/file`, { responseType: "blob" })
+      .get(`/candidates/${c.id}/file?t=${Date.now()}`, { responseType: "blob" })
       .then((res) => {
         if (!active) return;
         if (res.data?.type?.includes("json")) {
@@ -191,7 +273,7 @@ const CandidateDetail = () => {
       active = false;
       if (url) URL.revokeObjectURL(url);
     };
-  }, [c?.id, c?.original_filename]);
+  }, [c?.id, c?.original_filename, pdfRefreshKey]);
 
   // Delete modal state
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -350,6 +432,26 @@ const CandidateDetail = () => {
             <button onClick={handleDownload} className="w-full py-2.5 rounded-lg bg-primary text-primary-foreground font-medium text-sm hover:bg-primary/90 transition-all flex items-center justify-center gap-2">
               <Download className="w-4 h-4" /> Download Resume
             </button>
+            {!isInterviewerAuthenticated && (
+              <>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleReuploadFileChange}
+                  accept=".pdf,.docx,.doc,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword"
+                  className="hidden"
+                />
+                <button
+                  type="button"
+                  onClick={handleReuploadClick}
+                  disabled={isReuploading}
+                  className="w-full py-2.5 rounded-lg bg-secondary border border-border text-foreground font-medium text-sm hover:bg-secondary/80 hover:border-primary/40 hover:text-primary transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-xs"
+                >
+                  <RefreshCw className={`w-4 h-4 shrink-0 ${isReuploading ? "animate-spin text-primary" : ""}`} />
+                  <span>{isReuploading ? (reuploadStatusText || "Re-uploading...") : "Re-upload Resume"}</span>
+                </button>
+              </>
+            )}
             {!isInterviewerAuthenticated && (
               <button
                 onClick={() => setAssignModalOpen(true)}

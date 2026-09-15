@@ -43,6 +43,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { formatJobRoleTitle } from "@/components/ui/TableDataCell";
+import { BenchTalentDashboard } from "@/components/bench/BenchTalentDashboard";
 
 const Vendors = () => {
   const { user } = useAuth();
@@ -392,6 +393,10 @@ const Vendors = () => {
     (v.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
     (v.email || "").toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  if (activeView === "talent") {
+    return <BenchTalentDashboard />;
+  }
 
   return (
     <div className="space-y-6">
