@@ -1,9 +1,10 @@
+from pathlib import Path
 from typing import Any
-from fastapi import APIRouter, Depends, Query, Response, status
+from fastapi import APIRouter, Depends, File, Query, Response, UploadFile, status
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
-from app.core.exceptions import NotFoundException, ForbiddenException
+from app.core.exceptions import AppException, ForbiddenException, NotFoundException
 from app.core.security import get_current_user, require_role
 from app.database.session import get_db
 from app.schemas.candidate import (
@@ -15,6 +16,7 @@ from app.schemas.candidate import (
 )
 from app.schemas.job_application import ApplicationResponse
 from app.services.candidate_service import CandidateService
+from app.services.parser_service import ParserService
 from app.storage.local_storage import storage_service
 
 router = APIRouter(prefix="/candidates", tags=["Candidates"])
@@ -160,6 +162,86 @@ def update_candidate(
 def delete_candidate(candidate_id: int, db: Session = Depends(get_db)) -> Response:
     CandidateService.delete(db, candidate_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post(
+    "/{candidate_id}/resume",
+    response_model=CandidateDetailResponse,
+    status_code=status.HTTP_200_OK,
+    dependencies=[Depends(require_role("admin", "hr", "recruiter", "manager"))],
+)
+async def reupload_candidate_resume(
+    candidate_id: int,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+) -> CandidateDetailResponse:
+    candidate = CandidateService.get_by_id(db, candidate_id)
+
+    # 1. Validate file format and size
+    storage_service.validate_file(file)
+
+    temp_path: Path | None = None
+    try:
+        # 2. Save new file to temporary storage first (do not touch existing resume yet)
+        temp_path = await storage_service.save_temp_file(file)
+
+        # 3. Extract text and parse the new resume
+        raw_text = ParserService.extract_text(str(temp_path))
+        if not raw_text or not raw_text.strip():
+            raise AppException(
+                message="Unable to parse the new resume. Your existing resume and candidate information have been kept.",
+                status_code=400,
+            )
+
+        parsed = ParserService.parse(str(temp_path))
+        skills_value = parsed.get("skills") or []
+        skills_text = ", ".join(skills_value) if isinstance(skills_value, list) else str(skills_value or "")
+
+        # 4. Update candidate resume-derived fields only
+        if parsed.get("name"):
+            candidate.name = parsed["name"].strip()
+        if parsed.get("email"):
+            candidate.email = parsed["email"].strip().lower()
+        if parsed.get("phone"):
+            candidate.phone = parsed["phone"].strip()
+        if skills_text:
+            candidate.skills = skills_text.strip()
+        candidate.experience_years = parsed.get("experience_years", candidate.experience_years)
+        candidate.raw_text = raw_text
+        candidate.original_filename = file.filename or candidate.original_filename
+
+        # 5. Clean up old resume file(s) for this candidate and finalize the new one
+        for old_file in storage_service.resumes_path.glob(f"{candidate_id}.*"):
+            try:
+                old_file.unlink()
+            except Exception:
+                pass
+
+        ext = Path(file.filename or "resume.pdf").suffix.lower() or ".pdf"
+        await storage_service.finalize_file(
+            temp_path,
+            candidate_id=candidate.id,
+            extension=ext,
+        )
+        temp_path = None
+
+        db.commit()
+        db.refresh(candidate)
+        return CandidateDetailResponse.model_validate(candidate)
+    except AppException:
+        db.rollback()
+        if temp_path and temp_path.exists():
+            await storage_service.delete_file(temp_path)
+        raise
+    except Exception as exc:
+        db.rollback()
+        if temp_path and temp_path.exists():
+            await storage_service.delete_file(temp_path)
+        raise AppException(
+            message="Unable to parse the new resume. Your existing resume and candidate information have been kept.",
+            detail=str(exc),
+            status_code=400,
+        ) from exc
 
 
 @router.get(

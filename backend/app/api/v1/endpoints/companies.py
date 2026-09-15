@@ -9,6 +9,8 @@ from app.schemas.company import (
     CompanyResponse,
     CompanyUpdate,
 )
+from app.schemas.job_application import ApplicationResponse
+from app.services.application_service import ApplicationService
 from app.services.company_service import CompanyService
 
 router = APIRouter(prefix="/companies", tags=["Companies"])
@@ -55,6 +57,26 @@ def get_company(company_id: int, db: Session = Depends(get_db)) -> CompanyDetail
         created_at=company.created_at,
         job_roles_count=len(company.job_roles),
     )
+
+
+@router.get(
+    "/{company_id}/work-history",
+    response_model=list[ApplicationResponse],
+    status_code=status.HTTP_200_OK,
+    dependencies=[Depends(get_current_user)],
+)
+def get_company_work_history(
+    company_id: int,
+    db: Session = Depends(get_db),
+) -> list[ApplicationResponse]:
+    CompanyService.get_by_id(db, company_id)
+    applications = ApplicationService.get_all(db, company_id=company_id)
+    work_history_statuses = {"selected", "joined", "completed", "dropped"}
+    work_history_apps = [
+        app for app in applications
+        if (app.status and app.status.lower() in work_history_statuses) or app.start_date is not None
+    ]
+    return [ApplicationResponse.model_validate(item) for item in work_history_apps]
 
 
 @router.patch(

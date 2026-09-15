@@ -88,7 +88,8 @@ class ApplicationService:
         interviewer_id: int | None = None,
     ) -> list[JobApplication]:
         query = db.query(JobApplication).options(
-            joinedload(JobApplication.candidate).joinedload(Candidate.uploader_vendor)
+            joinedload(JobApplication.candidate).joinedload(Candidate.uploader_vendor),
+            joinedload(JobApplication.job_role).joinedload(JobRole.company),
         )
         
         # Additive filtering for strict isolation
