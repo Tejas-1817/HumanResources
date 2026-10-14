@@ -473,10 +473,31 @@ export const getCandidatesByCompany = async (companyId: number): Promise<Candida
   return data.items;
 };
 
+export interface MonthlyRecruitmentTrend {
+  month: string;
+  full_month: string;
+  year: number;
+  month_num: number;
+  open_positions: number;
+  hired: number;
+  new_openings?: number;
+}
+
 export const getDashboardStats = async (): Promise<any> => {
   const { data } = await client.get("/dashboard/stats");
   return data;
 };
+
+export const getMonthlyRecruitmentTrends = async (months: number = 9): Promise<MonthlyRecruitmentTrend[]> => {
+  const validMonths = typeof months === "number" && !isNaN(months) ? months : 9;
+  const { data } = await client.get<MonthlyRecruitmentTrend[]>("/dashboard/monthly-trends", {
+    params: { months: validMonths },
+  });
+  return data;
+};
+
+
+
 
 export const uploadResume = async (payload: {
   file: File;
