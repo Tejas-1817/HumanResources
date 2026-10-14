@@ -1,3 +1,4 @@
+import calendar
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, status
@@ -13,10 +14,12 @@ from app.models.job_role import JobRole
 from app.schemas.dashboard import (
     ActivityFeedItem,
     DashboardStatsResponse,
+    MonthlyRecruitmentTrendItem,
     OpenPositionItem,
     PipelineSummaryItem,
     RecentUploadItem,
 )
+
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 
@@ -217,6 +220,8 @@ def get_dashboard_stats(db: Session = Depends(get_db)) -> DashboardStatsResponse
             created_at=act["created_at"]
         ))
 
+    monthly_trends = calculate_monthly_recruitment_trends(db)
+
     payload = {
         "total_candidates": int(total_candidates),
         "total_companies": int(total_companies),
@@ -239,6 +244,127 @@ def get_dashboard_stats(db: Session = Depends(get_db)) -> DashboardStatsResponse
             dropped=int(pipeline_counts.dropped or 0),
             not_joined=int(pipeline_counts.not_joined or 0),
         ),
+        "monthly_recruitment_trends": monthly_trends,
     }
 
     return DashboardStatsResponse.model_validate(payload)
+
+
+def calculate_monthly_recruitment_trends(db: Session, months: int = 9) -> list[MonthlyRecruitmentTrendItem]:
+    """
+    Calculate monthly recruitment trends using database records:
+    - Open Positions: Active open positions snapshot available during each month
+    - Total Hired: Candidates hired during each month using the appropriate hiring date
+    - Chronological list of months ending at current month (defaults to 9 months e.g. Feb through Oct).
+    """
+    roles_by_month = (
+        db.query(
+            extract("year", JobRole.created_at).label("y"),
+            extract("month", JobRole.created_at).label("m"),
+            func.sum(func.coalesce(JobRole.positions_required, 1)).label("positions"),
+        )
+        .filter(func.lower(JobRole.status) == "open")
+        .group_by("y", "m")
+        .all()
+    )
+    positions_created_map: dict[tuple[int, int], int] = {
+        (int(r.y), int(r.m)): int(r.positions or 0) for r in roles_by_month if r.y and r.m
+    }
+
+    hired_date_col = func.coalesce(JobApplication.status_date, JobApplication.created_at)
+    hires_by_month = (
+        db.query(
+            extract("year", hired_date_col).label("y"),
+            extract("month", hired_date_col).label("m"),
+            func.count(JobApplication.id).label("hired_count"),
+        )
+        .filter(JobApplication.status.in_(["selected", "joined"]))
+        .group_by("y", "m")
+        .all()
+    )
+    hires_map: dict[tuple[int, int], int] = {
+        (int(h.y), int(h.m)): int(h.hired_count or 0) for h in hires_by_month if h.y and h.m
+    }
+
+    now = datetime.now(timezone.utc)
+    
+    # Generate past `months` months ending at `now` (e.g. Feb through Oct)
+    month_list: list[tuple[int, int]] = []
+    y, m = now.year, now.month
+    for _ in range(months):
+        month_list.append((y, m))
+        m -= 1
+        if m == 0:
+            m = 12
+            y -= 1
+    month_list.reverse()
+
+    # Pre-calculate prior positions and hires before window
+    first_y, first_m = month_list[0]
+    prior_created = (
+        db.query(func.sum(func.coalesce(JobRole.positions_required, 1)))
+        .filter(
+            func.lower(JobRole.status) == "open",
+            (extract("year", JobRole.created_at) < first_y) | 
+            ((extract("year", JobRole.created_at) == first_y) & (extract("month", JobRole.created_at) < first_m))
+        )
+        .scalar() or 0
+    )
+    prior_hired = (
+        db.query(func.count(JobApplication.id))
+        .filter(
+            JobApplication.status.in_(["selected", "joined"]),
+            (extract("year", hired_date_col) < first_y) |
+            ((extract("year", hired_date_col) == first_y) & (extract("month", hired_date_col) < first_m))
+        )
+        .scalar() or 0
+    )
+
+    running_positions = int(prior_created)
+    running_hired = int(prior_hired)
+
+    trends: list[MonthlyRecruitmentTrendItem] = []
+    for curr_y, curr_m in month_list:
+        key = (curr_y, curr_m)
+        new_openings = positions_created_map.get(key, 0)
+        hired_this_month = hires_map.get(key, 0)
+
+        running_positions += new_openings
+        running_hired += hired_this_month
+
+        active_open = max(0, running_positions - (running_hired - hired_this_month)) if running_positions > 0 else 0
+
+        m_name = calendar.month_abbr[curr_m]
+        trends.append(
+            MonthlyRecruitmentTrendItem(
+                month=m_name,
+                full_month=f"{calendar.month_name[curr_m]} {curr_y}",
+                year=curr_y,
+                month_num=curr_m,
+                open_positions=active_open,
+                hired=hired_this_month,
+                new_openings=new_openings,
+            )
+        )
+
+    return trends
+
+
+@router.get(
+    "/monthly-trends",
+    response_model=list[MonthlyRecruitmentTrendItem],
+    status_code=status.HTTP_200_OK,
+    dependencies=[Depends(get_current_user)],
+)
+def get_monthly_recruitment_trends(
+    months: int = 9,
+    db: Session = Depends(get_db),
+) -> list[MonthlyRecruitmentTrendItem]:
+    try:
+        valid_months = int(months) if months and int(months) > 0 else 9
+    except (ValueError, TypeError):
+        valid_months = 9
+    return calculate_monthly_recruitment_trends(db, months=valid_months)
+
+
+

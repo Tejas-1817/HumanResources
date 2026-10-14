@@ -51,6 +51,19 @@ class ActivityFeedItem(BaseModel):
     created_at: datetime
 
 
+class MonthlyRecruitmentTrendItem(BaseModel):
+    month: str
+    full_month: str
+    year: int
+    month_num: int
+    open_positions: int
+    hired: int
+    new_openings: int = 0
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+
 class DashboardStatsResponse(BaseModel):
     total_candidates: int
     total_companies: int
@@ -63,5 +76,7 @@ class DashboardStatsResponse(BaseModel):
     activity_feed: list[ActivityFeedItem] | None = None
     pipeline_summary: PipelineSummaryItem
     open_positions: list[OpenPositionItem] = []
+    monthly_recruitment_trends: list[MonthlyRecruitmentTrendItem] = []
 
     model_config = ConfigDict(from_attributes=True)
+
