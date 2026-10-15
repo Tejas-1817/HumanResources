@@ -478,9 +478,49 @@ export interface MonthlyRecruitmentTrend {
   full_month: string;
   year: number;
   month_num: number;
-  open_positions: number;
-  hired: number;
+  active_positions: number;
+  closed_positions: number;
+  lost_positions: number;
+  open_positions?: number;
+  hired?: number;
   new_openings?: number;
+}
+
+export interface RecruitmentFilterParams {
+  time_period?: string;
+  start_date?: string;
+  end_date?: string;
+  department?: string;
+  position?: string;
+  recruiter_id?: number | string;
+  position_status?: string;
+  candidate_source?: string;
+  job_location?: string;
+  experience_level?: string;
+  vacancy_age?: string;
+  months?: number;
+}
+
+export interface FilterOptionItem {
+  label: string;
+  value: string;
+}
+
+export interface RecruiterOptionItem {
+  id: number;
+  name: string;
+}
+
+export interface RecruitmentFilterOptions {
+  time_periods: FilterOptionItem[];
+  departments: string[];
+  positions: string[];
+  recruiters: RecruiterOptionItem[];
+  position_statuses: string[];
+  candidate_sources: string[];
+  locations: string[];
+  experience_levels: FilterOptionItem[];
+  vacancy_ages: FilterOptionItem[];
 }
 
 export const getDashboardStats = async (): Promise<any> => {
@@ -488,11 +528,30 @@ export const getDashboardStats = async (): Promise<any> => {
   return data;
 };
 
-export const getMonthlyRecruitmentTrends = async (months: number = 9): Promise<MonthlyRecruitmentTrend[]> => {
-  const validMonths = typeof months === "number" && !isNaN(months) ? months : 9;
+export const getMonthlyRecruitmentTrends = async (
+  params?: RecruitmentFilterParams | number
+): Promise<MonthlyRecruitmentTrend[]> => {
+  let queryParams: Record<string, any> = {};
+  if (typeof params === "number") {
+    queryParams = { months: params };
+  } else if (params) {
+    Object.entries(params).forEach(([key, val]) => {
+      if (val !== undefined && val !== null && val !== "" && val !== "all") {
+        queryParams[key] = val;
+      }
+    });
+    if (params.time_period) {
+      queryParams.time_period = params.time_period;
+    }
+  }
   const { data } = await client.get<MonthlyRecruitmentTrend[]>("/dashboard/monthly-trends", {
-    params: { months: validMonths },
+    params: queryParams,
   });
+  return data;
+};
+
+export const getRecruitmentFilterOptions = async (): Promise<RecruitmentFilterOptions> => {
+  const { data } = await client.get<RecruitmentFilterOptions>("/dashboard/filter-options");
   return data;
 };
 
