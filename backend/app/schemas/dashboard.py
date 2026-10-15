@@ -56,11 +56,44 @@ class MonthlyRecruitmentTrendItem(BaseModel):
     full_month: str
     year: int
     month_num: int
-    open_positions: int
-    hired: int
+    active_positions: int
+    closed_positions: int
+    lost_positions: int
+    # Backwards compatibility fields
+    open_positions: int = 0
+    hired: int = 0
     new_openings: int = 0
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class FilterOptionItem(BaseModel):
+    label: str
+    value: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class RecruiterOptionItem(BaseModel):
+    id: int
+    name: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class RecruitmentFilterOptionsResponse(BaseModel):
+    time_periods: list[FilterOptionItem]
+    departments: list[str]
+    positions: list[str]
+    recruiters: list[RecruiterOptionItem]
+    position_statuses: list[str]
+    candidate_sources: list[str]
+    locations: list[str]
+    experience_levels: list[FilterOptionItem]
+    vacancy_ages: list[FilterOptionItem]
+
+    model_config = ConfigDict(from_attributes=True)
+
 
 
 

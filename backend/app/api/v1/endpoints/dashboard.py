@@ -2,22 +2,27 @@ import calendar
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, status
-from sqlalchemy import case, extract, func
+from sqlalchemy import case, extract, func, or_, and_
 from sqlalchemy.orm import Session, joinedload, selectinload
 
 from app.core.security import get_current_user
 from app.database.session import get_db
+from app.models.activity_log import ActivityLog
 from app.models.candidate import Candidate
 from app.models.company import Company
 from app.models.job_application import JobApplication
 from app.models.job_role import JobRole
+from app.models.user import User
 from app.schemas.dashboard import (
     ActivityFeedItem,
     DashboardStatsResponse,
+    FilterOptionItem,
     MonthlyRecruitmentTrendItem,
     OpenPositionItem,
     PipelineSummaryItem,
     RecentUploadItem,
+    RecruiterOptionItem,
+    RecruitmentFilterOptionsResponse,
 )
 
 
@@ -250,104 +255,364 @@ def get_dashboard_stats(db: Session = Depends(get_db)) -> DashboardStatsResponse
     return DashboardStatsResponse.model_validate(payload)
 
 
-def calculate_monthly_recruitment_trends(db: Session, months: int = 9) -> list[MonthlyRecruitmentTrendItem]:
+def calculate_monthly_recruitment_trends(
+    db: Session,
+    months: int | None = None,
+    time_period: str = "last_6_months",
+    start_date: str | None = None,
+    end_date: str | None = None,
+    department: str | None = None,
+    position: str | None = None,
+    recruiter_id: int | None = None,
+    position_status: str | None = None,
+    candidate_source: str | None = None,
+    job_location: str | None = None,
+    experience_level: str | None = None,
+    vacancy_age: str | None = None,
+) -> list[MonthlyRecruitmentTrendItem]:
     """
-    Calculate monthly recruitment trends using database records:
-    - Open Positions: Active open positions snapshot available during each month
-    - Total Hired: Candidates hired during each month using the appropriate hiring date
-    - Chronological list of months ending at current month (defaults to 9 months e.g. Feb through Oct).
+    Calculate monthly recruitment trends derived directly from actual JobRole positions:
+    - Active Positions: Positions actively being recruited for during/at each month snapshot (pink #F45B8D)
+    - Closed Positions: Distinct positions confirmed filled or successfully closed in each month (green #18B99A)
+    - Lost Positions: Distinct positions marked as cancelled, lost, or abandoned in each month (orange #F28C38)
+    Counts distinct position IDs to avoid any duplicates and uses historical status change logs.
     """
-    roles_by_month = (
-        db.query(
-            extract("year", JobRole.created_at).label("y"),
-            extract("month", JobRole.created_at).label("m"),
-            func.sum(func.coalesce(JobRole.positions_required, 1)).label("positions"),
-        )
-        .filter(func.lower(JobRole.status) == "open")
-        .group_by("y", "m")
-        .all()
-    )
-    positions_created_map: dict[tuple[int, int], int] = {
-        (int(r.y), int(r.m)): int(r.positions or 0) for r in roles_by_month if r.y and r.m
-    }
-
-    hired_date_col = func.coalesce(JobApplication.status_date, JobApplication.created_at)
-    hires_by_month = (
-        db.query(
-            extract("year", hired_date_col).label("y"),
-            extract("month", hired_date_col).label("m"),
-            func.count(JobApplication.id).label("hired_count"),
-        )
-        .filter(JobApplication.status.in_(["selected", "joined"]))
-        .group_by("y", "m")
-        .all()
-    )
-    hires_map: dict[tuple[int, int], int] = {
-        (int(h.y), int(h.m)): int(h.hired_count or 0) for h in hires_by_month if h.y and h.m
-    }
-
     now = datetime.now(timezone.utc)
-    
-    # Generate past `months` months ending at `now` (e.g. Feb through Oct)
+
+    # 1. Determine chronological month_list based on date range or period
     month_list: list[tuple[int, int]] = []
-    y, m = now.year, now.month
-    for _ in range(months):
-        month_list.append((y, m))
-        m -= 1
-        if m == 0:
-            m = 12
-            y -= 1
-    month_list.reverse()
+    if start_date and end_date:
+        try:
+            s_dt = datetime.strptime(start_date[:10], "%Y-%m-%d")
+            e_dt = datetime.strptime(end_date[:10], "%Y-%m-%d")
+            curr = datetime(s_dt.year, s_dt.month, 1)
+            end_m = datetime(e_dt.year, e_dt.month, 1)
+            while curr <= end_m and len(month_list) < 48:
+                month_list.append((curr.year, curr.month))
+                m = curr.month + 1
+                y = curr.year
+                if m > 12:
+                    m = 1
+                    y += 1
+                curr = datetime(y, m, 1)
+        except Exception:
+            month_list = []
 
-    # Pre-calculate prior positions and hires before window
-    first_y, first_m = month_list[0]
-    prior_created = (
-        db.query(func.sum(func.coalesce(JobRole.positions_required, 1)))
-        .filter(
-            func.lower(JobRole.status) == "open",
-            (extract("year", JobRole.created_at) < first_y) | 
-            ((extract("year", JobRole.created_at) == first_y) & (extract("month", JobRole.created_at) < first_m))
+    elif time_period == "all_time":
+        min_job = db.query(func.min(JobRole.created_at)).scalar()
+        min_app = db.query(func.min(JobApplication.created_at)).scalar()
+        valid_dates = [d for d in [min_job, min_app] if d is not None]
+        min_dt = min(valid_dates) if valid_dates else (now - timedelta(days=180))
+        curr = datetime(min_dt.year, min_dt.month, 1)
+        end_m = datetime(now.year, now.month, 1)
+        while curr <= end_m and len(month_list) < 48:
+            month_list.append((curr.year, curr.month))
+            m = curr.month + 1
+            y = curr.year
+            if m > 12:
+                m = 1
+                y += 1
+            curr = datetime(y, m, 1)
+
+    if not month_list:
+        num_months = 6
+        if months is not None:
+            num_months = max(1, min(int(months), 36))
+        elif time_period == "last_30_days":
+            num_months = 1
+        elif time_period == "last_3_months":
+            num_months = 3
+        elif time_period == "last_6_months":
+            num_months = 6
+        elif time_period == "last_9_months":
+            num_months = 9
+        elif time_period == "last_12_months":
+            num_months = 12
+
+        y, m = now.year, now.month
+        for _ in range(num_months):
+            month_list.append((y, m))
+            m -= 1
+            if m == 0:
+                m = 12
+                y -= 1
+        month_list.reverse()
+
+    # 2. Query distinct JobRole records applying any optional attribute filters
+    roles_q = db.query(JobRole)
+    if department and department.strip() and department.strip().lower() != "all":
+        roles_q = roles_q.filter(func.lower(JobRole.department) == department.strip().lower())
+    if position and position.strip() and position.strip().lower() != "all":
+        roles_q = roles_q.filter(func.lower(JobRole.title) == position.strip().lower())
+    if recruiter_id and str(recruiter_id).lower() != "all":
+        roles_q = roles_q.filter(JobRole.created_by == int(recruiter_id))
+    if job_location and job_location.strip() and job_location.strip().lower() != "all":
+        roles_q = roles_q.filter(JobRole.location.ilike(f"%{job_location.strip()}%"))
+    if experience_level and experience_level.strip() and experience_level.strip().lower() != "all":
+        exp = experience_level.strip()
+        if exp == "0-2":
+            roles_q = roles_q.filter(or_(
+                JobRole.experience_required.in_(["0", "1", "2"]),
+                JobRole.experience_required.ilike("%0%"),
+                JobRole.experience_required.ilike("%1%"),
+                JobRole.experience_required.ilike("%2%"),
+            ))
+        elif exp == "3-5":
+            roles_q = roles_q.filter(or_(
+                JobRole.experience_required.in_(["3", "4", "5"]),
+                JobRole.experience_required.ilike("%3%"),
+                JobRole.experience_required.ilike("%4%"),
+                JobRole.experience_required.ilike("%5%"),
+            ))
+        elif exp == "6-8":
+            roles_q = roles_q.filter(or_(
+                JobRole.experience_required.in_(["6", "7", "8"]),
+                JobRole.experience_required.ilike("%6%"),
+                JobRole.experience_required.ilike("%7%"),
+                JobRole.experience_required.ilike("%8%"),
+            ))
+        elif exp == "8+":
+            roles_q = roles_q.filter(or_(
+                JobRole.experience_required.in_(["8", "9", "10", "11", "12"]),
+                JobRole.experience_required.ilike("%8%"),
+                JobRole.experience_required.ilike("%9%"),
+                JobRole.experience_required.ilike("%10%"),
+            ))
+
+    roles = roles_q.all()
+    role_ids = [r.id for r in roles]
+
+    # 3. Retrieve historical status change and hiring logs for applications
+    app_hire_dates: dict[int, datetime] = {}
+    if role_ids:
+        # Check ActivityLog for exact timestamp when candidate was selected or joined
+        logs = (
+            db.query(ActivityLog)
+            .join(JobApplication, ActivityLog.application_id == JobApplication.id)
+            .filter(
+                JobApplication.job_role_id.in_(role_ids),
+                ActivityLog.new_status.in_(["selected", "joined"]),
+            )
+            .order_by(ActivityLog.created_at.asc())
+            .all()
         )
-        .scalar() or 0
-    )
-    prior_hired = (
-        db.query(func.count(JobApplication.id))
-        .filter(
-            JobApplication.status.in_(["selected", "joined"]),
-            (extract("year", hired_date_col) < first_y) |
-            ((extract("year", hired_date_col) == first_y) & (extract("month", hired_date_col) < first_m))
+        for log in logs:
+            if log.application_id not in app_hire_dates:
+                app_hire_dates[log.application_id] = log.created_at
+
+    # Query all filled applications for these roles
+    role_hire_dates: dict[int, list[datetime]] = {}
+    if role_ids:
+        filled_apps = (
+            db.query(JobApplication)
+            .filter(
+                JobApplication.job_role_id.in_(role_ids),
+                JobApplication.status.in_(["selected", "joined"]),
+            )
+            .all()
         )
-        .scalar() or 0
-    )
+        for app in filled_apps:
+            h_dt = app_hire_dates.get(app.id) or app.completion_date or app.status_date or app.created_at
+            if h_dt:
+                if h_dt.tzinfo is None:
+                    h_dt = h_dt.replace(tzinfo=timezone.utc)
+                role_hire_dates.setdefault(app.job_role_id, []).append(h_dt)
 
-    running_positions = int(prior_created)
-    running_hired = int(prior_hired)
+    # Sort each role's hire timestamps chronologically
+    for r_id in role_hire_dates:
+        role_hire_dates[r_id].sort()
 
+    # 4. Determine closed_at and lost_at timestamps for distinct roles
+    role_closed_at: dict[int, datetime] = {}
+    role_lost_at: dict[int, datetime] = {}
+
+    for r in roles:
+        req = r.positions_required or 1
+        st = (r.status or "").lower()
+        hires = role_hire_dates.get(r.id, [])
+
+        # Position is confirmed closed if filled candidates reached positions_required
+        if len(hires) >= req and req > 0:
+            role_closed_at[r.id] = hires[req - 1]
+        elif st == "closed":
+            c_dt = r.created_at
+            if c_dt.tzinfo is None:
+                c_dt = c_dt.replace(tzinfo=timezone.utc)
+            role_closed_at[r.id] = c_dt
+        elif st in ["loss", "lost", "cancelled", "abandoned"]:
+            l_dt = r.created_at
+            if l_dt.tzinfo is None:
+                l_dt = l_dt.replace(tzinfo=timezone.utc)
+            role_lost_at[r.id] = l_dt
+
+    status_filter = (position_status or "").strip().lower()
+
+    # 5. Calculate monthly trends for each requested month
     trends: list[MonthlyRecruitmentTrendItem] = []
     for curr_y, curr_m in month_list:
-        key = (curr_y, curr_m)
-        new_openings = positions_created_map.get(key, 0)
-        hired_this_month = hires_map.get(key, 0)
+        last_day = calendar.monthrange(curr_y, curr_m)[1]
+        start_dt = datetime(curr_y, curr_m, 1, 0, 0, 0, tzinfo=timezone.utc)
+        end_dt = datetime(curr_y, curr_m, last_day, 23, 59, 59, tzinfo=timezone.utc)
 
-        running_positions += new_openings
-        running_hired += hired_this_month
+        active_count = 0
+        closed_count = 0
+        lost_count = 0
 
-        active_open = max(0, running_positions - (running_hired - hired_this_month)) if running_positions > 0 else 0
+        for r in roles:
+            r_created = r.created_at
+            if r_created.tzinfo is None:
+                r_created = r_created.replace(tzinfo=timezone.utc)
+
+            c_dt = role_closed_at.get(r.id)
+            l_dt = role_lost_at.get(r.id)
+            req = r.positions_required or 1
+
+            # Positions confirmed closed in this month
+            if c_dt and start_dt <= c_dt <= end_dt:
+                if status_filter in ["", "all", "closed", "close"]:
+                    closed_count += req
+
+            # Positions marked as lost/cancelled in this month
+            if l_dt and start_dt <= l_dt <= end_dt:
+                if status_filter in ["", "all", "loss", "lost"]:
+                    lost_count += req
+
+            # Positions actively being recruited for at the end of this month
+            if r_created <= end_dt:
+                was_closed = c_dt is not None and c_dt <= end_dt
+                was_lost = l_dt is not None and l_dt <= end_dt
+                is_on_hold = (r.status or "").lower() in ["on_hold", "on-hold"]
+                if not was_closed and not was_lost and not is_on_hold:
+                    if status_filter in ["", "all", "open", "active"]:
+                        hires_by_then = len([h for h in role_hire_dates.get(r.id, []) if h <= end_dt])
+                        remaining = max(0, req - hires_by_then)
+                        active_count += remaining
 
         m_name = calendar.month_abbr[curr_m]
+
         trends.append(
             MonthlyRecruitmentTrendItem(
                 month=m_name,
                 full_month=f"{calendar.month_name[curr_m]} {curr_y}",
                 year=curr_y,
                 month_num=curr_m,
-                open_positions=active_open,
-                hired=hired_this_month,
-                new_openings=new_openings,
+                active_positions=active_count,
+                closed_positions=closed_count,
+                lost_positions=lost_count,
+                open_positions=active_count,
+                hired=closed_count,
+                new_openings=0,
             )
         )
 
     return trends
+
+
+@router.get(
+    "/filter-options",
+    response_model=RecruitmentFilterOptionsResponse,
+    status_code=status.HTTP_200_OK,
+    dependencies=[Depends(get_current_user)],
+)
+def get_recruitment_filter_options(db: Session = Depends(get_db)) -> RecruitmentFilterOptionsResponse:
+    departments = [
+        d[0]
+        for d in db.query(JobRole.department)
+        .filter(JobRole.department.isnot(None), JobRole.department != "")
+        .distinct()
+        .order_by(JobRole.department)
+        .all()
+        if d[0]
+    ]
+
+    positions = [
+        p[0]
+        for p in db.query(JobRole.title)
+        .filter(JobRole.title.isnot(None), JobRole.title != "")
+        .distinct()
+        .order_by(JobRole.title)
+        .all()
+        if p[0]
+    ]
+
+    recruiters = [
+        RecruiterOptionItem(id=u.id, name=u.name)
+        for u in db.query(User).filter(User.is_active == True).order_by(User.name).all()
+    ]
+
+    position_statuses = [
+        s[0]
+        for s in db.query(JobRole.status)
+        .filter(JobRole.status.isnot(None), JobRole.status != "")
+        .distinct()
+        .order_by(JobRole.status)
+        .all()
+        if s[0]
+    ]
+
+    sources_candidates = [
+        s[0]
+        for s in db.query(Candidate.source)
+        .filter(Candidate.source.isnot(None), Candidate.source != "")
+        .distinct()
+        .all()
+        if s[0]
+    ]
+    sources_apps = [
+        s[0]
+        for s in db.query(JobApplication.source)
+        .filter(JobApplication.source.isnot(None), JobApplication.source != "")
+        .distinct()
+        .all()
+        if s[0]
+    ]
+    candidate_sources = sorted(list(set(sources_candidates + sources_apps + ["direct", "vendor"])))
+
+    locations = [
+        loc[0]
+        for loc in db.query(JobRole.location)
+        .filter(JobRole.location.isnot(None), JobRole.location != "")
+        .distinct()
+        .order_by(JobRole.location)
+        .all()
+        if loc[0]
+    ]
+
+    time_periods = [
+        FilterOptionItem(label="Last 30 Days", value="last_30_days"),
+        FilterOptionItem(label="Last 3 Months", value="last_3_months"),
+        FilterOptionItem(label="Last 6 Months", value="last_6_months"),
+        FilterOptionItem(label="Last 9 Months", value="last_9_months"),
+        FilterOptionItem(label="Last 12 Months", value="last_12_months"),
+        FilterOptionItem(label="All Time", value="all_time"),
+        FilterOptionItem(label="Custom Range", value="custom"),
+    ]
+
+    experience_levels = [
+        FilterOptionItem(label="0 - 2 Years (Entry)", value="0-2"),
+        FilterOptionItem(label="3 - 5 Years (Mid)", value="3-5"),
+        FilterOptionItem(label="6 - 8 Years (Senior)", value="6-8"),
+        FilterOptionItem(label="8+ Years (Lead / Exec)", value="8+"),
+    ]
+
+    vacancy_ages = [
+        FilterOptionItem(label="< 30 Days", value="0-30"),
+        FilterOptionItem(label="30 - 60 Days", value="30-60"),
+        FilterOptionItem(label="60 - 90 Days", value="60-90"),
+        FilterOptionItem(label="90+ Days", value="90+"),
+    ]
+
+    return RecruitmentFilterOptionsResponse(
+        time_periods=time_periods,
+        departments=departments,
+        positions=positions,
+        recruiters=recruiters,
+        position_statuses=position_statuses,
+        candidate_sources=candidate_sources,
+        locations=locations,
+        experience_levels=experience_levels,
+        vacancy_ages=vacancy_ages,
+    )
 
 
 @router.get(
@@ -357,14 +622,36 @@ def calculate_monthly_recruitment_trends(db: Session, months: int = 9) -> list[M
     dependencies=[Depends(get_current_user)],
 )
 def get_monthly_recruitment_trends(
-    months: int = 9,
+    months: int | None = None,
+    time_period: str = "last_6_months",
+    start_date: str | None = None,
+    end_date: str | None = None,
+    department: str | None = None,
+    position: str | None = None,
+    recruiter_id: int | None = None,
+    position_status: str | None = None,
+    candidate_source: str | None = None,
+    job_location: str | None = None,
+    experience_level: str | None = None,
+    vacancy_age: str | None = None,
     db: Session = Depends(get_db),
 ) -> list[MonthlyRecruitmentTrendItem]:
-    try:
-        valid_months = int(months) if months and int(months) > 0 else 9
-    except (ValueError, TypeError):
-        valid_months = 9
-    return calculate_monthly_recruitment_trends(db, months=valid_months)
+    return calculate_monthly_recruitment_trends(
+        db,
+        months=months,
+        time_period=time_period,
+        start_date=start_date,
+        end_date=end_date,
+        department=department,
+        position=position,
+        recruiter_id=recruiter_id,
+        position_status=position_status,
+        candidate_source=candidate_source,
+        job_location=job_location,
+        experience_level=experience_level,
+        vacancy_age=vacancy_age,
+    )
+
 
 
 
